@@ -50,6 +50,7 @@ class AppPrefs(context: Context) {
 
     suspend fun setNotificationPreview(value: Boolean) = put(Keys.NOTIF_PREVIEW, value)
     suspend fun setAppLockEnabled(value: Boolean) = put(Keys.APP_LOCK, value)
+    suspend fun setLiveSyncEnabled(value: Boolean) = put(Keys.LIVE_SYNC, value)
     suspend fun setSystemSmsImported(value: Boolean) = put(Keys.SMS_IMPORTED, value)
     suspend fun setOnboardingDone(value: Boolean) = put(Keys.ONBOARDING, value)
 
@@ -97,6 +98,7 @@ class AppPrefs(context: Context) {
             forwardMaxPerHour = this[Keys.FORWARD_MAX] ?: defaults.forwardMaxPerHour,
             notificationPreview = this[Keys.NOTIF_PREVIEW] ?: defaults.notificationPreview,
             appLockEnabled = this[Keys.APP_LOCK] ?: defaults.appLockEnabled,
+            liveSyncEnabled = this[Keys.LIVE_SYNC] ?: defaults.liveSyncEnabled,
             systemSmsImported = this[Keys.SMS_IMPORTED] ?: defaults.systemSmsImported,
             onboardingDone = this[Keys.ONBOARDING] ?: defaults.onboardingDone,
         )
@@ -126,6 +128,7 @@ class AppPrefs(context: Context) {
         val FORWARD_MAX = intPreferencesKey("forward_max_per_hour")
         val NOTIF_PREVIEW = booleanPreferencesKey("notification_preview")
         val APP_LOCK = booleanPreferencesKey("app_lock")
+        val LIVE_SYNC = booleanPreferencesKey("live_sync")
         val SMS_IMPORTED = booleanPreferencesKey("system_sms_imported")
         val ONBOARDING = booleanPreferencesKey("onboarding_done")
     }

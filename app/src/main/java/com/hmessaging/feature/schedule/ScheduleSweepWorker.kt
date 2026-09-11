@@ -8,6 +8,7 @@ import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import com.hmessaging.di.AppGraph
+import com.hmessaging.sms.SmsSyncService
 import kotlinx.coroutines.flow.first
 import java.util.concurrent.TimeUnit
 
@@ -26,10 +27,21 @@ class ScheduleSweepWorker(
     override suspend fun doWork(): Result {
         val graph = AppGraph.from(applicationContext)
         return runCatching {
+            // Primary purpose on ROMs that block background receivers: notice messages that were
+            // delivered to the phone's SMS store but never broadcast to this app.
+            val settings = graph.prefs.settings.first()
+            val sync = graph.smsImporter.syncNew(deliverThroughPipeline = true)
+            if (sync.imported > 0) {
+                graph.diagnostics.record(
+                    com.hmessaging.system.Diagnostics.KIND_SYNC,
+                    "periodic sweep — picked up ${sync.imported}",
+                )
+            }
+            if (settings.liveSyncEnabled) SmsSyncService.start(applicationContext)
+
             graph.scheduleManager.sendDue()
             graph.scheduleManager.rescheduleAll()
 
-            val settings = graph.prefs.settings.first()
             graph.otpPresenter.purgeOld(settings.otpAutoDeleteDays)
             graph.messageRepository.purgeOldOtpMessages(settings.otpAutoDeleteDays)
 
@@ -41,7 +53,7 @@ class ScheduleSweepWorker(
 
     companion object {
         private const val UNIQUE_NAME = "schedule_sweep"
-        private const val INTERVAL_MINUTES = 30L
+        private const val INTERVAL_MINUTES = 15L
 
         fun enqueue(context: Context) {
             val request = PeriodicWorkRequestBuilder<ScheduleSweepWorker>(

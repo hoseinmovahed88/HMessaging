@@ -175,6 +175,9 @@ interface MessageDao {
     @Query("SELECT COUNT(*) FROM messages")
     suspend fun count(): Int
 
+    @Query("SELECT MAX(date) FROM messages")
+    suspend fun newestDate(): Long?
+
     @Query("SELECT * FROM messages WHERE threadId = :threadId ORDER BY date ASC, id ASC")
     suspend fun listForThread(threadId: Long): List<MessageEntity>
 

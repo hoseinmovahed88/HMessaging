@@ -146,6 +146,12 @@
     <string name="channel_otp">Verification codes</string>
     <string name="channel_scheduled">Scheduled messages</string>
     <string name="channel_system">Status</string>
+    <string name="sync_service_title">Watching for messages</string>
+    <string name="sync_service_text">Keeps delivery working when the system blocks background wake-ups</string>
+    <string name="settings_live_sync">Reliable delivery</string>
+    <string name="settings_live_sync_desc">Keeps a quiet background notification so messages arrive even when the system refuses to wake the app. Turn this off only if your phone delivers messages without it.</string>
+    <string name="diag_autostart">Open autostart settings (MIUI / HyperOS)</string>
+    <string name="diag_sync_service">Background watcher</string>
     <string name="notif_reply">Reply</string>
     <string name="notif_mark_read">Mark read</string>
     <string name="notif_reply_hint">Message</string>

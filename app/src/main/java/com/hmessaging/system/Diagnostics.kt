@@ -13,6 +13,7 @@ import com.hmessaging.data.db.dao.DiagDao
 import com.hmessaging.data.db.dao.MessageDao
 import com.hmessaging.data.db.entity.DiagEventEntity
 import com.hmessaging.data.prefs.AppPrefs
+import com.hmessaging.sms.SmsSyncService
 import com.hmessaging.util.AppRoles
 import com.hmessaging.util.Permissions
 import com.hmessaging.util.TimeFormat
@@ -141,6 +142,18 @@ class Diagnostics(
             ),
         )
 
+        add(
+            Check(
+                label = "Background watcher",
+                ok = SmsSyncService.isRunning(context),
+                detail = if (SmsSyncService.isRunning(context)) {
+                    "running — the SMS store is being watched directly"
+                } else {
+                    "not running — delivery depends on the system waking the app"
+                },
+            ),
+        )
+
         val stored = messageDao.count()
         add(Check("Messages stored", stored > 0, "$stored in the app database"))
 
@@ -223,6 +236,7 @@ class Diagnostics(
         const val KIND_STORED = "STORED"
         const val KIND_BLOCKED = "BLOCKED"
         const val KIND_DUPLICATE = "DUPLICATE"
+        const val KIND_SYNC = "SYNC"
         const val KIND_IMPORT = "IMPORT"
         const val KIND_SEND = "SEND"
         const val KIND_ERROR = "ERROR"

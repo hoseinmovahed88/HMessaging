@@ -54,6 +54,23 @@ object AppRoles {
             Intent(Settings.ACTION_SETTINGS)
         }
 
+    /**
+     * MIUI/HyperOS hides "autostart" in its own security app rather than in Android settings, and
+     * denying it is what stops manifest broadcast receivers from ever firing.
+     */
+    fun autostartSettingsIntent(): Intent? {
+        val candidates = listOf(
+            "com.miui.securitycenter" to "com.miui.permcenter.autostart.AutoStartManagementActivity",
+            "com.letv.android.letvsafe" to "com.letv.android.letvsafe.AutobootManageActivity",
+            "com.huawei.systemmanager" to "com.huawei.systemmanager.startupmgr.ui.StartupNormalAppListActivity",
+            "com.coloros.safecenter" to "com.coloros.safecenter.permission.startup.StartupAppListActivity",
+            "com.vivo.permissionmanager" to "com.vivo.permissionmanager.activity.BgStartUpManagerActivity",
+        )
+        return candidates.firstNotNullOfOrNull { (pkg, cls) ->
+            Intent().setClassName(pkg, cls)
+        }
+    }
+
     /** The system list where an app can be exempted from battery optimisation. */
     fun batteryOptimizationSettingsIntent(): Intent? =
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {

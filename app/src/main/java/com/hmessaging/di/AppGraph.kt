@@ -29,7 +29,7 @@ import kotlinx.coroutines.SupervisorJob
  * entry point reaches the same singletons through [from]. Everything is lazy: a receiver that only
  * needs the schedule manager never pays for the SMS importer.
  */
-class AppGraph private constructor(private val appContext: Context) {
+class AppGraph private constructor(val appContext: Context) {
 
     /** Outlives any one receiver's `goAsync` window; work is never tied to a component's life. */
     val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -92,7 +92,7 @@ class AppGraph private constructor(private val appContext: Context) {
     }
 
     val smsImporter: SmsImporter by lazy {
-        SmsImporter(appContext, threadDao, messageDao, messageRepository)
+        SmsImporter(appContext, threadDao, messageDao, messageRepository) { incomingPipeline }
     }
 
     val backupManager: BackupManager by lazy {

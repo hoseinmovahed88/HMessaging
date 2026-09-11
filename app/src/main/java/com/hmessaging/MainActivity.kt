@@ -29,6 +29,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.hmessaging.data.prefs.AppSettings
 import com.hmessaging.di.AppGraph
+import com.hmessaging.sms.SmsSyncService
 import com.hmessaging.system.Diagnostics
 import com.hmessaging.ui.nav.HmApp
 import com.hmessaging.ui.nav.Routes
@@ -105,6 +106,25 @@ class MainActivity : AppCompatActivity() {
         // The role can be granted from system Settings as well as from our own prompt, so the
         // one-time history import is driven by observing the role, not by a dialog result.
         importSystemSmsOnce()
+        catchUpOnMessages()
+    }
+
+    /**
+     * Pulls anything the phone's SMS store has that we do not.
+     *
+     * Without this the app depends entirely on a broadcast that some ROMs never deliver, and the
+     * only way to see a new message is to trigger an import by hand.
+     */
+    private fun catchUpOnMessages() {
+        val graph = AppGraph.from(this)
+        graph.applicationScope.launch {
+            val settings = graph.prefs.settings.first()
+            val progress = graph.smsImporter.syncNew(deliverThroughPipeline = true)
+            if (progress.imported > 0) {
+                graph.diagnostics.record(Diagnostics.KIND_SYNC, "on open — picked up ${progress.imported}")
+            }
+            if (settings.liveSyncEnabled) SmsSyncService.start(this@MainActivity)
+        }
     }
 
     /** App lock is only meaningful when the device can actually authenticate. */

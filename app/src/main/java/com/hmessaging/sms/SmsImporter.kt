@@ -26,6 +26,7 @@ class SmsImporter(
     private val threadDao: ThreadDao,
     private val messageDao: MessageDao,
     private val repository: MessageRepository,
+    private val pipeline: () -> IncomingMessagePipeline,
 ) {
 
     data class Progress(
@@ -129,7 +130,117 @@ class SmsImporter(
         else -> MessageType.INBOX
     }
 
+    /**
+     * Pulls in whatever the phone's SMS store has that this app does not.
+     *
+     * This is the safety net for devices where the broadcast never arrives — several vendor ROMs
+     * refuse to cold-start an app from a manifest-declared receiver — and it is cheap enough to
+     * run on every resume, because it only looks at rows newer than the newest one already held.
+     *
+     * [deliverThroughPipeline] routes genuinely fresh inbox messages through blocking, OTP
+     * capture, auto-reply and forwarding. It is deliberately off for bulk catch-up: replaying a
+     * backlog through the answering machine would send a burst of real, billable messages.
+     */
+    suspend fun syncNew(deliverThroughPipeline: Boolean): Progress = withContext(Dispatchers.IO) {
+        if (!Permissions.has(context, Manifest.permission.READ_SMS)) {
+            return@withContext Progress(0, 0, succeeded = false, error = "READ_SMS is not granted")
+        }
+        val since = messageDao.newestDate() ?: 0L
+        val cutoff = System.currentTimeMillis() - LIVE_WINDOW_MS
+
+        val projection = arrayOf(
+            Telephony.Sms._ID,
+            Telephony.Sms.ADDRESS,
+            Telephony.Sms.BODY,
+            Telephony.Sms.DATE,
+            Telephony.Sms.TYPE,
+            Telephony.Sms.READ,
+            Telephony.Sms.SUBSCRIPTION_ID,
+        )
+
+        val cursorResult = runCatching {
+            context.contentResolver.query(
+                Telephony.Sms.CONTENT_URI,
+                projection,
+                "${Telephony.Sms.DATE} > ?",
+                arrayOf(since.toString()),
+                "${Telephony.Sms.DATE} ASC",
+            )
+        }
+        val cursor = cursorResult.getOrNull()
+            ?: return@withContext Progress(
+                0,
+                0,
+                succeeded = false,
+                error = cursorResult.exceptionOrNull()?.message ?: "the SMS provider returned no cursor",
+            )
+
+        var imported = 0
+        var skipped = 0
+        cursor.use { rows ->
+            val idColumn = rows.getColumnIndexOrThrow(Telephony.Sms._ID)
+            val addressColumn = rows.getColumnIndexOrThrow(Telephony.Sms.ADDRESS)
+            val bodyColumn = rows.getColumnIndexOrThrow(Telephony.Sms.BODY)
+            val dateColumn = rows.getColumnIndexOrThrow(Telephony.Sms.DATE)
+            val typeColumn = rows.getColumnIndexOrThrow(Telephony.Sms.TYPE)
+            val readColumn = rows.getColumnIndexOrThrow(Telephony.Sms.READ)
+            val subColumn = rows.getColumnIndex(Telephony.Sms.SUBSCRIPTION_ID)
+
+            while (rows.moveToNext()) {
+                if (imported >= SYNC_LIMIT) break
+                val address = PhoneNumbers.normalize(rows.getString(addressColumn))
+                val body = rows.getString(bodyColumn).orEmpty()
+                val date = rows.getLong(dateColumn)
+                if (body.isEmpty() || address == PhoneNumbers.UNKNOWN_ADDRESS) {
+                    skipped++
+                    continue
+                }
+                if (messageDao.exists(address, date, body)) {
+                    skipped++
+                    continue
+                }
+
+                val type = toMessageType(rows.getInt(typeColumn))
+                val subscriptionId = if (subColumn >= 0) rows.getInt(subColumn) else -1
+
+                if (deliverThroughPipeline && type.isIncoming && date >= cutoff) {
+                    pipeline().handle(
+                        address = address,
+                        body = body,
+                        receivedAt = date,
+                        subscriptionId = subscriptionId,
+                        parts = 1,
+                        // Already in the platform store — that is where it was just read from.
+                        mirrorToSystem = false,
+                    )
+                } else {
+                    val threadId = repository.threadIdFor(address)
+                    messageDao.insert(
+                        MessageEntity(
+                            threadId = threadId,
+                            address = address,
+                            body = body,
+                            date = date,
+                            type = type,
+                            read = rows.getInt(readColumn) != 0 || !type.isIncoming,
+                            status = if (type == MessageType.SENT) DeliveryStatus.SENT else DeliveryStatus.NONE,
+                            subscriptionId = subscriptionId,
+                            systemId = rows.getLong(idColumn),
+                        ),
+                    )
+                }
+                imported++
+            }
+        }
+
+        if (imported > 0) threadDao.rebuildSummaries()
+        Progress(imported, skipped)
+    }
+
     private companion object {
         const val DEFAULT_LIMIT = 5000
+        const val SYNC_LIMIT = 500
+        /** Only messages this fresh are replayed through auto-reply and forwarding. */
+        const val LIVE_WINDOW_MS = 15L * 60 * 1000
     }
 }

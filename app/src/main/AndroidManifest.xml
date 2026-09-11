@@ -28,6 +28,13 @@
     <!-- App lock -->
     <uses-permission android:name="android.permission.USE_BIOMETRIC" />
 
+    <!--
+      Keeps a live process so message delivery survives ROMs that refuse to cold-start an app
+      from a manifest-declared broadcast receiver.
+    -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+
     <!-- Optional: block calls from blocked numbers as well as SMS -->
     <uses-permission android:name="android.permission.ANSWER_PHONE_CALLS" />
 
@@ -133,6 +140,15 @@
         </service>
 
         <!-- ==================== Internal receivers ==================== -->
+
+        <service
+            android:name=".sms.SmsSyncService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Watches the SMS store so messages still arrive on ROMs that block background receivers" />
+        </service>
 
         <receiver
             android:name=".sms.SmsStatusReceiver"

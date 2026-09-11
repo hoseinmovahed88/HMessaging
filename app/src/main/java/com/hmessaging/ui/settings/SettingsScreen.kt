@@ -236,6 +236,18 @@ fun SettingsScreen(
                 }
             }
 
+            item("delivery-title") { HyperGroupTitle(stringResource(R.string.settings_live_sync)) }
+            item("delivery") {
+                HyperCard {
+                    HyperSwitchRow(
+                        title = stringResource(R.string.settings_live_sync),
+                        subtitle = stringResource(R.string.settings_live_sync_desc),
+                        checked = settings.liveSyncEnabled,
+                        onCheckedChange = viewModel::setLiveSyncEnabled,
+                    )
+                }
+            }
+
             item("notifications-title") { HyperGroupTitle(stringResource(R.string.channel_messages)) }
             item("notifications") {
                 HyperCard {

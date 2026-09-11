@@ -135,6 +135,12 @@
     <string name="channel_otp">کدهای تأیید</string>
     <string name="channel_scheduled">پیام‌های زمان‌بندی‌شده</string>
     <string name="channel_system">وضعیت</string>
+    <string name="sync_service_title">در حال پایش پیام‌ها</string>
+    <string name="sync_service_text">دریافت پیام را حتی وقتی سیستم اجازه بیدار شدن نمی‌دهد برقرار نگه می‌دارد</string>
+    <string name="settings_live_sync">دریافت مطمئن</string>
+    <string name="settings_live_sync_desc">یک اعلان کم‌اهمیت در پس‌زمینه نگه می‌دارد تا پیام‌ها حتی وقتی سیستم اجازه بیدار کردن برنامه را نمی‌دهد برسند. فقط اگر گوشی‌تان بدون این هم پیام‌ها را می‌رساند خاموشش کنید.</string>
+    <string name="diag_autostart">باز کردن تنظیمات اجرای خودکار (MIUI / HyperOS)</string>
+    <string name="diag_sync_service">پایشگر پس‌زمینه</string>
     <string name="notif_reply">پاسخ</string>
     <string name="notif_mark_read">خوانده شد</string>
     <string name="notif_reply_hint">پیام</string>

@@ -36,6 +36,9 @@ data class AppSettings(
     val notificationPreview: Boolean = true,
     // Security
     val appLockEnabled: Boolean = false,
+    // Delivery
+    val liveSyncEnabled: Boolean = true,
+
     // One-time flags
     val systemSmsImported: Boolean = false,
     val onboardingDone: Boolean = false,

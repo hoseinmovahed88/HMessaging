@@ -7,6 +7,7 @@ import com.hmessaging.data.model.ThemeMode
 import com.hmessaging.data.prefs.AppSettings
 import com.hmessaging.di.AppGraph
 import com.hmessaging.sms.SimSlot
+import com.hmessaging.sms.SmsSyncService
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -15,6 +16,8 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 class SettingsViewModel(private val graph: AppGraph) : ViewModel() {
+
+    private val context get() = graph.appContext
 
     val settings: StateFlow<AppSettings> = graph.prefs.settings
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), AppSettings())
@@ -36,6 +39,11 @@ class SettingsViewModel(private val graph: AppGraph) : ViewModel() {
     fun setDefaultSubscriptionId(value: Int) = viewModelScope.launch { graph.prefs.setDefaultSubscriptionId(value) }
     fun setNotificationPreview(value: Boolean) = viewModelScope.launch { graph.prefs.setNotificationPreview(value) }
     fun setAppLockEnabled(value: Boolean) = viewModelScope.launch { graph.prefs.setAppLockEnabled(value) }
+
+    fun setLiveSyncEnabled(value: Boolean) = viewModelScope.launch {
+        graph.prefs.setLiveSyncEnabled(value)
+        if (value) SmsSyncService.start(context) else SmsSyncService.stop(context)
+    }
 
     fun importSystemSms() = viewModelScope.launch {
         status.value = null

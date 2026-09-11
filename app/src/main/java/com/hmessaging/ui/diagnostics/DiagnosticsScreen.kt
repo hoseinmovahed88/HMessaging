@@ -132,6 +132,14 @@ fun DiagnosticsScreen(
                             runCatching { context.startActivity(AppRoles.appDetailsSettingsIntent(context)) }
                         },
                     )
+                    AppRoles.autostartSettingsIntent()?.let { intent ->
+                        HyperRowDivider()
+                        HyperRow(
+                            title = stringResource(R.string.diag_autostart),
+                            showChevron = true,
+                            onClick = { runCatching { context.startActivity(intent) } },
+                        )
+                    }
                     AppRoles.batteryOptimizationSettingsIntent()?.let { intent ->
                         HyperRowDivider()
                         HyperRow(
