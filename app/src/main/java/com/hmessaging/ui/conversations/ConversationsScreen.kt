@@ -109,7 +109,7 @@ fun ConversationsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding),
-            contentPadding = PaddingValues(bottom = 96.dp),
+            contentPadding = PaddingValues(top = 2.dp, bottom = 96.dp),
         ) {
             if (!isDefaultSmsApp) {
                 item("default-app-banner") {

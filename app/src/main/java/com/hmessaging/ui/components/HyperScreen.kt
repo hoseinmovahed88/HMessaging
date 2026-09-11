@@ -5,7 +5,7 @@ import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.LargeTopAppBar
+import androidx.compose.material3.MediumTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -21,6 +21,10 @@ import androidx.compose.ui.text.style.TextOverflow
 /**
  * Page chrome for every top-level screen: a large title that shrinks into the bar as the content
  * scrolls, over the app background rather than a tinted surface.
+ *
+ * Uses the medium bar rather than the large one. The large variant is a fixed 152dp when expanded
+ * and spends most of it on empty space between the action icons and the title, which on a phone
+ * costs a whole conversation row for nothing.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -42,10 +46,11 @@ fun HyperScreen(
             .nestedScroll(scrollBehavior.nestedScrollConnection),
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
-            LargeTopAppBar(
+            MediumTopAppBar(
                 title = {
                     Text(
                         text = title,
+                        style = MaterialTheme.typography.headlineSmall,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
@@ -53,7 +58,7 @@ fun HyperScreen(
                 navigationIcon = navigationIcon,
                 actions = actions,
                 scrollBehavior = scrollBehavior,
-                colors = TopAppBarDefaults.largeTopAppBarColors(
+                colors = TopAppBarDefaults.mediumTopAppBarColors(
                     containerColor = MaterialTheme.colorScheme.background,
                     scrolledContainerColor = MaterialTheme.colorScheme.background,
                     titleContentColor = MaterialTheme.colorScheme.onSurface,
