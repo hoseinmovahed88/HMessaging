@@ -30,6 +30,15 @@ class IncomingMessagePipeline(
     private val prefs: AppPrefs,
 ) {
 
+    /** Which path got to this message first — see [com.hmessaging.data.prefs.DeliveryStats]. */
+    enum class Source {
+        /** An SMS_DELIVER or SMS_RECEIVED broadcast, the way Android is supposed to deliver. */
+        BROADCAST,
+
+        /** Read out of the platform SMS store, because no broadcast ever arrived. */
+        PROVIDER_SCAN,
+    }
+
     private companion object {
         const val RECENT_CAPACITY = 200
     }
@@ -50,6 +59,7 @@ class IncomingMessagePipeline(
         subscriptionId: Int,
         parts: Int,
         mirrorToSystem: Boolean,
+        source: Source,
     ) {
         val fingerprint = "$address|$receivedAt|${body.hashCode()}"
         val seenInProcess = synchronized(recentlyHandled) {
@@ -90,8 +100,10 @@ class IncomingMessagePipeline(
 
         diagnostics.record(
             Diagnostics.KIND_STORED,
-            "from $address, $parts part(s), thread $threadId" + if (otpMatch != null) ", OTP" else "",
+            "from $address, $parts part(s), thread $threadId, via ${source.name.lowercase()}" +
+                if (otpMatch != null) ", OTP" else "",
         )
+        prefs.recordDelivery(viaBroadcast = source == Source.BROADCAST)
 
         if (otpMatch != null) {
             runCatching { otpPresenter.present(otpMatch, address, body, receivedAt) }

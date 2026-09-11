@@ -257,6 +257,7 @@ class SmsImporter(
                         parts = 1,
                         // Already in the platform store — that is where it was just read from.
                         mirrorToSystem = false,
+                        source = IncomingMessagePipeline.Source.PROVIDER_SCAN,
                     )
                 } else {
                     val threadId = repository.threadIdFor(address)

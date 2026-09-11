@@ -139,7 +139,7 @@
     <string name="channel_scheduled">پیام‌های زمان‌بندی‌شده</string>
     <string name="channel_system">وضعیت</string>
     <string name="sync_service_title">در حال پایش پیام‌ها</string>
-    <string name="sync_service_text">دریافت پیام را حتی وقتی سیستم اجازه بیدار شدن نمی‌دهد برقرار نگه می‌دارد</string>
+    <string name="sync_service_text">فقط به این دلیل لازم است که این گوشی بیدارباش پس‌زمینه را می‌بندد</string>
     <string name="settings_live_sync">دریافت مطمئن</string>
     <string name="settings_live_sync_desc">یک اعلان کم‌اهمیت در پس‌زمینه نگه می‌دارد تا پیام‌ها حتی وقتی سیستم اجازه بیدار کردن برنامه را نمی‌دهد برسند. فقط اگر گوشی‌تان بدون این هم پیام‌ها را می‌رساند خاموشش کنید.</string>
     <string name="diag_autostart">باز کردن تنظیمات اجرای خودکار (MIUI / HyperOS)</string>
@@ -178,4 +178,7 @@
     <string name="about_body">اچ‌مسنجر یک پیام‌رسان مبتنی بر پیامک است. دریافت، مسدودسازی، پاسخ خودکار، بازارسال و دریافت کد یک‌بارمصرف همگی نیازمند پیش‌فرض بودن برنامه هستند، چون اندروید پیام‌های دریافتی را فقط به برنامه پیش‌فرض تحویل می‌دهد.</string>
     <string name="app_locked">قفل اچ‌مسنجر را باز کنید</string>
     <string name="unlock">باز کردن قفل</string>
+    <string name="channel_watcher">پایشگر پس‌زمینه</string>
+    <string name="sync_service_why">اندروید روی این گوشی اپ را برای پیام ورودی بیدار نمی‌کند، پس خودش حافظه پیامک را زیر نظر می‌گیرد. بدون این، پیام‌ها فقط هنگام باز کردن اپ می‌رسند. در صفحه عیب‌یابی می‌بینید هنوز لازم هست یا نه.</string>
+    <string name="sync_service_turn_off">خاموش کن</string>
 </resources>

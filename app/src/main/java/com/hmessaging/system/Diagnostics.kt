@@ -197,14 +197,37 @@ class Diagnostics(
 
         // getRunningServices walks every running service, so ask once.
         val watcherRunning = SmsSyncService.isRunning(context)
+        val stats = prefs.deliveryStats.first()
         add(
             Check(
                 label = "Background watcher",
                 severity = if (watcherRunning) Severity.OK else Severity.WARNING,
-                detail = if (watcherRunning) {
-                    "running — the SMS store is being watched directly"
-                } else {
-                    "not running — delivery depends on the system waking the app"
+                detail = buildString {
+                    append(
+                        if (watcherRunning) {
+                            "running — the SMS store is being watched directly"
+                        } else {
+                            "not running — delivery depends on the system waking the app"
+                        },
+                    )
+                    // Whether this phone needs the watcher is measurable, so measure it rather
+                    // than leaving the reader to wonder what the notification is buying them.
+                    append(
+                        when {
+                            stats.total == 0L ->
+                                "; no message has arrived yet, so there is nothing to judge it by"
+
+                            stats.missedByBroadcast == 0L ->
+                                "; all ${stats.total} messages so far arrived by system broadcast, " +
+                                    "so this phone does not appear to need it — you can switch it " +
+                                    "off under Settings › Reliable delivery"
+
+                            else ->
+                                "; ${stats.missedByBroadcast} of ${stats.total} messages never " +
+                                    "produced a system broadcast and were only found by reading " +
+                                    "the SMS store, so switching it off would risk losing those"
+                        },
+                    )
                 },
             ),
         )

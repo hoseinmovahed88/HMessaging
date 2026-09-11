@@ -52,6 +52,19 @@ class Notifications(private val context: Context) {
                 context.getString(R.string.channel_system),
                 NotificationManager.IMPORTANCE_LOW,
             ),
+            // The watcher's notification cannot be removed — a foreground service must show one —
+            // but at MIN it keeps no status bar icon and sits collapsed at the bottom of the shade.
+            // A separate channel from CHANNEL_STATUS because an existing channel's importance can
+            // never be lowered in code, only by the user.
+            NotificationChannel(
+                CHANNEL_WATCHER,
+                context.getString(R.string.channel_watcher),
+                NotificationManager.IMPORTANCE_MIN,
+            ).apply {
+                setShowBadge(false)
+                enableVibration(false)
+                setSound(null, null)
+            },
         )
         system.createNotificationChannels(channels)
     }
@@ -239,6 +252,7 @@ class Notifications(private val context: Context) {
         const val CHANNEL_OTP = "otp"
         const val CHANNEL_SCHEDULED = "scheduled"
         const val CHANNEL_STATUS = "status"
+        const val CHANNEL_WATCHER = "watcher"
 
         private const val MESSAGE_NOTIFICATION_BASE = 10_000
         private const val OTP_NOTIFICATION_BASE = 500_000

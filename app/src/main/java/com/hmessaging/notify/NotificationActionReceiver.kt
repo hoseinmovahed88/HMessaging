@@ -6,15 +6,20 @@ import android.content.Intent
 import android.net.Uri
 import androidx.core.app.RemoteInput
 import com.hmessaging.di.AppGraph
+import com.hmessaging.sms.SmsSyncService
 import kotlinx.coroutines.launch
 
 /** Handles the inline actions on a message notification: reply, mark read, block. */
 class NotificationActionReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
+        val action = intent.action ?: return
+        if (action == ACTION_STOP_WATCHER) {
+            stopWatcher(context)
+            return
+        }
         val threadId = intent.getLongExtra(EXTRA_THREAD_ID, -1L)
         if (threadId < 0) return
-        val action = intent.action ?: return
         val replyText = RemoteInput.getResultsFromIntent(intent)
             ?.getCharSequence(KEY_REPLY_TEXT)
             ?.toString()
@@ -29,6 +34,24 @@ class NotificationActionReceiver : BroadcastReceiver() {
                     ACTION_MARK_READ -> markRead(graph, threadId)
                     ACTION_BLOCK -> block(graph, threadId, intent.getStringExtra(EXTRA_ADDRESS))
                 }
+            } finally {
+                pending.finish()
+            }
+        }
+    }
+
+    /**
+     * The watcher's notification is unavoidable while its service runs, so the way to be rid of it
+     * is to stop the service — which means turning the setting off too, or the next app launch
+     * would simply start it again.
+     */
+    private fun stopWatcher(context: Context) {
+        val graph = AppGraph.from(context)
+        val pending = goAsync()
+        graph.applicationScope.launch {
+            try {
+                graph.prefs.setLiveSyncEnabled(false)
+                SmsSyncService.stop(context)
             } finally {
                 pending.finish()
             }
@@ -58,9 +81,15 @@ class NotificationActionReceiver : BroadcastReceiver() {
         const val ACTION_REPLY = "com.hmessaging.action.NOTIFICATION_REPLY"
         const val ACTION_MARK_READ = "com.hmessaging.action.NOTIFICATION_MARK_READ"
         const val ACTION_BLOCK = "com.hmessaging.action.NOTIFICATION_BLOCK"
+        const val ACTION_STOP_WATCHER = "com.hmessaging.action.STOP_WATCHER"
         const val KEY_REPLY_TEXT = "reply_text"
         const val EXTRA_THREAD_ID = "thread_id"
         const val EXTRA_ADDRESS = "address"
+
+        fun stopWatcherIntent(context: Context): Intent =
+            Intent(context, NotificationActionReceiver::class.java).apply {
+                action = ACTION_STOP_WATCHER
+            }
 
         fun intent(context: Context, action: String, threadId: Long): Intent =
             Intent(context, NotificationActionReceiver::class.java).apply {

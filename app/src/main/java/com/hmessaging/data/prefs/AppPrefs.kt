@@ -15,11 +15,40 @@ import kotlinx.coroutines.flow.map
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "hm_settings")
 
+/**
+ * How incoming messages actually reached the app.
+ *
+ * The background watcher exists for ROMs that never deliver the SMS broadcasts. Whether this phone
+ * is one of them is a fact, not a guess — so count it, and let the diagnostics screen say whether
+ * the watcher is still earning the notification it has to show.
+ *
+ * Only a manifest receiver counts as [viaBroadcast]; the watcher's own runtime-registered receiver
+ * reaches the message by re-reading the SMS store, so it lands in [missedByBroadcast]. When both
+ * fire, whichever stores the message first takes the credit, and the store read is the slower of
+ * the two — so the count errs towards "still needed", which is the safe direction to err in.
+ */
+data class DeliveryStats(val viaBroadcast: Long = 0, val missedByBroadcast: Long = 0) {
+    val total: Long get() = viaBroadcast + missedByBroadcast
+}
+
 class AppPrefs(context: Context) {
 
     private val store = context.applicationContext.dataStore
 
     val settings: Flow<AppSettings> = store.data.map { it.toSettings() }
+
+    val deliveryStats: Flow<DeliveryStats> = store.data.map {
+        DeliveryStats(
+            viaBroadcast = it[Keys.DELIVERED_BY_BROADCAST] ?: 0L,
+            missedByBroadcast = it[Keys.MISSED_BY_BROADCAST] ?: 0L,
+        )
+    }
+
+    /** Called once per message actually stored, from whichever path got there first. */
+    suspend fun recordDelivery(viaBroadcast: Boolean) {
+        val key = if (viaBroadcast) Keys.DELIVERED_BY_BROADCAST else Keys.MISSED_BY_BROADCAST
+        store.edit { it[key] = (it[key] ?: 0L) + 1 }
+    }
 
     suspend fun setThemeMode(value: ThemeMode) = put(Keys.THEME, value.name)
     suspend fun setDynamicColor(value: Boolean) = put(Keys.DYNAMIC_COLOR, value)
@@ -131,6 +160,8 @@ class AppPrefs(context: Context) {
         val LIVE_SYNC = booleanPreferencesKey("live_sync")
         val SMS_IMPORTED = booleanPreferencesKey("system_sms_imported")
         val ONBOARDING = booleanPreferencesKey("onboarding_done")
+        val DELIVERED_BY_BROADCAST = longPreferencesKey("delivered_by_broadcast")
+        val MISSED_BY_BROADCAST = longPreferencesKey("missed_by_broadcast")
     }
 
     private companion object {

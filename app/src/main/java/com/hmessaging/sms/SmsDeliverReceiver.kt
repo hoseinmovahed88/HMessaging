@@ -45,6 +45,7 @@ class SmsDeliverReceiver : BroadcastReceiver() {
                     // Only write to the provider when the platform names us as default; if it
                     // does not, it is still writing these messages itself and we would duplicate.
                     mirrorToSystem = AppRoles.isPlatformDefaultSmsApp(context),
+                    source = IncomingMessagePipeline.Source.BROADCAST,
                 )
             } finally {
                 pending.finish()
@@ -92,6 +93,7 @@ class SmsReceivedReceiver : BroadcastReceiver() {
                     parts = incoming.parts,
                     // As above: the platform's own answer decides who owns the provider.
                     mirrorToSystem = AppRoles.isPlatformDefaultSmsApp(context),
+                    source = IncomingMessagePipeline.Source.BROADCAST,
                 )
             } finally {
                 pending.finish()

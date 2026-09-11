@@ -150,7 +150,7 @@
     <string name="channel_scheduled">Scheduled messages</string>
     <string name="channel_system">Status</string>
     <string name="sync_service_title">Watching for messages</string>
-    <string name="sync_service_text">Keeps delivery working when the system blocks background wake-ups</string>
+    <string name="sync_service_text">Only needed because this phone blocks background wake-ups</string>
     <string name="settings_live_sync">Reliable delivery</string>
     <string name="settings_live_sync_desc">Keeps a quiet background notification so messages arrive even when the system refuses to wake the app. Turn this off only if your phone delivers messages without it.</string>
     <string name="diag_autostart">Open autostart settings (MIUI / HyperOS)</string>
@@ -190,4 +190,7 @@
     <string name="about_body">HMessaging is an SMS-only messenger. Receiving, blocking, auto-reply, forwarding and OTP capture all require it to be the default SMS app, because Android delivers incoming messages only to that app.</string>
     <string name="app_locked">Unlock HMessaging</string>
     <string name="unlock">Unlock</string>
+    <string name="channel_watcher">Background watcher</string>
+    <string name="sync_service_why">Android will not wake this app for an incoming message on this phone, so it watches the SMS store itself. Without this, messages arrive only when you open the app. Diagnostics shows whether it is still needed.</string>
+    <string name="sync_service_turn_off">Turn off</string>
 </resources>

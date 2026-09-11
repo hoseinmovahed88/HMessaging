@@ -17,6 +17,7 @@ import androidx.core.content.ContextCompat
 import com.hmessaging.MainActivity
 import com.hmessaging.R
 import com.hmessaging.di.AppGraph
+import com.hmessaging.notify.NotificationActionReceiver
 import com.hmessaging.notify.Notifications
 import com.hmessaging.system.Diagnostics
 import kotlinx.coroutines.Job
@@ -116,14 +117,28 @@ class SmsSyncService : Service() {
             intent,
             android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE,
         )
-        val notification = NotificationCompat.Builder(this, Notifications.CHANNEL_STATUS)
+        val turnOff = android.app.PendingIntent.getBroadcast(
+            this,
+            TURN_OFF_REQUEST_CODE,
+            NotificationActionReceiver.stopWatcherIntent(this),
+            android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE,
+        )
+        val notification = NotificationCompat.Builder(this, Notifications.CHANNEL_WATCHER)
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(getString(R.string.sync_service_title))
             .setContentText(getString(R.string.sync_service_text))
+            .setStyle(NotificationCompat.BigTextStyle().bigText(getString(R.string.sync_service_why)))
             .setPriority(NotificationCompat.PRIORITY_MIN)
             .setOngoing(true)
             .setShowWhen(false)
             .setContentIntent(pending)
+            .addAction(
+                NotificationCompat.Action.Builder(
+                    R.drawable.ic_notification,
+                    getString(R.string.sync_service_turn_off),
+                    turnOff,
+                ).setShowsUserInterface(false).build(),
+            )
             .build()
 
         runCatching {
@@ -143,6 +158,7 @@ class SmsSyncService : Service() {
     companion object {
         private const val NOTIFICATION_ID = 4242
         private const val REQUEST_CODE = 4243
+        private const val TURN_OFF_REQUEST_CODE = 4244
         private const val MAX_FILTER_PRIORITY = 999
 
         /** Starting a foreground service is refused from the background on Android 12+. */
