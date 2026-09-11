@@ -45,6 +45,9 @@ interface ThreadDao {
     @Query("SELECT * FROM threads")
     suspend fun all(): List<ThreadEntity>
 
+    @Query("SELECT * FROM threads WHERE contactName IS NULL")
+    suspend fun withoutContactName(): List<ThreadEntity>
+
     @Query("SELECT COALESCE(SUM(unreadCount), 0) FROM threads WHERE archived = 0")
     fun observeTotalUnread(): Flow<Int>
 

@@ -133,6 +133,10 @@ fun ConversationsScreen(
             when {
                 state.isSearching -> searchResults(state, onOpenThread)
 
+                // Deliberately renders nothing while loading: a blank moment goes unnoticed,
+                // "no conversations yet" for two seconds reads as data loss.
+                !state.loaded -> Unit
+
                 state.threads.isEmpty() && (!state.showArchived || state.archived.isEmpty()) ->
                     item("empty") {
                         EmptyState(

@@ -36,6 +36,7 @@ import com.hmessaging.ui.nav.Routes
 import com.hmessaging.ui.theme.HmTheme
 import com.hmessaging.util.AppRoles
 import com.hmessaging.util.Permissions
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
@@ -124,12 +125,15 @@ class MainActivity : AppCompatActivity() {
     private fun catchUpOnMessages() {
         val graph = AppGraph.from(this)
         graph.applicationScope.launch {
+            // Let the conversation list finish its own queries before adding provider reads to
+            // the same dispatcher; otherwise the screen stays blank while this work runs.
+            delay(RESUME_WORK_DELAY_MS)
             val settings = graph.prefs.settings.first()
             val progress = graph.smsImporter.syncNew(deliverThroughPipeline = true)
             if (progress.imported > 0) {
                 graph.diagnostics.record(Diagnostics.KIND_SYNC, "on open — picked up ${progress.imported}")
             }
-            graph.messageRepository.refreshContactNames()
+            graph.messageRepository.refreshContactNames(onlyMissing = true)
             if (settings.liveSyncEnabled) SmsSyncService.start(this@MainActivity)
         }
     }
@@ -202,6 +206,8 @@ class MainActivity : AppCompatActivity() {
 
         private const val AUTHENTICATORS = BiometricManager.Authenticators.BIOMETRIC_WEAK or
             BiometricManager.Authenticators.DEVICE_CREDENTIAL
+
+        private const val RESUME_WORK_DELAY_MS = 700L
     }
 }
 

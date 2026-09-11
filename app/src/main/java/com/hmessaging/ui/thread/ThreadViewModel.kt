@@ -18,10 +18,13 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 data class ThreadUiState(
+    /** False until the conversation's own queries have returned; see ConversationsUiState. */
+    val loaded: Boolean = false,
     val thread: ThreadEntity? = null,
     val messages: List<MessageEntity> = emptyList(),
     val input: String = "",
@@ -50,14 +53,19 @@ class ThreadViewModel(
 
     private data class TransientState(val sending: Boolean = false, val error: String? = null)
 
+    // Templates are only needed once the user opens the picker, so they start empty rather than
+    // holding the whole conversation behind a second table's query.
+    private val templates = graph.templateDao.observeAll().onStart { emit(emptyList()) }
+
     val uiState: StateFlow<ThreadUiState> = combine(
         graph.messageRepository.observeThread(threadId),
         graph.messageRepository.observeMessages(threadId),
         input,
-        graph.templateDao.observeAll(),
+        templates,
         combine(selectedSubscription, transient) { subscription, state -> subscription to state },
     ) { thread, messages, text, templates, (subscription, state) ->
         ThreadUiState(
+            loaded = true,
             thread = thread,
             messages = messages,
             input = text,

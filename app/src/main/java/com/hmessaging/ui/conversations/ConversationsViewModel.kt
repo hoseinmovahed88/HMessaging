@@ -13,10 +13,18 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 data class ConversationsUiState(
+    /**
+     * False until the first database emission arrives.
+     *
+     * Without it an empty list means both "still loading" and "you have no conversations", and
+     * the screen announces the second while it means the first.
+     */
+    val loaded: Boolean = false,
     val threads: List<ThreadEntity> = emptyList(),
     val archived: List<ThreadEntity> = emptyList(),
     val searchResults: List<MessageEntity> = emptyList(),
@@ -36,14 +44,21 @@ class ConversationsViewModel(private val graph: AppGraph) : ViewModel() {
         if (text.isBlank()) flowOf(emptyList()) else graph.messageRepository.search(text.trim())
     }
 
+    // combine waits for every source to emit once. The archived query is a second trip to the
+    // database that nothing on screen needs yet, so it starts empty rather than holding up the
+    // conversation list behind it.
+    private val archived = graph.messageRepository.observeArchivedThreads()
+        .onStart { emit(emptyList()) }
+
     val uiState: StateFlow<ConversationsUiState> = combine(
         graph.messageRepository.observeThreads(),
-        graph.messageRepository.observeArchivedThreads(),
+        archived,
         searchResults,
         query,
         showArchived,
     ) { threads, archived, results, text, archivedVisible ->
         ConversationsUiState(
+            loaded = true,
             threads = threads,
             archived = archived,
             searchResults = results,

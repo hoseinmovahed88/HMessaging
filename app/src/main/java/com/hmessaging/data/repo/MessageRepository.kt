@@ -46,10 +46,14 @@ class MessageRepository(
      * shows a bare phone number even after the user grants access. Nothing re-reads it otherwise,
      * because a thread is only rewritten when a new message arrives for it.
      */
-    suspend fun refreshContactNames(): Int {
+    suspend fun refreshContactNames(onlyMissing: Boolean = false): Int {
         if (!contacts.hasPermission()) return 0
         var updated = 0
-        threadDao.all().forEach { thread ->
+        // Each unresolved address costs a contacts-provider query, and on a cold start the
+        // in-memory cache is empty. Sweeping only the threads that lack a name keeps the resume
+        // path from competing with the queries that populate the list.
+        val candidates = if (onlyMissing) threadDao.withoutContactName() else threadDao.all()
+        candidates.forEach { thread ->
             val name = contacts.nameFor(thread.address)
             if (name != thread.contactName) {
                 threadDao.setContactName(thread.id, name)
