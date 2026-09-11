@@ -70,6 +70,39 @@ library with hand-written stubs for the AndroidX surface in use:
 
 Treat that first build as a review step.
 
+### Signing a release build
+
+The release build is signed with the project's own key. Copy
+`keystore.properties.example` to `keystore.properties`, point it at the keystore and fill in the
+passwords — the file is gitignored and must never be committed:
+
+```bash
+cp keystore.properties.example keystore.properties
+$EDITOR keystore.properties
+./gradlew :app:assembleRelease
+# -> app/build/outputs/apk/release/app-release.apk
+```
+
+CI reads the same credentials from `HM_KEYSTORE_FILE`, `HM_KEYSTORE_PASSWORD`, `HM_KEY_ALIAS` and
+`HM_KEY_PASSWORD`. Without any of them the release build still assembles, just unsigned.
+
+### Building the APK on GitHub Actions
+
+`.github/workflows/build-apk.yml` assembles the release APK on a runner that has the Android SDK
+and uploads it as a build artifact, so an APK can be produced without a local Android install.
+To have that build come out signed, add four repository secrets under
+**Settings → Secrets and variables → Actions**:
+
+| Secret | Value |
+| --- | --- |
+| `HM_KEYSTORE_BASE64` | `base64 -w0 hmessaging-release.jks` |
+| `HM_KEYSTORE_PASSWORD` | the keystore password |
+| `HM_KEY_ALIAS` | `hmessaging` |
+| `HM_KEY_PASSWORD` | the key password |
+
+Losing the keystore means never being able to ship an update that Android accepts as the same app.
+Keep a backup somewhere safe and out of the repository.
+
 ---
 
 ## Set-up on the device
