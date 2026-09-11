@@ -1,5 +1,6 @@
 package com.hmessaging.ui.nav
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.height
@@ -70,6 +71,12 @@ fun HmApp(
         }
     }
     val openDrawer: () -> Unit = { scope.launch { drawerState.open() } }
+
+    // ModalNavigationDrawer does not take back itself, so back closed the whole activity while the
+    // drawer was open — and since the drawer state is saved, the app came back with it still open.
+    BackHandler(enabled = drawerState.isOpen) {
+        scope.launch { drawerState.close() }
+    }
 
     ModalNavigationDrawer(
         drawerState = drawerState,

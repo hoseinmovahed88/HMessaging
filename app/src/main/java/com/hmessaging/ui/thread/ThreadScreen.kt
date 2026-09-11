@@ -90,8 +90,14 @@ fun ThreadScreen(
     val title = thread?.let { it.contactName ?: PhoneNumbers.format(it.address) }.orEmpty()
     val subtitle = thread?.address?.takeIf { it != title }
 
-    LaunchedEffect(state.messages.size) {
-        if (state.messages.isNotEmpty()) listState.animateScrollToItem(state.messages.lastIndex)
+    // The list is reversed, so index 0 is the newest message and "at the bottom" is index 0. A new
+    // message pushes the one the user is looking at to index 1, so treat that as still at the
+    // bottom; anything further up means they have scrolled back and must not be yanked away.
+    val newestId = state.messages.lastOrNull()?.id
+    LaunchedEffect(newestId) {
+        if (newestId != null && listState.firstVisibleItemIndex <= 1) {
+            listState.animateScrollToItem(0)
+        }
     }
     LaunchedEffect(state.error) {
         state.error?.let {
@@ -180,6 +186,9 @@ fun ThreadScreen(
             )
         },
     ) { padding ->
+        // Reversed: the list is anchored at the bottom, so a conversation opens on its newest
+        // message with no scrolling, and when the keyboard shrinks the viewport the newest
+        // messages stay put instead of sliding underneath it.
         LazyColumn(
             state = listState,
             modifier = Modifier
@@ -187,22 +196,28 @@ fun ThreadScreen(
                 .padding(padding),
             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 10.dp),
             verticalArrangement = Arrangement.spacedBy(3.dp),
+            reverseLayout = true,
         ) {
             items(
                 count = state.messages.size,
-                key = { index -> state.messages[index].id },
+                key = { index -> state.messages[state.messages.lastIndex - index].id },
             ) { index ->
-                val message = state.messages[index]
-                val previous = state.messages.getOrNull(index - 1)
-                if (previous == null || !isSameDay(previous.date, message.date)) {
-                    DayHeader(message.date)
+                // One column per item: a reversed list flips the order of an item's own children
+                // too, which would put the day header underneath its messages.
+                val position = state.messages.lastIndex - index
+                val message = state.messages[position]
+                val previous = state.messages.getOrNull(position - 1)
+                Column {
+                    if (previous == null || !isSameDay(previous.date, message.date)) {
+                        DayHeader(message.date)
+                    }
+                    MessageBubble(
+                        message = message,
+                        onCopy = { Clipboards.copy(context, title, message.body) },
+                        onResend = { viewModel.resend(message) },
+                        onDelete = { viewModel.deleteMessage(message.id) },
+                    )
                 }
-                MessageBubble(
-                    message = message,
-                    onCopy = { Clipboards.copy(context, title, message.body) },
-                    onResend = { viewModel.resend(message) },
-                    onDelete = { viewModel.deleteMessage(message.id) },
-                )
             }
         }
     }
