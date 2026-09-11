@@ -9,6 +9,9 @@ captures/
 .cxx
 *.apk
 *.aab
+
+# The one exception: the published build is meant to be downloadable from the repo.
+!dist/*.apk
 *.keystore
 *.jks
 *.p12
