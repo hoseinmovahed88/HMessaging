@@ -59,6 +59,8 @@ fun SettingsScreen(
     val isDefaultSmsApp = rememberIsDefaultSmsApp()
 
     var signature by remember(settings.signature) { mutableStateOf(settings.signature) }
+    // Hoisted out of the LazyColumn body: that lambda is a LazyListScope, not a composable scope.
+    val slots = remember { viewModel.simSlots() }
     var includeMessagesInBackup by remember { mutableStateOf(false) }
 
     val exportLauncher = rememberLauncherForActivityResult(
@@ -213,7 +215,6 @@ fun SettingsScreen(
                 }
             }
 
-            val slots = remember { viewModel.simSlots() }
             if (slots.size > 1) {
                 item("sim-title") { HyperGroupTitle(stringResource(R.string.settings_sim)) }
                 item("sim") {
