@@ -38,7 +38,7 @@ class SystemSmsWriter(private val context: Context) {
         )
 
     fun delete(systemId: Long): Boolean {
-        if (!AppRoles.isDefaultSmsApp(context)) return false
+        if (!AppRoles.isPlatformDefaultSmsApp(context)) return false
         val uri = "${Telephony.Sms.CONTENT_URI}/$systemId".toUri()
         return runCatching { context.contentResolver.delete(uri, null, null) > 0 }.getOrDefault(false)
     }
@@ -52,7 +52,7 @@ class SystemSmsWriter(private val context: Context) {
         type: Int,
         read: Boolean,
     ): Long? {
-        if (!AppRoles.isDefaultSmsApp(context)) return null
+        if (!AppRoles.isPlatformDefaultSmsApp(context)) return null
         val values = ContentValues().apply {
             put(Telephony.Sms.ADDRESS, address)
             put(Telephony.Sms.BODY, body)

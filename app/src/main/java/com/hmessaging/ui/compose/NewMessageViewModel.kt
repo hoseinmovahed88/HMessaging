@@ -36,6 +36,13 @@ data class NewMessageUiState(
 class NewMessageViewModel(private val graph: AppGraph) : ViewModel() {
 
     private val form = MutableStateFlow(FormState())
+
+    init {
+        // Text shared in from another app arrives without a recipient; claim it here.
+        graph.consumePendingShareBody()?.let { body ->
+            form.value = form.value.copy(body = body)
+        }
+    }
     private data class FormState(
         val recipients: String = "",
         val body: String = "",

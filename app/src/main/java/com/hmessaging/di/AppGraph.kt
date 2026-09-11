@@ -99,6 +99,19 @@ class AppGraph private constructor(val appContext: Context) {
         BackupManager(appContext, database, prefs, messageRepository, scheduleManager)
     }
 
+    /**
+     * Text shared into the app without a recipient, waiting for the compose screen to claim it.
+     * One-shot: reading it clears it, so rotating the screen does not resurrect an old share.
+     */
+    @Volatile
+    var pendingShareBody: String? = null
+
+    fun consumePendingShareBody(): String? {
+        val body = pendingShareBody
+        pendingShareBody = null
+        return body
+    }
+
     /** Drops memoised contact names and compiled rule patterns after the data behind them changes. */
     fun invalidateCaches() {
         contacts.invalidate()

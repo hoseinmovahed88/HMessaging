@@ -160,7 +160,7 @@ class SmsSender(
     }.getOrNull()
 
     /** True when we may mirror sent messages into the platform provider. */
-    fun canMirrorToSystem(): Boolean = AppRoles.isDefaultSmsApp(context)
+    fun canMirrorToSystem(): Boolean = AppRoles.isPlatformDefaultSmsApp(context)
 
     private companion object {
         val requestCodes = AtomicInteger(1000)

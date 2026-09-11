@@ -27,6 +27,7 @@ import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricPrompt
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.lifecycleScope
 import com.hmessaging.data.prefs.AppSettings
 import com.hmessaging.di.AppGraph
 import com.hmessaging.sms.SmsSyncService
@@ -36,6 +37,7 @@ import com.hmessaging.ui.nav.Routes
 import com.hmessaging.ui.theme.HmTheme
 import com.hmessaging.util.AppRoles
 import com.hmessaging.util.Permissions
+import com.hmessaging.util.SmsIntents
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -63,18 +65,17 @@ class MainActivity : AppCompatActivity() {
     ) { importSystemSmsOnce() }
 
     private var unlocked by mutableStateOf(false)
+    private var openThreadId by mutableStateOf<Long?>(null)
+    private var openRoute by mutableStateOf<String?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
         val graph = AppGraph.from(this)
-        val threadId = intent?.takeIf { it.action == ACTION_OPEN_THREAD }
-            ?.getLongExtra(EXTRA_THREAD_ID, -1L)
-            ?.takeIf { it >= 0 }
-        val startRoute = if (intent?.action == ACTION_OPEN_SCHEDULED) Routes.SCHEDULED else null
 
         requestMissingPermissions()
+        handleIncomingIntent(intent)
 
         setContent {
             val settings by graph.prefs.settings.collectAsStateWithLifecycle(initialValue = AppSettings())
@@ -91,8 +92,8 @@ class MainActivity : AppCompatActivity() {
                         // It is now part of the conversations screen, inside that screen's
                         // Scaffold, so the window insets apply to it like any other content.
                         else -> HmApp(
-                            initialThreadId = threadId,
-                            initialRoute = startRoute,
+                            initialThreadId = openThreadId,
+                            initialRoute = openRoute,
                             onRequestDefaultSmsApp = ::requestDefaultSmsRole,
                         )
                     }
@@ -106,6 +107,44 @@ class MainActivity : AppCompatActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+        handleIncomingIntent(intent)
+    }
+
+    /**
+     * Routes a notification tap, or a "message this person" request from the dialer or contacts,
+     * to the right conversation.
+     */
+    private fun handleIncomingIntent(intent: Intent?) {
+        if (intent == null) return
+
+        if (intent.action == ACTION_OPEN_SCHEDULED) {
+            openRoute = Routes.SCHEDULED
+            return
+        }
+
+        if (intent.action == ACTION_OPEN_THREAD) {
+            intent.getLongExtra(EXTRA_THREAD_ID, -1L).takeIf { it >= 0 }?.let { openThreadId = it }
+            return
+        }
+
+        val target = SmsIntents.parse(intent) ?: return
+        val address = target.address
+        if (address == null) {
+            // A share with text but no recipient: hand the text to the compose screen and let
+            // the user pick who it goes to.
+            AppGraph.from(this).pendingShareBody = target.body
+            openRoute = Routes.NEW_MESSAGE
+            return
+        }
+
+        val graph = AppGraph.from(this)
+        lifecycleScope.launch {
+            val threadId = graph.messageRepository.threadIdFor(address)
+            // The composer restores a thread's draft on open, so prefilling it is all that is
+            // needed to carry the shared text across.
+            target.body?.let { graph.messageRepository.setDraft(threadId, it) }
+            openThreadId = threadId
+        }
     }
 
     override fun onResume() {

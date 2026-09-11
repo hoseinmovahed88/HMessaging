@@ -42,8 +42,9 @@ class SmsDeliverReceiver : BroadcastReceiver() {
                     receivedAt = incoming.receivedAt,
                     subscriptionId = incoming.subscriptionId,
                     parts = incoming.parts,
-                    // We hold the role here, so the platform provider is ours to keep current.
-                    mirrorToSystem = AppRoles.isDefaultSmsApp(context),
+                    // Only write to the provider when the platform names us as default; if it
+                    // does not, it is still writing these messages itself and we would duplicate.
+                    mirrorToSystem = AppRoles.isPlatformDefaultSmsApp(context),
                 )
             } finally {
                 pending.finish()
@@ -89,8 +90,8 @@ class SmsReceivedReceiver : BroadcastReceiver() {
                     receivedAt = incoming.receivedAt,
                     subscriptionId = incoming.subscriptionId,
                     parts = incoming.parts,
-                    // Only the default SMS app may write to the platform provider.
-                    mirrorToSystem = AppRoles.isDefaultSmsApp(context),
+                    // As above: the platform's own answer decides who owns the provider.
+                    mirrorToSystem = AppRoles.isPlatformDefaultSmsApp(context),
                 )
             } finally {
                 pending.finish()
