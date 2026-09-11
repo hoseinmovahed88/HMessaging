@@ -282,15 +282,16 @@ class SmsImporter(
         Progress(imported, skipped)
     }
 
-    private companion object {
-        /** Take the whole history in one pass. */
+    companion object {
+        /** Take the whole history in one pass, however large it is. */
         const val NO_LIMIT = Int.MAX_VALUE
 
-        const val DEFAULT_LIMIT = 5000
-        const val PROGRESS_STRIDE = 250
-        const val SYNC_LIMIT = 500
-        const val BATCH_SIZE = 200
+        private const val DEFAULT_LIMIT = 5000
+        private const val PROGRESS_STRIDE = 250
+        private const val SYNC_LIMIT = 500
+        private const val BATCH_SIZE = 200
+
         /** Only messages this fresh are replayed through auto-reply and forwarding. */
-        const val LIVE_WINDOW_MS = 15L * 60 * 1000
+        private const val LIVE_WINDOW_MS = 15L * 60 * 1000
     }
 }
