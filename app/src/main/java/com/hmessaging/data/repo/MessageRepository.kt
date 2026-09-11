@@ -37,6 +37,28 @@ class MessageRepository(
 
     suspend fun threadById(threadId: Long): ThreadEntity? = threadDao.byId(threadId)
 
+    /**
+     * Re-resolves the contact name of every thread.
+     *
+     * The name is stored on the thread row, written once when the thread is first created. If
+     * contacts were unreadable at that moment — which is exactly the case during a bulk import
+     * that runs before the permission is granted — the row keeps a null forever, and the list
+     * shows a bare phone number even after the user grants access. Nothing re-reads it otherwise,
+     * because a thread is only rewritten when a new message arrives for it.
+     */
+    suspend fun refreshContactNames(): Int {
+        if (!contacts.hasPermission()) return 0
+        var updated = 0
+        threadDao.all().forEach { thread ->
+            val name = contacts.nameFor(thread.address)
+            if (name != thread.contactName) {
+                threadDao.setContactName(thread.id, name)
+                updated++
+            }
+        }
+        return updated
+    }
+
     /** True when this exact message is already stored, whichever broadcast delivered it. */
     suspend fun isAlreadyStored(rawAddress: String, body: String, date: Long): Boolean =
         messageDao.exists(PhoneNumbers.normalize(rawAddress), date, body)

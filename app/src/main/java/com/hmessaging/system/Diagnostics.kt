@@ -11,6 +11,7 @@ import android.provider.Telephony
 import android.telephony.TelephonyManager
 import com.hmessaging.data.db.dao.DiagDao
 import com.hmessaging.data.db.dao.MessageDao
+import com.hmessaging.data.db.dao.ThreadDao
 import com.hmessaging.data.db.entity.DiagEventEntity
 import com.hmessaging.data.prefs.AppPrefs
 import com.hmessaging.sms.SmsSyncService
@@ -29,8 +30,12 @@ class Diagnostics(
     private val context: Context,
     private val diagDao: DiagDao,
     private val messageDao: MessageDao,
+    private val threadDao: ThreadDao,
     private val prefs: AppPrefs,
 ) {
+
+    private fun contactsPermissionGranted(): Boolean =
+        Permissions.has(context, Manifest.permission.READ_CONTACTS)
 
     data class Check(val label: String, val ok: Boolean, val detail: String)
 
@@ -153,6 +158,16 @@ class Diagnostics(
                 } else {
                     "not running — delivery depends on the system waking the app"
                 },
+            ),
+        )
+
+        val threads = threadDao.all()
+        val named = threads.count { it.contactName != null }
+        add(
+            Check(
+                label = "Contact names",
+                ok = threads.isEmpty() || named > 0 || !contactsPermissionGranted(),
+                detail = "$named of ${threads.size} conversations resolved to a contact",
             ),
         )
 

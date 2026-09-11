@@ -49,7 +49,13 @@ class MainActivity : AppCompatActivity() {
 
     private val permissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions(),
-    ) { AppGraph.from(this).invalidateCaches() }
+    ) {
+        // A newly granted contacts permission has to invalidate the memoised "no name" answers
+        // and re-resolve the names already stored against each thread.
+        val graph = AppGraph.from(this)
+        graph.invalidateCaches()
+        graph.applicationScope.launch { graph.messageRepository.refreshContactNames() }
+    }
 
     private val roleLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult(),
@@ -123,6 +129,7 @@ class MainActivity : AppCompatActivity() {
             if (progress.imported > 0) {
                 graph.diagnostics.record(Diagnostics.KIND_SYNC, "on open — picked up ${progress.imported}")
             }
+            graph.messageRepository.refreshContactNames()
             if (settings.liveSyncEnabled) SmsSyncService.start(this@MainActivity)
         }
     }

@@ -25,7 +25,10 @@ class ContactsLookup(private val context: Context) {
     fun nameFor(address: String): String? {
         if (address.isBlank() || address == PhoneNumbers.UNKNOWN_ADDRESS) return null
         cache[address]?.let { return it.name }
-        val resolved = if (hasPermission()) query(address) else null
+        // A lookup made without the permission answers "no name" for every number. Caching that
+        // would freeze the answer for the life of the process, long after the user grants it.
+        if (!hasPermission()) return null
+        val resolved = query(address)
         cache[address] = Optional(resolved)
         return resolved
     }
