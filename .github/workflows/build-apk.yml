@@ -16,6 +16,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
 
+    # The secrets context cannot be read from a step-level `if`, so the presence
+    # check is hoisted into a job-level env var.
+    env:
+      HAS_SIGNING_KEY: ${{ secrets.HM_KEYSTORE_BASE64 != '' }}
+
     steps:
       - name: Check out
         uses: actions/checkout@v4
@@ -41,7 +46,7 @@ jobs:
       # Signing is optional: without these secrets the job still produces an
       # unsigned release APK, which keeps the build usable on a fork.
       - name: Restore signing keystore
-        if: ${{ secrets.HM_KEYSTORE_BASE64 != '' }}
+        if: env.HAS_SIGNING_KEY == 'true'
         run: |
           echo "${{ secrets.HM_KEYSTORE_BASE64 }}" | base64 -d > "$RUNNER_TEMP/release.jks"
           echo "HM_KEYSTORE_FILE=$RUNNER_TEMP/release.jks" >> "$GITHUB_ENV"
