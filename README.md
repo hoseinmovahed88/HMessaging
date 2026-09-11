@@ -9,15 +9,15 @@ English and Persian, RTL-aware.
 
 ## Download
 
-A signed release build lives in [`dist/HMessaging-1.0.0.apk`](dist/HMessaging-1.0.0.apk) so there
+A signed release build lives in [`dist/HMessaging-1.0.1.apk`](dist/HMessaging-1.0.1.apk) so there
 is always a stable link to it. While this repository is private the link only resolves for accounts
 that have access to it.
 
 ```
-https://github.com/hoseinmovahed88/HMessaging/raw/claude/android-messenger-app-izbr89/dist/HMessaging-1.0.0.apk
+https://github.com/hoseinmovahed88/HMessaging/raw/claude/android-messenger-app-izbr89/dist/HMessaging-1.0.1.apk
 ```
 
-`sha256 d6c0b93d325197884b32f4022050644f3bb7dcbebd90e7c0ddfbd47c0732afda` — see
+`sha256 8a261442bc4d6fa27d6d63ddf1602ae5ce86943cf34924e04d145cd828994e60` — see
 [`dist/README.md`](dist/README.md) for the full build and signature details.
 
 ---
