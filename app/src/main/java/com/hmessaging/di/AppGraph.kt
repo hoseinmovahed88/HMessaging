@@ -102,6 +102,7 @@ class AppGraph private constructor(val appContext: Context) {
     /** Drops memoised contact names and compiled rule patterns after the data behind them changes. */
     fun invalidateCaches() {
         contacts.invalidate()
+        simManager.invalidate()
         blockEngine.invalidateCaches()
         autoReplyEngine.invalidateCaches()
         forwardEngine.invalidateCaches()

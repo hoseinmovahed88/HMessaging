@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -50,6 +51,7 @@ import com.hmessaging.ui.components.Avatar
 import com.hmessaging.ui.components.EmptyState
 import com.hmessaging.ui.components.HyperCard
 import com.hmessaging.ui.components.HyperGroupTitle
+import com.hmessaging.ui.components.HyperGroupedRow
 import com.hmessaging.ui.components.HyperIconButton
 import com.hmessaging.ui.components.HyperRowDivider
 import com.hmessaging.ui.components.HyperScreen
@@ -141,26 +143,34 @@ fun ConversationsScreen(
                     }
 
                 else -> {
-                    if (state.threads.isNotEmpty()) {
-                        item("threads") {
-                            HyperCard {
-                                state.threads.forEachIndexed { index, thread ->
-                                    ThreadRow(thread, viewModel, onOpenThread)
-                                    if (index != state.threads.lastIndex) HyperRowDivider(startInset = 72)
-                                }
-                            }
+                    // One lazy item per row: a single item holding the whole list would compose
+                    // every conversation up front, however many there are.
+                    itemsIndexed(
+                        items = state.threads,
+                        key = { _, thread -> thread.id },
+                    ) { index, thread ->
+                        HyperGroupedRow(
+                            isFirst = index == 0,
+                            isLast = index == state.threads.lastIndex,
+                            dividerInset = 72,
+                        ) {
+                            ThreadRow(thread, viewModel, onOpenThread)
                         }
                     }
                     if (state.showArchived && state.archived.isNotEmpty()) {
                         item("archived-title") {
                             HyperGroupTitle(stringResource(R.string.nav_archived))
                         }
-                        item("archived") {
-                            HyperCard {
-                                state.archived.forEachIndexed { index, thread ->
-                                    ThreadRow(thread, viewModel, onOpenThread)
-                                    if (index != state.archived.lastIndex) HyperRowDivider(startInset = 72)
-                                }
+                        itemsIndexed(
+                            items = state.archived,
+                            key = { _, thread -> "archived-${thread.id}" },
+                        ) { index, thread ->
+                            HyperGroupedRow(
+                                isFirst = index == 0,
+                                isLast = index == state.archived.lastIndex,
+                                dividerInset = 72,
+                            ) {
+                                ThreadRow(thread, viewModel, onOpenThread)
                             }
                         }
                     }

@@ -46,6 +46,8 @@ class SmsImporter(
 
         var imported = 0
         var skipped = 0
+        val batch = ArrayList<MessageEntity>(BATCH_SIZE)
+        val threadIds = HashMap<String, Long>()
 
         val projection = arrayOf(
             Telephony.Sms._ID,
@@ -99,22 +101,28 @@ class SmsImporter(
                 }
 
                 val type = toMessageType(cursor.getInt(typeColumn))
-                val threadId = repository.threadIdFor(address)
-                messageDao.insert(
-                    MessageEntity(
-                        threadId = threadId,
-                        address = address,
-                        body = body,
-                        date = date,
-                        type = type,
-                        read = cursor.getInt(readColumn) != 0 || !type.isIncoming,
-                        status = if (type == MessageType.SENT) DeliveryStatus.SENT else DeliveryStatus.NONE,
-                        subscriptionId = if (subColumn >= 0) cursor.getInt(subColumn) else -1,
-                        systemId = cursor.getLong(idColumn),
-                    ),
+                // Thread ids are resolved once per distinct address rather than once per row:
+                // each resolution is a lookup plus a possible contact query.
+                val threadId = threadIds.getOrPut(address) { repository.threadIdFor(address) }
+                batch += MessageEntity(
+                    threadId = threadId,
+                    address = address,
+                    body = body,
+                    date = date,
+                    type = type,
+                    read = cursor.getInt(readColumn) != 0 || !type.isIncoming,
+                    status = if (type == MessageType.SENT) DeliveryStatus.SENT else DeliveryStatus.NONE,
+                    subscriptionId = if (subColumn >= 0) cursor.getInt(subColumn) else -1,
+                    systemId = cursor.getLong(idColumn),
                 )
                 imported++
+
+                if (batch.size >= BATCH_SIZE) {
+                    messageDao.insertAll(batch)
+                    batch.clear()
+                }
             }
+            if (batch.isNotEmpty()) messageDao.insertAll(batch)
         }
 
         if (imported > 0) threadDao.rebuildSummaries()
@@ -240,6 +248,7 @@ class SmsImporter(
     private companion object {
         const val DEFAULT_LIMIT = 5000
         const val SYNC_LIMIT = 500
+        const val BATCH_SIZE = 200
         /** Only messages this fresh are replayed through auto-reply and forwarding. */
         const val LIVE_WINDOW_MS = 15L * 60 * 1000
     }

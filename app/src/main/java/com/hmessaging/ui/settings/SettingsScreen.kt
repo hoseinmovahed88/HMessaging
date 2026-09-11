@@ -213,7 +213,7 @@ fun SettingsScreen(
                 }
             }
 
-            val slots = viewModel.simSlots()
+            val slots = remember { viewModel.simSlots() }
             if (slots.size > 1) {
                 item("sim-title") { HyperGroupTitle(stringResource(R.string.settings_sim)) }
                 item("sim") {

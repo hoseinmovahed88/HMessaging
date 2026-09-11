@@ -142,11 +142,13 @@ class Diagnostics(
             ),
         )
 
+        // getRunningServices walks every running service, so ask once.
+        val watcherRunning = SmsSyncService.isRunning(context)
         add(
             Check(
                 label = "Background watcher",
-                ok = SmsSyncService.isRunning(context),
-                detail = if (SmsSyncService.isRunning(context)) {
+                ok = watcherRunning,
+                detail = if (watcherRunning) {
                     "running — the SMS store is being watched directly"
                 } else {
                     "not running — delivery depends on the system waking the app"
@@ -157,11 +159,12 @@ class Diagnostics(
         val stored = messageDao.count()
         add(Check("Messages stored", stored > 0, "$stored in the app database"))
 
+        val alreadyImported = prefs.settings.first().systemSmsImported
         add(
             Check(
                 label = "History import",
-                ok = !prefs.settings.first().systemSmsImported || stored > 0,
-                detail = if (prefs.settings.first().systemSmsImported) {
+                ok = !alreadyImported || stored > 0,
+                detail = if (alreadyImported) {
                     "already run — use \"Import existing messages now\" to run it again"
                 } else {
                     "has not run yet"

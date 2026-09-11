@@ -86,15 +86,27 @@ object PhoneNumbers {
         return normalized.none { it.isDigit() || it.isLetter() }
     }
 
-    /** Display form: keeps sender IDs as-is, groups digits for readability. */
+    /**
+     * Display form: keeps sender IDs as-is, groups digits for readability.
+     *
+     * Memoised because this is a framework call and every conversation row asks for it on every
+     * recomposition.
+     */
     fun format(address: String): String {
         if (address.any { it.isLetter() }) return address
-        return PhoneNumberUtils.formatNumber(address, java.util.Locale.getDefault().country)
+        formatCache[address]?.let { return it }
+        val formatted = PhoneNumberUtils.formatNumber(address, java.util.Locale.getDefault().country)
             ?: address
+        if (formatCache.size > FORMAT_CACHE_LIMIT) formatCache.clear()
+        formatCache[address] = formatted
+        return formatted
     }
+
+    private val formatCache = java.util.concurrent.ConcurrentHashMap<String, String>()
 
     const val UNKNOWN_ADDRESS = "unknown"
 
     private const val MIN_SIGNIFICANT_DIGITS = 9
+    private const val FORMAT_CACHE_LIMIT = 500
     private val HIDDEN_PLACEHOLDERS = setOf("UNKNOWN", "PRIVATE", "ANONYMOUS", "RESTRICTED")
 }

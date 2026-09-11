@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Menu
@@ -31,6 +32,7 @@ import com.hmessaging.system.Diagnostics
 import com.hmessaging.ui.HmViewModelFactory
 import com.hmessaging.ui.components.HyperCard
 import com.hmessaging.ui.components.HyperGroupTitle
+import com.hmessaging.ui.components.HyperGroupedRow
 import com.hmessaging.ui.components.HyperIconButton
 import com.hmessaging.ui.components.HyperRow
 import com.hmessaging.ui.components.HyperRowDivider
@@ -176,31 +178,38 @@ fun DiagnosticsScreen(
             }
 
             item("events-title") { HyperGroupTitle(stringResource(R.string.diag_events)) }
-            item("events") {
-                HyperCard {
-                    if (current.events.isEmpty()) {
+            if (current.events.isEmpty()) {
+                item("no-events") {
+                    HyperCard {
                         Text(
                             text = stringResource(R.string.diag_no_events),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(16.dp),
                         )
-                    } else {
-                        current.events.forEachIndexed { index, event ->
-                            Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)) {
-                                Text(
-                                    text = "${event.kind} · ${TimeFormat.full(event.at)}",
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = kindColor(event.kind),
-                                    fontFamily = FontFamily.Monospace,
-                                )
-                                Text(
-                                    text = event.detail,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            }
-                            if (index != current.events.lastIndex) HyperRowDivider()
+                    }
+                }
+            } else {
+                itemsIndexed(
+                    items = current.events,
+                    key = { _, event -> event.id },
+                ) { index, event ->
+                    HyperGroupedRow(
+                        isFirst = index == 0,
+                        isLast = index == current.events.lastIndex,
+                    ) {
+                        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)) {
+                            Text(
+                                text = "${event.kind} · ${TimeFormat.full(event.at)}",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = kindColor(event.kind),
+                                fontFamily = FontFamily.Monospace,
+                            )
+                            Text(
+                                text = event.detail,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
                         }
                     }
                 }

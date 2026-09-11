@@ -12,15 +12,35 @@ object TimeFormat {
 
     private val zone: ZoneId get() = ZoneId.systemDefault()
 
-    private val timeOnly: DateTimeFormatter
-        get() = DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT).withLocale(Locale.getDefault())
+    /**
+     * Localized formatters are expensive to build — each one resolves a locale and parses a
+     * pattern — and every row of every list asks for one. They are built once per locale and
+     * rebuilt only if the device locale changes under us.
+     */
+    private class Formatters(val locale: Locale) {
+        val timeOnly: DateTimeFormatter =
+            DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT).withLocale(locale)
+        val dateOnly: DateTimeFormatter =
+            DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).withLocale(locale)
+        val dateAndTime: DateTimeFormatter =
+            DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM, FormatStyle.SHORT)
+                .withLocale(locale)
+    }
 
-    private val dateOnly: DateTimeFormatter
-        get() = DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).withLocale(Locale.getDefault())
+    @Volatile
+    private var cached: Formatters = Formatters(Locale.getDefault())
 
-    private val dateAndTime: DateTimeFormatter
-        get() = DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM, FormatStyle.SHORT)
-            .withLocale(Locale.getDefault())
+    private val formatters: Formatters
+        get() {
+            val current = cached
+            val locale = Locale.getDefault()
+            if (current.locale == locale) return current
+            return Formatters(locale).also { cached = it }
+        }
+
+    private val timeOnly: DateTimeFormatter get() = formatters.timeOnly
+    private val dateOnly: DateTimeFormatter get() = formatters.dateOnly
+    private val dateAndTime: DateTimeFormatter get() = formatters.dateAndTime
 
     fun toLocal(epochMillis: Long): LocalDateTime =
         Instant.ofEpochMilli(epochMillis).atZone(zone).toLocalDateTime()
@@ -31,13 +51,27 @@ object TimeFormat {
     /** Time for today, weekday-free short date otherwise — the usual messenger list format. */
     fun listStamp(epochMillis: Long): String {
         val local = toLocal(epochMillis)
-        val today = LocalDate.now(zone)
+        val today = today()
         return when {
             local.toLocalDate() == today -> timeOnly.format(local)
             local.toLocalDate().isAfter(today.minusDays(DAYS_IN_WEEK)) ->
                 local.dayOfWeek.getDisplayName(java.time.format.TextStyle.SHORT, Locale.getDefault())
             else -> dateOnly.format(local)
         }
+    }
+
+    /** Today's date, recomputed at most once a minute rather than once per rendered row. */
+    private var todayValue: LocalDate = LocalDate.now(zone)
+    private var todayComputedAt: Long = System.currentTimeMillis()
+
+    @Synchronized
+    private fun today(): LocalDate {
+        val now = System.currentTimeMillis()
+        if (now - todayComputedAt > TODAY_TTL_MS) {
+            todayValue = LocalDate.now(zone)
+            todayComputedAt = now
+        }
+        return todayValue
     }
 
     fun clock(epochMillis: Long): String = timeOnly.format(toLocal(epochMillis))
@@ -62,4 +96,5 @@ object TimeFormat {
 
     private const val MINUTES_PER_HOUR = 60
     private const val DAYS_IN_WEEK = 7L
+    private const val TODAY_TTL_MS = 60_000L
 }

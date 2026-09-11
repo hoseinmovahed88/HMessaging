@@ -19,11 +19,29 @@ data class SimSlot(
 /** Enumerates active SIMs so the composer can offer a per-message SIM choice on dual-SIM phones. */
 class SimManager(private val context: Context) {
 
+    /**
+     * Active SIMs, cached.
+     *
+     * Reading them is a binder call into the telephony stack, and the composer asks for the list
+     * on every state emission — that is once per keystroke. SIMs do not change that often;
+     * [invalidate] covers the cases where they do.
+     */
     fun slots(): List<SimSlot> {
-        if (!Permissions.has(context, Manifest.permission.READ_PHONE_STATE)) return emptyList()
-        val manager = context.getSystemService(SubscriptionManager::class.java) ?: return emptyList()
-        return runCatching { readSlots(manager) }.getOrDefault(emptyList())
+        cachedSlots?.let { return it }
+        if (!Permissions.has(context, Manifest.permission.READ_PHONE_STATE)) {
+            return emptyList<SimSlot>().also { cachedSlots = it }
+        }
+        val manager = context.getSystemService(SubscriptionManager::class.java)
+            ?: return emptyList<SimSlot>().also { cachedSlots = it }
+        return runCatching { readSlots(manager) }.getOrDefault(emptyList()).also { cachedSlots = it }
     }
+
+    fun invalidate() {
+        cachedSlots = null
+    }
+
+    @Volatile
+    private var cachedSlots: List<SimSlot>? = null
 
     @RequiresPermission(Manifest.permission.READ_PHONE_STATE)
     private fun readSlots(manager: SubscriptionManager): List<SimSlot> =

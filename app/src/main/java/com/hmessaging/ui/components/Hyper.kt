@@ -34,6 +34,7 @@ import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
@@ -272,6 +273,48 @@ fun HyperDialog(
         ) {
             Column(modifier = Modifier.padding(20.dp), content = content)
         }
+    }
+}
+
+/**
+ * One row of a grouped card, rendered as its own item.
+ *
+ * [HyperCard] draws a whole group at once, which is right for a handful of settings but wrong for
+ * a list: putting every conversation inside one `LazyColumn` item composes them all up front and
+ * defeats virtualisation entirely. This keeps the grouped-card look while letting each row be a
+ * separate lazy item.
+ */
+@Composable
+fun HyperGroupedRow(
+    isFirst: Boolean,
+    isLast: Boolean,
+    modifier: Modifier = Modifier,
+    dividerInset: Int = 16,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    val top = if (isFirst) CardCorner else 0.dp
+    val bottom = if (isLast) CardCorner else 0.dp
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(
+                start = CardPadding,
+                end = CardPadding,
+                top = if (isFirst) 6.dp else 0.dp,
+                bottom = if (isLast) 6.dp else 0.dp,
+            )
+            .clip(
+                RoundedCornerShape(
+                    topStart = top,
+                    topEnd = top,
+                    bottomStart = bottom,
+                    bottomEnd = bottom,
+                ),
+            )
+            .background(MaterialTheme.colorScheme.surface),
+    ) {
+        content()
+        if (!isLast) HyperRowDivider(startInset = dividerInset)
     }
 }
 

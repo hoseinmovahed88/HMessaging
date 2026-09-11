@@ -136,6 +136,10 @@ interface MessageDao {
     @Insert
     suspend fun insert(message: MessageEntity): Long
 
+    /** One transaction for the whole batch; inserting row by row is what made import crawl. */
+    @Insert
+    suspend fun insertAll(messages: List<MessageEntity>)
+
     @Update
     suspend fun update(message: MessageEntity)
 
