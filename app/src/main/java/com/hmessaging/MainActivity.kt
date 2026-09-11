@@ -154,10 +154,16 @@ class MainActivity : AppCompatActivity() {
         graph.applicationScope.launch {
             if (graph.prefs.settings.first().systemSmsImported) return@launch
             val progress = graph.smsImporter.importAll()
-            graph.prefs.setSystemSmsImported(true)
+            // Only latch the flag on a successful read. Latching it after a failed query is what
+            // left the app with an empty list and no second attempt.
+            if (progress.succeeded) graph.prefs.setSystemSmsImported(true)
             graph.diagnostics.record(
                 Diagnostics.KIND_IMPORT,
-                "imported ${progress.imported}, skipped ${progress.skipped}",
+                if (progress.succeeded) {
+                    "imported ${progress.imported}, skipped ${progress.skipped}"
+                } else {
+                    "FAILED — ${progress.error}; will retry"
+                },
             )
         }
     }

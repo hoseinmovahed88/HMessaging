@@ -37,6 +37,10 @@ class MessageRepository(
 
     suspend fun threadById(threadId: Long): ThreadEntity? = threadDao.byId(threadId)
 
+    /** True when this exact message is already stored, whichever broadcast delivered it. */
+    suspend fun isAlreadyStored(rawAddress: String, body: String, date: Long): Boolean =
+        messageDao.exists(PhoneNumbers.normalize(rawAddress), date, body)
+
     /** Finds or creates the thread for [rawAddress], refreshing its contact name on the way. */
     suspend fun threadIdFor(rawAddress: String): Long {
         val address = PhoneNumbers.normalize(rawAddress)

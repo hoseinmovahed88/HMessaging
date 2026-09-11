@@ -29,6 +29,7 @@
     <string name="diag_open_default_apps">Open default apps settings</string>
     <string name="diag_open_app_settings">Open this app\'s settings</string>
     <string name="diag_import_now">Import existing messages now</string>
+    <string name="diag_battery">Allow background activity (battery)</string>
     <string name="diag_copy_report">Copy the full report</string>
     <string name="diag_clear_log">Clear the log</string>
     <string name="default_app_why">Not working? Open diagnostics</string>

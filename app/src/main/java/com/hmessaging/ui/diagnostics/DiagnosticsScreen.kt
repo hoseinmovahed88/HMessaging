@@ -132,6 +132,14 @@ fun DiagnosticsScreen(
                             runCatching { context.startActivity(AppRoles.appDetailsSettingsIntent(context)) }
                         },
                     )
+                    AppRoles.batteryOptimizationSettingsIntent()?.let { intent ->
+                        HyperRowDivider()
+                        HyperRow(
+                            title = stringResource(R.string.diag_battery),
+                            showChevron = true,
+                            onClick = { runCatching { context.startActivity(intent) } },
+                        )
+                    }
                     HyperRowDivider()
                     HyperRow(
                         title = stringResource(R.string.diag_import_now),

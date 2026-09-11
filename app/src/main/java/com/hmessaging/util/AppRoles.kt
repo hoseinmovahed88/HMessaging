@@ -54,6 +54,14 @@ object AppRoles {
             Intent(Settings.ACTION_SETTINGS)
         }
 
+    /** The system list where an app can be exempted from battery optimisation. */
+    fun batteryOptimizationSettingsIntent(): Intent? =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
+        } else {
+            null
+        }
+
     fun appDetailsSettingsIntent(context: Context): Intent =
         Intent(
             Settings.ACTION_APPLICATION_DETAILS_SETTINGS,

@@ -47,7 +47,7 @@ class AppGraph private constructor(private val appContext: Context) {
     val templateDao by lazy { database.templateDao() }
     val diagDao by lazy { database.diagDao() }
 
-    val diagnostics: Diagnostics by lazy { Diagnostics(appContext, diagDao, messageDao) }
+    val diagnostics: Diagnostics by lazy { Diagnostics(appContext, diagDao, messageDao, prefs) }
 
     val contacts: ContactsLookup by lazy { ContactsLookup(appContext) }
     val simManager: SimManager by lazy { SimManager(appContext) }

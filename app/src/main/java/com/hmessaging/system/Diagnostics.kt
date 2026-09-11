@@ -12,9 +12,11 @@ import android.telephony.TelephonyManager
 import com.hmessaging.data.db.dao.DiagDao
 import com.hmessaging.data.db.dao.MessageDao
 import com.hmessaging.data.db.entity.DiagEventEntity
+import com.hmessaging.data.prefs.AppPrefs
 import com.hmessaging.util.AppRoles
 import com.hmessaging.util.Permissions
 import com.hmessaging.util.TimeFormat
+import kotlinx.coroutines.flow.first
 
 /**
  * Answers "why is nothing arriving?" without a debugger attached.
@@ -26,6 +28,7 @@ class Diagnostics(
     private val context: Context,
     private val diagDao: DiagDao,
     private val messageDao: MessageDao,
+    private val prefs: AppPrefs,
 ) {
 
     data class Check(val label: String, val ok: Boolean, val detail: String)
@@ -52,13 +55,17 @@ class Diagnostics(
 
     private suspend fun runChecks(): List<Check> = buildList {
         val defaultPackage = runCatching { Telephony.Sms.getDefaultSmsPackage(context) }.getOrNull()
+        val roleHeld = AppRoles.isSmsRoleHeld(context)
         add(
             Check(
                 label = "Default SMS app",
-                ok = AppRoles.isDefaultSmsApp(context),
+                ok = defaultPackage == context.packageName,
                 detail = when {
-                    defaultPackage == null -> "the system reports no default SMS app"
                     defaultPackage == context.packageName -> "this app"
+                    defaultPackage == null && roleHeld ->
+                        "the platform reports none, though the SMS role is held — messages may " +
+                            "arrive only as SMS_RECEIVED"
+                    defaultPackage == null -> "the platform reports no default SMS app"
                     else -> "currently $defaultPackage"
                 },
             ),
@@ -134,8 +141,20 @@ class Diagnostics(
             ),
         )
 
-        val stored = messageDao.all().size
+        val stored = messageDao.count()
         add(Check("Messages stored", stored > 0, "$stored in the app database"))
+
+        add(
+            Check(
+                label = "History import",
+                ok = !prefs.settings.first().systemSmsImported || stored > 0,
+                detail = if (prefs.settings.first().systemSmsImported) {
+                    "already run — use \"Import existing messages now\" to run it again"
+                } else {
+                    "has not run yet"
+                },
+            ),
+        )
 
         val inProvider = countSystemMessages()
         add(
@@ -203,6 +222,7 @@ class Diagnostics(
         const val KIND_WAP_PUSH = "WAP_PUSH"
         const val KIND_STORED = "STORED"
         const val KIND_BLOCKED = "BLOCKED"
+        const val KIND_DUPLICATE = "DUPLICATE"
         const val KIND_IMPORT = "IMPORT"
         const val KIND_SEND = "SEND"
         const val KIND_ERROR = "ERROR"

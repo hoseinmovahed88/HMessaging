@@ -40,8 +40,12 @@ class SettingsViewModel(private val graph: AppGraph) : ViewModel() {
     fun importSystemSms() = viewModelScope.launch {
         status.value = null
         val progress = graph.smsImporter.importAll()
-        graph.prefs.setSystemSmsImported(true)
-        status.value = "Imported ${progress.imported}, skipped ${progress.skipped}"
+        if (progress.succeeded) graph.prefs.setSystemSmsImported(true)
+        status.value = if (progress.succeeded) {
+            "Imported ${progress.imported}, skipped ${progress.skipped}"
+        } else {
+            "Import failed: ${progress.error}"
+        }
     }
 
     fun exportBackup(target: Uri, includeMessages: Boolean) = viewModelScope.launch {

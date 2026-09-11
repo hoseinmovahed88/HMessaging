@@ -28,10 +28,18 @@ class SmsImporter(
     private val repository: MessageRepository,
 ) {
 
-    data class Progress(val imported: Int, val skipped: Int)
+    data class Progress(
+        val imported: Int,
+        val skipped: Int,
+        /** False when the provider could not be read at all, which is not the same as "nothing new". */
+        val succeeded: Boolean = true,
+        val error: String? = null,
+    )
 
     suspend fun importAll(limit: Int = DEFAULT_LIMIT): Progress = withContext(Dispatchers.IO) {
-        if (!Permissions.has(context, Manifest.permission.READ_SMS)) return@withContext Progress(0, 0)
+        if (!Permissions.has(context, Manifest.permission.READ_SMS)) {
+            return@withContext Progress(0, 0, succeeded = false, error = "READ_SMS is not granted")
+        }
 
         val known = HashSet(messageDao.fingerprints())
 
@@ -48,15 +56,25 @@ class SmsImporter(
             Telephony.Sms.SUBSCRIPTION_ID,
         )
 
-        runCatching {
+        // The row cap is applied while walking the cursor rather than as a `LIMIT` clause appended
+        // to the sort order: several vendor SMS providers validate that string and reject the
+        // query outright, which silently yielded an empty import.
+        val cursorResult = runCatching {
             context.contentResolver.query(
                 Telephony.Sms.CONTENT_URI,
                 projection,
                 null,
                 null,
-                "${Telephony.Sms.DATE} DESC LIMIT $limit",
+                "${Telephony.Sms.DATE} DESC",
             )
-        }.getOrNull()?.use { cursor ->
+        }
+        val cursor = cursorResult.getOrNull()
+        if (cursor == null) {
+            val reason = cursorResult.exceptionOrNull()?.message ?: "the SMS provider returned no cursor"
+            return@withContext Progress(0, 0, succeeded = false, error = reason)
+        }
+
+        cursor.use { cursor ->
             val idColumn = cursor.getColumnIndexOrThrow(Telephony.Sms._ID)
             val addressColumn = cursor.getColumnIndexOrThrow(Telephony.Sms.ADDRESS)
             val bodyColumn = cursor.getColumnIndexOrThrow(Telephony.Sms.BODY)
@@ -66,6 +84,7 @@ class SmsImporter(
             val subColumn = cursor.getColumnIndex(Telephony.Sms.SUBSCRIPTION_ID)
 
             while (cursor.moveToNext()) {
+                if (imported >= limit) break
                 val address = PhoneNumbers.normalize(cursor.getString(addressColumn))
                 val body = cursor.getString(bodyColumn).orEmpty()
                 val date = cursor.getLong(dateColumn)
@@ -97,24 +116,8 @@ class SmsImporter(
             }
         }
 
-        if (imported > 0) refreshThreadSummaries()
+        if (imported > 0) threadDao.rebuildSummaries()
         Progress(imported, skipped)
-    }
-
-    /** Rebuilds each thread's snippet, timestamp and unread count from the imported rows. */
-    private suspend fun refreshThreadSummaries() {
-        val messages = messageDao.all().groupBy { it.threadId }
-        messages.forEach { (threadId, rows) ->
-            val thread = threadDao.byId(threadId) ?: return@forEach
-            val latest = rows.maxByOrNull { it.date } ?: return@forEach
-            threadDao.update(
-                thread.copy(
-                    snippet = latest.body.replace('\n', ' ').take(SNIPPET_LENGTH),
-                    lastMessageAt = latest.date,
-                    unreadCount = rows.count { it.type.isIncoming && !it.read },
-                ),
-            )
-        }
     }
 
     private fun toMessageType(providerType: Int): MessageType = when (providerType) {
@@ -128,6 +131,5 @@ class SmsImporter(
 
     private companion object {
         const val DEFAULT_LIMIT = 5000
-        const val SNIPPET_LENGTH = 160
     }
 }

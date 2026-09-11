@@ -86,6 +86,32 @@ interface ThreadDao {
     /** Drops threads that no longer hold any message. */
     @Query("DELETE FROM threads WHERE id NOT IN (SELECT DISTINCT threadId FROM messages)")
     suspend fun deleteEmpty()
+
+    /**
+     * Recomputes every thread's snippet, timestamp and unread count from its messages.
+     *
+     * Done in SQL because the import can touch tens of thousands of rows, which is far too many
+     * to pull into memory just to group them.
+     */
+    @Query(
+        """
+        UPDATE threads
+           SET snippet = COALESCE((
+                   SELECT REPLACE(body, char(10), ' ') FROM messages
+                    WHERE messages.threadId = threads.id
+                    ORDER BY date DESC, id DESC LIMIT 1
+               ), snippet),
+               lastMessageAt = COALESCE((
+                   SELECT MAX(date) FROM messages WHERE messages.threadId = threads.id
+               ), lastMessageAt),
+               unreadCount = (
+                   SELECT COUNT(*) FROM messages
+                    WHERE messages.threadId = threads.id AND type = 'INBOX' AND read = 0
+               )
+         WHERE id IN (SELECT DISTINCT threadId FROM messages)
+        """,
+    )
+    suspend fun rebuildSummaries()
 }
 
 @Dao
@@ -146,6 +172,9 @@ interface MessageDao {
     @Query("SELECT * FROM messages")
     suspend fun all(): List<MessageEntity>
 
+    @Query("SELECT COUNT(*) FROM messages")
+    suspend fun count(): Int
+
     @Query("SELECT * FROM messages WHERE threadId = :threadId ORDER BY date ASC, id ASC")
     suspend fun listForThread(threadId: Long): List<MessageEntity>
 
@@ -154,6 +183,16 @@ interface MessageDao {
 
     @Query("SELECT address || '|' || date FROM messages")
     suspend fun fingerprints(): List<String>
+
+    @Query(
+        """
+        SELECT EXISTS(
+            SELECT 1 FROM messages
+             WHERE address = :address AND date = :date AND body = :body
+        )
+        """,
+    )
+    suspend fun exists(address: String, date: Long, body: String): Boolean
 
     @Query(
         """

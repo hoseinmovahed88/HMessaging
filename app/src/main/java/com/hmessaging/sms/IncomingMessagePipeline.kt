@@ -30,6 +30,19 @@ class IncomingMessagePipeline(
     private val prefs: AppPrefs,
 ) {
 
+    private companion object {
+        const val RECENT_CAPACITY = 200
+    }
+
+    /**
+     * Fingerprints handled in this process, so the SMS_DELIVER and SMS_RECEIVED copies of the same
+     * message collapse into one even when the first was blocked and never stored.
+     */
+    private val recentlyHandled = object : LinkedHashMap<String, Unit>(RECENT_CAPACITY, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Unit>): Boolean =
+            size > RECENT_CAPACITY
+    }
+
     suspend fun handle(
         address: String,
         body: String,
@@ -38,6 +51,20 @@ class IncomingMessagePipeline(
         parts: Int,
         mirrorToSystem: Boolean,
     ) {
+        val fingerprint = "$address|$receivedAt|${body.hashCode()}"
+        val seenInProcess = synchronized(recentlyHandled) {
+            if (recentlyHandled.containsKey(fingerprint)) {
+                true
+            } else {
+                recentlyHandled[fingerprint] = Unit
+                false
+            }
+        }
+        if (seenInProcess || repository.isAlreadyStored(address, body, receivedAt)) {
+            diagnostics.record(Diagnostics.KIND_DUPLICATE, "second copy from $address discarded")
+            return
+        }
+
         when (val decision = blockEngine.evaluateMessage(address, body)) {
             is BlockDecision.Blocked -> {
                 blockEngine.record(address, body, receivedAt, decision)

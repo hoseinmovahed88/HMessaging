@@ -38,13 +38,13 @@ class DiagnosticsViewModel(private val graph: AppGraph) : ViewModel() {
         val progress = runCatching { graph.smsImporter.importAll() }.getOrNull()
         graph.diagnostics.record(
             Diagnostics.KIND_IMPORT,
-            if (progress == null) {
-                "manual import failed"
-            } else {
-                "manual import: ${progress.imported} imported, ${progress.skipped} skipped"
+            when {
+                progress == null -> "manual import threw"
+                !progress.succeeded -> "manual import FAILED — ${progress.error}"
+                else -> "manual import: ${progress.imported} imported, ${progress.skipped} skipped"
             },
         )
-        graph.prefs.setSystemSmsImported(true)
+        if (progress?.succeeded == true) graph.prefs.setSystemSmsImported(true)
         busy.value = false
         refresh()
     }

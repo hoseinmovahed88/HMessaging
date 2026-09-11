@@ -55,37 +55,42 @@ class SmsDeliverReceiver : BroadcastReceiver() {
 /**
  * Receives the legacy `SMS_RECEIVED` broadcast, which every SMS-capable app gets.
  *
- * It only does anything while another app holds the default-SMS role, so the user still sees
- * their messages here before they switch — without double-handling once they do.
+ * Kept live alongside SMS_DELIVER rather than as a fallback: the two broadcasts are deduplicated
+ * downstream, so a device that delivers only one of them still works.
  */
 class SmsReceivedReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action != Telephony.Sms.Intents.SMS_RECEIVED_ACTION) return
         val graph = AppGraph.from(context)
-        val isDefault = AppRoles.isDefaultSmsApp(context)
         val incoming = IncomingSms.fromIntent(intent)
         val pending = goAsync()
         graph.applicationScope.launch {
             try {
+                if (incoming == null) {
+                    graph.diagnostics.record(
+                        Diagnostics.KIND_SMS_RECEIVED,
+                        "broadcast arrived but carried no readable message",
+                    )
+                    return@launch
+                }
                 graph.diagnostics.record(
                     Diagnostics.KIND_SMS_RECEIVED,
-                    when {
-                        incoming == null -> "broadcast arrived but carried no readable message"
-                        isDefault -> "from ${incoming.address} — ignored, SMS_DELIVER owns it"
-                        else -> "from ${incoming.address}, ${incoming.parts} part(s)"
-                    },
+                    "from ${incoming.address}, ${incoming.parts} part(s)",
                 )
-                // SmsDeliverReceiver owns the message whenever we hold the role.
-                if (incoming == null || isDefault) return@launch
+                // This used to bail out whenever the app held the role, on the assumption that
+                // SMS_DELIVER would cover the message. On a device where RoleManager reports the
+                // role held but the platform reports no default SMS app, SMS_DELIVER may never
+                // fire — and that assumption dropped every message. Both broadcasts now feed the
+                // pipeline, which discards the duplicate when they both arrive.
                 graph.incomingPipeline.handle(
                     address = incoming.address,
                     body = incoming.body,
                     receivedAt = incoming.receivedAt,
                     subscriptionId = incoming.subscriptionId,
                     parts = incoming.parts,
-                    // Not the default app: the provider belongs to whoever is.
-                    mirrorToSystem = false,
+                    // Only the default SMS app may write to the platform provider.
+                    mirrorToSystem = AppRoles.isDefaultSmsApp(context),
                 )
             } finally {
                 pending.finish()

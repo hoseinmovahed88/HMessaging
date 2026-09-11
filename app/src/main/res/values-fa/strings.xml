@@ -28,6 +28,7 @@
     <string name="diag_open_default_apps">باز کردن تنظیمات برنامه‌های پیش‌فرض</string>
     <string name="diag_open_app_settings">باز کردن تنظیمات این برنامه</string>
     <string name="diag_import_now">درون‌ریزی پیامک‌های موجود</string>
+    <string name="diag_battery">اجازه فعالیت در پس‌زمینه (باتری)</string>
     <string name="diag_copy_report">کپی گزارش کامل</string>
     <string name="diag_clear_log">پاک کردن گزارش</string>
     <string name="default_app_why">کار نمی‌کند؟ عیب‌یابی را باز کنید</string>
