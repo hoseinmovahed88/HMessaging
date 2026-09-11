@@ -173,6 +173,13 @@ class MainActivity : AppCompatActivity() {
                 graph.diagnostics.record(Diagnostics.KIND_SYNC, "on open — picked up ${progress.imported}")
             }
             graph.messageRepository.refreshContactNames(onlyMissing = true)
+            val merged = graph.messageRepository.mergeDuplicateThreads()
+            if (merged > 0) {
+                graph.diagnostics.record(
+                    Diagnostics.KIND_SYNC,
+                    "merged $merged duplicate conversation(s) split by country code",
+                )
+            }
             if (settings.liveSyncEnabled) SmsSyncService.start(this@MainActivity)
         }
     }

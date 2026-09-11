@@ -44,7 +44,7 @@ import com.hmessaging.data.db.entity.ThreadEntity
         TemplateEntity::class,
         DiagEventEntity::class,
     ],
-    version = 2,
+    version = 3,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -77,9 +77,21 @@ abstract class HmDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * Adds the conversation match key. Left empty here and backfilled in Kotlin, because
+         * deriving it means stripping non-digits and taking a significant tail, which SQLite
+         * cannot express without a pile of nested replaces.
+         */
+        private val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `threads` ADD COLUMN `matchKey` TEXT NOT NULL DEFAULT ''")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_threads_matchKey` ON `threads` (`matchKey`)")
+            }
+        }
+
         fun build(context: Context): HmDatabase =
             Room.databaseBuilder(context.applicationContext, HmDatabase::class.java, NAME)
-                .addMigrations(MIGRATION_1_2)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
                 .build()
     }
 }

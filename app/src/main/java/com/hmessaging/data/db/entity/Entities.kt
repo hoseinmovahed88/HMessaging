@@ -15,13 +15,19 @@ import com.hmessaging.data.model.SourceMatch
     tableName = "threads",
     indices = [
         Index(value = ["address"], unique = true),
+        Index(value = ["matchKey"]),
         Index(value = ["lastMessageAt"]),
     ],
 )
 data class ThreadEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
-    /** Normalised phone number or alphanumeric short-code. */
+    /** Normalised phone number or alphanumeric short-code, as the operator sent it. */
     val address: String,
+    /**
+     * What the conversation is actually keyed on: see [com.hmessaging.util.PhoneNumbers.threadKey].
+     * Two spellings of one number share this, so they share a conversation.
+     */
+    val matchKey: String = "",
     val contactName: String? = null,
     val snippet: String = "",
     val lastMessageAt: Long = 0L,

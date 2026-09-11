@@ -69,6 +69,30 @@ object PhoneNumbers {
         return tailLeft.length == MIN_SIGNIFICANT_DIGITS && tailLeft == tailRight
     }
 
+    /**
+     * The identity a conversation is keyed on.
+     *
+     * [normalize] preserves what the operator sent, so the same person reaches you as
+     * `+989121234567` from one route and `09121234567` from another and lands in two separate
+     * conversations. Keying on the significant tail collapses those, exactly as [sameNumber]
+     * already does when comparing two numbers directly.
+     *
+     * Alphanumeric sender IDs and short codes are returned whole — they are not phone numbers and
+     * two different short codes must never merge.
+     */
+    fun threadKey(raw: String?): String {
+        val normalized = normalize(raw)
+        if (normalized == UNKNOWN_ADDRESS) return UNKNOWN_ADDRESS
+        if (normalized.any { it.isLetter() }) return normalized
+        val digits = normalized.filter { it.isDigit() }
+        if (digits.isEmpty()) return normalized
+        return if (digits.length > MIN_SIGNIFICANT_DIGITS) {
+            digits.takeLast(MIN_SIGNIFICANT_DIGITS)
+        } else {
+            digits
+        }
+    }
+
     /** Splits a user-entered recipient field into normalised numbers. */
     fun splitRecipients(value: String): List<String> =
         value.split(RECIPIENT_SEPARATOR, ";", "\n")

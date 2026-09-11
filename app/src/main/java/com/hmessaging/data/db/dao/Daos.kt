@@ -42,6 +42,15 @@ interface ThreadDao {
     @Query("SELECT * FROM threads WHERE address = :address LIMIT 1")
     suspend fun byAddress(address: String): ThreadEntity?
 
+    @Query("SELECT * FROM threads WHERE matchKey = :matchKey ORDER BY id ASC LIMIT 1")
+    suspend fun byMatchKey(matchKey: String): ThreadEntity?
+
+    @Query("UPDATE threads SET matchKey = :matchKey WHERE id = :threadId")
+    suspend fun setMatchKey(threadId: Long, matchKey: String)
+
+    @Query("SELECT COUNT(*) FROM threads WHERE matchKey = ''")
+    suspend fun countWithoutMatchKey(): Int
+
     @Query("SELECT * FROM threads")
     suspend fun all(): List<ThreadEntity>
 
@@ -166,6 +175,9 @@ interface MessageDao {
 
     @Query("DELETE FROM messages WHERE threadId = :threadId")
     suspend fun deleteForThread(threadId: Long)
+
+    @Query("UPDATE messages SET threadId = :target WHERE threadId = :source")
+    suspend fun moveToThread(source: Long, target: Long)
 
     @Query("DELETE FROM messages WHERE isOtp = 1 AND date < :before")
     suspend fun deleteOtpOlderThan(before: Long): Int

@@ -67,19 +67,61 @@ class MessageRepository(
     suspend fun isAlreadyStored(rawAddress: String, body: String, date: Long): Boolean =
         messageDao.exists(PhoneNumbers.normalize(rawAddress), date, body)
 
-    /** Finds or creates the thread for [rawAddress], refreshing its contact name on the way. */
+    /**
+     * Finds or creates the thread for [rawAddress], refreshing its contact name on the way.
+     *
+     * Matched on [PhoneNumbers.threadKey] rather than the address itself, so the same person
+     * reaching you as `+989121234567` on one message and `09121234567` on the next stays in one
+     * conversation instead of two.
+     */
     suspend fun threadIdFor(rawAddress: String): Long {
         val address = PhoneNumbers.normalize(rawAddress)
-        val existing = threadDao.byAddress(address)
+        val key = PhoneNumbers.threadKey(address)
+
+        val existing = threadDao.byMatchKey(key) ?: threadDao.byAddress(address)
         if (existing != null) {
+            if (existing.matchKey != key) threadDao.setMatchKey(existing.id, key)
             val name = contacts.nameFor(address)
             if (name != existing.contactName) threadDao.setContactName(existing.id, name)
             return existing.id
         }
-        val created = ThreadEntity(address = address, contactName = contacts.nameFor(address))
+
+        val created = ThreadEntity(
+            address = address,
+            matchKey = key,
+            contactName = contacts.nameFor(address),
+        )
         val id = threadDao.insert(created)
         // A concurrent insert may have won the unique index; fall back to a lookup.
-        return if (id > 0) id else threadDao.byAddress(address)?.id ?: 0L
+        return if (id > 0) id else threadDao.byMatchKey(key)?.id ?: threadDao.byAddress(address)?.id ?: 0L
+    }
+
+    /**
+     * Collapses conversations that are the same person written two ways.
+     *
+     * Needed once, for histories built before threads were keyed on the significant digits, and
+     * cheap enough afterwards that it can simply run whenever any thread is still unkeyed.
+     */
+    suspend fun mergeDuplicateThreads(): Int {
+        if (threadDao.countWithoutMatchKey() == 0) return 0
+
+        var merged = 0
+        threadDao.all()
+            .groupBy { PhoneNumbers.threadKey(it.address) }
+            .forEach { (key, group) ->
+                // Keep the oldest row so its id, and anything already pointing at it, survives.
+                val survivor = group.minBy { it.id }
+                if (survivor.matchKey != key) threadDao.setMatchKey(survivor.id, key)
+
+                group.filter { it.id != survivor.id }.forEach { duplicate ->
+                    messageDao.moveToThread(source = duplicate.id, target = survivor.id)
+                    threadDao.deleteById(duplicate.id)
+                    merged++
+                }
+            }
+
+        if (merged > 0) threadDao.rebuildSummaries()
+        return merged
     }
 
     suspend fun insertIncoming(
