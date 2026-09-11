@@ -54,6 +54,7 @@ fun SettingsScreen(
 ) {
     val settings by viewModel.settings.collectAsStateWithLifecycle()
     val status by viewModel.statusMessage.collectAsStateWithLifecycle()
+    val importProgress by viewModel.importProgress.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val snackbarHost = remember { SnackbarHostState() }
     val isDefaultSmsApp = rememberIsDefaultSmsApp()
@@ -275,9 +276,21 @@ fun SettingsScreen(
             item("backup-title") { HyperGroupTitle(stringResource(R.string.settings_backup)) }
             item("backup") {
                 HyperCard {
+                    val running = importProgress
                     HyperRow(
                         title = stringResource(R.string.settings_import_system),
-                        showChevron = true,
+                        subtitle = if (running == null) {
+                            stringResource(R.string.settings_import_system_desc)
+                        } else {
+                            stringResource(
+                                R.string.settings_import_progress,
+                                running.imported,
+                                running.scanned,
+                                running.total,
+                            )
+                        },
+                        showChevron = running == null,
+                        enabled = running == null,
                         onClick = viewModel::importSystemSms,
                     )
                     HyperRowDivider()

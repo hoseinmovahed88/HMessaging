@@ -3,6 +3,7 @@ package com.hmessaging.ui.diagnostics
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.hmessaging.di.AppGraph
+import com.hmessaging.sms.SmsImporter
 import com.hmessaging.system.Diagnostics
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -16,6 +17,8 @@ class DiagnosticsViewModel(private val graph: AppGraph) : ViewModel() {
 
     private val busy = MutableStateFlow(false)
     val refreshing: StateFlow<Boolean> = busy.asStateFlow()
+
+    val importProgress: StateFlow<SmsImporter.Running?> = graph.smsImporter.progress
 
     init {
         refresh()
@@ -35,7 +38,7 @@ class DiagnosticsViewModel(private val graph: AppGraph) : ViewModel() {
     /** Re-runs the history import even if it already ran once. */
     fun importNow() = viewModelScope.launch {
         busy.value = true
-        val progress = runCatching { graph.smsImporter.importAll() }.getOrNull()
+        val progress = runCatching { graph.smsImporter.importAll(SmsImporter.NO_LIMIT) }.getOrNull()
         graph.diagnostics.record(
             Diagnostics.KIND_IMPORT,
             when {

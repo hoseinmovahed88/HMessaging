@@ -7,6 +7,7 @@ import com.hmessaging.data.model.ThemeMode
 import com.hmessaging.data.prefs.AppSettings
 import com.hmessaging.di.AppGraph
 import com.hmessaging.sms.SimSlot
+import com.hmessaging.sms.SmsImporter
 import com.hmessaging.sms.SmsSyncService
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -45,9 +46,14 @@ class SettingsViewModel(private val graph: AppGraph) : ViewModel() {
         if (value) SmsSyncService.start(context) else SmsSyncService.stop(context)
     }
 
+    /** Live row counter while a full import runs. */
+    val importProgress: StateFlow<SmsImporter.Running?> = graph.smsImporter.progress
+
     fun importSystemSms() = viewModelScope.launch {
         status.value = null
-        val progress = graph.smsImporter.importAll()
+        // Everything, not a page at a time: a hundred thousand messages is twenty presses of a
+        // five-thousand-row button, which is not a feature.
+        val progress = graph.smsImporter.importAll(SmsImporter.NO_LIMIT)
         if (progress.succeeded) graph.prefs.setSystemSmsImported(true)
         status.value = if (progress.succeeded) {
             "Imported ${progress.imported}, skipped ${progress.skipped}"

@@ -177,6 +177,8 @@
     <string name="settings_export">Export backup</string>
     <string name="settings_import">Import backup</string>
     <string name="settings_import_system">Import existing SMS from the phone</string>
+    <string name="settings_import_system_desc">Brings in the whole history, however large</string>
+    <string name="settings_import_progress">Imported %1$d — scanned %2$d of %3$d</string>
     <string name="settings_about">About</string>
     <string name="settings_split_counter_desc">Send as separate numbered messages instead of one concatenated SMS. Only needed for gateways that drop concatenation headers.</string>
     <string name="settings_chunk_chars">Characters per chunk</string>

@@ -165,6 +165,8 @@
     <string name="settings_export">تهیه پشتیبان</string>
     <string name="settings_import">بازیابی پشتیبان</string>
     <string name="settings_import_system">درون‌ریزی پیامک‌های موجود گوشی</string>
+    <string name="settings_import_system_desc">کل تاریخچه را می‌آورد، هر چقدر هم که باشد</string>
+    <string name="settings_import_progress">‏%1$d وارد شد — ‏%2$d از ‏%3$d بررسی شد</string>
     <string name="settings_about">درباره</string>
     <string name="settings_split_counter_desc">به جای یک پیامک چندبخشی، پیام‌های جداگانه شماره‌دار ارسال می‌شود. فقط برای درگاه‌هایی لازم است که سرآیند اتصال بخش‌ها را حذف می‌کنند.</string>
     <string name="settings_chunk_chars">تعداد نویسه در هر بخش</string>

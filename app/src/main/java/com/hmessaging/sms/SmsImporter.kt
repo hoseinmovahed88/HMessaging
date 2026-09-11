@@ -12,6 +12,11 @@ import com.hmessaging.data.repo.MessageRepository
 import com.hmessaging.util.Permissions
 import com.hmessaging.util.PhoneNumbers
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
 /**
@@ -29,6 +34,14 @@ class SmsImporter(
     private val pipeline: () -> IncomingMessagePipeline,
 ) {
 
+    /** Emitted while a long import runs, so a minute of work does not look like a freeze. */
+    data class Running(val imported: Int, val scanned: Int, val total: Int)
+
+    private val _progress = MutableStateFlow<Running?>(null)
+    val progress: StateFlow<Running?> = _progress.asStateFlow()
+
+    private val importLock = Mutex()
+
     data class Progress(
         val imported: Int,
         val skipped: Int,
@@ -37,9 +50,21 @@ class SmsImporter(
         val error: String? = null,
     )
 
-    suspend fun importAll(limit: Int = DEFAULT_LIMIT): Progress = withContext(Dispatchers.IO) {
+    /**
+     * Copies the phone's SMS history into this app.
+     *
+     * [limit] caps how many *new* messages a single run takes; already-known rows are skipped
+     * without counting against it, so repeated runs walk further back each time. Pass [NO_LIMIT]
+     * to take everything in one pass — on a phone holding a hundred thousand messages that is a
+     * minute of work, which is why it reports [progress] as it goes.
+     */
+    suspend fun importAll(limit: Int = DEFAULT_LIMIT): Progress = importLock.withLock {
+        withContext(Dispatchers.IO) { runImport(limit) }
+    }
+
+    private suspend fun runImport(limit: Int): Progress {
         if (!Permissions.has(context, Manifest.permission.READ_SMS)) {
-            return@withContext Progress(0, 0, succeeded = false, error = "READ_SMS is not granted")
+            return Progress(0, 0, succeeded = false, error = "READ_SMS is not granted")
         }
 
         val known = HashSet(messageDao.fingerprints())
@@ -74,9 +99,13 @@ class SmsImporter(
         val cursor = cursorResult.getOrNull()
         if (cursor == null) {
             val reason = cursorResult.exceptionOrNull()?.message ?: "the SMS provider returned no cursor"
-            return@withContext Progress(0, 0, succeeded = false, error = reason)
+            return Progress(0, 0, succeeded = false, error = reason)
         }
 
+        val total = runCatching { cursor.count }.getOrDefault(0)
+        _progress.value = Running(imported = 0, scanned = 0, total = total)
+
+        try {
         cursor.use { cursor ->
             val idColumn = cursor.getColumnIndexOrThrow(Telephony.Sms._ID)
             val addressColumn = cursor.getColumnIndexOrThrow(Telephony.Sms.ADDRESS)
@@ -86,8 +115,13 @@ class SmsImporter(
             val readColumn = cursor.getColumnIndexOrThrow(Telephony.Sms.READ)
             val subColumn = cursor.getColumnIndex(Telephony.Sms.SUBSCRIPTION_ID)
 
+            var scanned = 0
             while (cursor.moveToNext()) {
                 if (imported >= limit) break
+                scanned++
+                if (scanned % PROGRESS_STRIDE == 0) {
+                    _progress.value = Running(imported = imported, scanned = scanned, total = total)
+                }
                 val address = PhoneNumbers.normalize(cursor.getString(addressColumn))
                 val body = cursor.getString(bodyColumn).orEmpty()
                 val date = cursor.getLong(dateColumn)
@@ -124,9 +158,12 @@ class SmsImporter(
             }
             if (batch.isNotEmpty()) messageDao.insertAll(batch)
         }
+        } finally {
+            _progress.value = null
+        }
 
         if (imported > 0) threadDao.rebuildSummaries()
-        Progress(imported, skipped)
+        return Progress(imported, skipped)
     }
 
     private fun toMessageType(providerType: Int): MessageType = when (providerType) {
@@ -246,7 +283,11 @@ class SmsImporter(
     }
 
     private companion object {
+        /** Take the whole history in one pass. */
+        const val NO_LIMIT = Int.MAX_VALUE
+
         const val DEFAULT_LIMIT = 5000
+        const val PROGRESS_STRIDE = 250
         const val SYNC_LIMIT = 500
         const val BATCH_SIZE = 200
         /** Only messages this fresh are replayed through auto-reply and forwarding. */

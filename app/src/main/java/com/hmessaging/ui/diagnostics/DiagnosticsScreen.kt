@@ -53,6 +53,7 @@ fun DiagnosticsScreen(
 ) {
     val report by viewModel.state.collectAsStateWithLifecycle()
     val refreshing by viewModel.refreshing.collectAsStateWithLifecycle()
+    val importProgress by viewModel.importProgress.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
     HyperScreen(
@@ -171,9 +172,19 @@ fun DiagnosticsScreen(
                         )
                     }
                     HyperRowDivider()
+                    val running = importProgress
                     HyperRow(
                         title = stringResource(R.string.diag_import_now),
-                        showChevron = true,
+                        subtitle = running?.let {
+                            stringResource(
+                                R.string.settings_import_progress,
+                                it.imported,
+                                it.scanned,
+                                it.total,
+                            )
+                        },
+                        showChevron = running == null,
+                        enabled = running == null,
                         onClick = viewModel::importNow,
                     )
                     HyperRowDivider()
