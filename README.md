@@ -68,7 +68,9 @@ library with hand-written stubs for the AndroidX surface in use:
   runtime are unavailable here. They parse cleanly and every cross-module import and string
   resource resolves, but the first real build is where their type errors will surface.
 
-Treat that first build as a review step.
+The Compose layer has since been compiled for real: the GitHub Actions workflow below builds the
+project end to end on a runner with the Android SDK, and it succeeds. A signed release APK has been
+produced from commit `f66ca09`.
 
 ### Signing a release build
 
@@ -88,8 +90,10 @@ CI reads the same credentials from `HM_KEYSTORE_FILE`, `HM_KEYSTORE_PASSWORD`, `
 
 ### Building the APK on GitHub Actions
 
-`.github/workflows/build-apk.yml` assembles the release APK on a runner that has the Android SDK
-and uploads it as a build artifact, so an APK can be produced without a local Android install.
+`.github/workflows/build-apk.yml` assembles the release APK on a runner that has the Android SDK,
+so an APK can be produced without a local Android install. Each run publishes the result twice: as
+an Actions artifact, and as a force-pushed commit on the throwaway `build-apk` branch, which is
+reachable over plain git where the Actions artifact storage host is not.
 To have that build come out signed, add four repository secrets under
 **Settings → Secrets and variables → Actions**:
 
