@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
@@ -70,3 +70,22 @@ jobs:
           path: app/build/outputs/apk/release/*.apk
           if-no-files-found: error
           retention-days: 30
+
+      # Actions artifacts are served from a storage host some networks cannot reach, so the
+      # APK is also force-pushed to a throwaway branch that is fetchable over plain git.
+      - name: Publish APK to the build-apk branch
+        run: |
+          set -eu
+          apk=$(ls app/build/outputs/apk/release/*.apk | head -1)
+          staging=$(mktemp -d)
+          cp "$apk" "$staging/$(basename "$apk")"
+          cd "$staging"
+          git init -q
+          git checkout -q -b build-apk
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .
+          git commit -q -m "APK from run ${{ github.run_number }} (${{ github.sha }})"
+          git push -q --force \
+            "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" \
+            build-apk
