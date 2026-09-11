@@ -22,6 +22,9 @@
     <string name="diag_none">No report yet</string>
     <string name="diag_all_ok">Everything needed to receive messages is in place.</string>
     <string name="diag_problems">Something below is blocking incoming messages.</string>
+    <string name="diag_warnings">Everything needed to receive messages is in place. The amber items below are worth a look.</string>
+    <string name="diag_last_delivery">Last delivery: %1$s at %2$s</string>
+    <string name="diag_never_delivered">Nothing has been delivered to this app yet.</string>
     <string name="diag_checks">Checks</string>
     <string name="diag_actions">Fixes</string>
     <string name="diag_events">What the system has delivered</string>

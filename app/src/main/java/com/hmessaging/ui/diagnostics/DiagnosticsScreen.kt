@@ -87,18 +87,38 @@ fun DiagnosticsScreen(
 
             item("summary") {
                 HyperCard {
-                    Text(
-                        text = stringResource(
-                            if (current.allOk) R.string.diag_all_ok else R.string.diag_problems,
-                        ),
-                        style = MaterialTheme.typography.titleMedium,
-                        color = if (current.allOk) {
-                            LocalHyperColors.current.success
-                        } else {
-                            MaterialTheme.colorScheme.error
-                        },
-                        modifier = Modifier.padding(16.dp),
-                    )
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        val verdict = when {
+                            current.problems.isNotEmpty() -> R.string.diag_problems
+                            current.warnings.isNotEmpty() -> R.string.diag_warnings
+                            else -> R.string.diag_all_ok
+                        }
+                        Text(
+                            text = stringResource(verdict),
+                            style = MaterialTheme.typography.titleMedium,
+                            color = when {
+                                current.problems.isNotEmpty() -> MaterialTheme.colorScheme.error
+                                current.warnings.isNotEmpty() -> LocalHyperColors.current.warning
+                                else -> LocalHyperColors.current.success
+                            },
+                        )
+                        // The one fact that actually answers "is it working?".
+                        val delivery = current.lastDelivery
+                        Text(
+                            text = if (delivery == null) {
+                                stringResource(R.string.diag_never_delivered)
+                            } else {
+                                stringResource(
+                                    R.string.diag_last_delivery,
+                                    delivery.kind,
+                                    TimeFormat.full(delivery.at),
+                                )
+                            },
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = 6.dp),
+                        )
+                    }
                 }
             }
 
@@ -109,7 +129,7 @@ fun DiagnosticsScreen(
                         HyperRow(
                             title = check.label,
                             subtitle = check.detail,
-                            leading = { StatusDot(check.ok) },
+                            leading = { StatusDot(check.severity) },
                         )
                         if (index != current.checks.lastIndex) HyperRowDivider(startInset = 42)
                     }
@@ -219,12 +239,16 @@ fun DiagnosticsScreen(
 }
 
 @Composable
-private fun StatusDot(ok: Boolean) {
+private fun StatusDot(severity: Diagnostics.Severity) {
     val hyper = LocalHyperColors.current
     Row(verticalAlignment = Alignment.CenterVertically) {
         Surface(
             shape = CircleShape,
-            color = if (ok) hyper.success else MaterialTheme.colorScheme.error,
+            color = when (severity) {
+                Diagnostics.Severity.OK -> hyper.success
+                Diagnostics.Severity.WARNING -> hyper.warning
+                Diagnostics.Severity.PROBLEM -> MaterialTheme.colorScheme.error
+            },
             modifier = Modifier.size(10.dp),
             content = {},
         )

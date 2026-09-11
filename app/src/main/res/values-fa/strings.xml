@@ -21,6 +21,9 @@
     <string name="diag_none">هنوز گزارشی نیست</string>
     <string name="diag_all_ok">همه پیش‌نیازهای دریافت پیام برقرار است.</string>
     <string name="diag_problems">یکی از موارد زیر جلوی دریافت پیام را گرفته است.</string>
+    <string name="diag_warnings">همه پیش‌نیازهای دریافت پیام برقرار است. موارد نارنجی زیر ارزش بررسی دارند.</string>
+    <string name="diag_last_delivery">آخرین دریافت: %1$s در %2$s</string>
+    <string name="diag_never_delivered">هنوز چیزی به این برنامه تحویل داده نشده است.</string>
     <string name="diag_checks">بررسی‌ها</string>
     <string name="diag_actions">راه‌حل‌ها</string>
     <string name="diag_events">آنچه سیستم تحویل داده است</string>

@@ -37,19 +37,44 @@ class Diagnostics(
     private fun contactsPermissionGranted(): Boolean =
         Permissions.has(context, Manifest.permission.READ_CONTACTS)
 
-    data class Check(val label: String, val ok: Boolean, val detail: String)
+    /**
+     * Not every deviation stops messages arriving.
+     *
+     * Treating them alike made the screen shout "something is blocking incoming messages" over a
+     * platform quirk that costs nothing, which is worse than saying nothing: it trains the reader
+     * to ignore the one line that will eventually matter.
+     */
+    enum class Severity { OK, WARNING, PROBLEM }
+
+    data class Check(val label: String, val severity: Severity, val detail: String) {
+        val ok: Boolean get() = severity == Severity.OK
+    }
 
     data class Report(
         val checks: List<Check>,
         val events: List<DiagEventEntity>,
     ) {
-        val allOk: Boolean get() = checks.all { it.ok }
+        val problems: List<Check> get() = checks.filter { it.severity == Severity.PROBLEM }
+        val warnings: List<Check> get() = checks.filter { it.severity == Severity.WARNING }
+        val allOk: Boolean get() = problems.isEmpty() && warnings.isEmpty()
+
+        /** The single most useful fact on the screen: has anything actually been delivered? */
+        val lastDelivery: DiagEventEntity? get() = events.firstOrNull {
+            it.kind == KIND_SMS_DELIVER || it.kind == KIND_SMS_RECEIVED || it.kind == KIND_SYNC
+        }
 
         fun asText(): String = buildString {
             appendLine("HMessaging diagnostics")
             appendLine("generated ${TimeFormat.full(System.currentTimeMillis())}")
             appendLine()
-            checks.forEach { appendLine("${if (it.ok) "OK  " else "FAIL"}  ${it.label}: ${it.detail}") }
+            checks.forEach {
+                val tag = when (it.severity) {
+                    Severity.OK -> "OK  "
+                    Severity.WARNING -> "WARN"
+                    Severity.PROBLEM -> "FAIL"
+                }
+                appendLine("$tag  ${it.label}: ${it.detail}")
+            }
             appendLine()
             appendLine("Recent telephony events (${events.size}):")
             if (events.isEmpty()) appendLine("  none recorded")
@@ -65,12 +90,19 @@ class Diagnostics(
         add(
             Check(
                 label = "Default SMS app",
-                ok = defaultPackage == context.packageName,
+                severity = when {
+                    defaultPackage == context.packageName -> Severity.OK
+                    // RoleManager is the authority from Android 10 on. Some vendor builds never
+                    // update the legacy getDefaultSmsPackage, and messages still arrive.
+                    roleHeld -> Severity.WARNING
+                    else -> Severity.PROBLEM
+                },
                 detail = when {
                     defaultPackage == context.packageName -> "this app"
-                    defaultPackage == null && roleHeld ->
-                        "the platform reports none, though the SMS role is held — messages may " +
-                            "arrive only as SMS_RECEIVED"
+                    roleHeld ->
+                        "the SMS role is held, which is what counts; this phone's older " +
+                            "getDefaultSmsPackage reports " + (defaultPackage ?: "none") +
+                            ", which is a known vendor quirk and harmless"
                     defaultPackage == null -> "the platform reports no default SMS app"
                     else -> "currently $defaultPackage"
                 },
@@ -81,7 +113,7 @@ class Diagnostics(
             add(
                 Check(
                     label = "SMS role held",
-                    ok = AppRoles.isSmsRoleHeld(context),
+                    severity = if (roleHeld) Severity.OK else Severity.PROBLEM,
                     detail = if (AppRoles.isSmsRoleAvailable(context)) {
                         "role is offered by this device"
                     } else {
@@ -99,12 +131,25 @@ class Diagnostics(
             "Phone state" to Manifest.permission.READ_PHONE_STATE,
         ).forEach { (label, permission) ->
             val granted = Permissions.has(context, permission)
-            add(Check(label, granted, if (granted) "granted" else "DENIED — grant it in app settings"))
+            add(
+                Check(
+                    label = label,
+                    severity = if (granted) Severity.OK else Severity.PROBLEM,
+                    detail = if (granted) "granted" else "DENIED — grant it in app settings",
+                ),
+            )
         }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             val granted = Permissions.has(context, Manifest.permission.POST_NOTIFICATIONS)
-            add(Check("Notifications", granted, if (granted) "granted" else "denied — messages still arrive, silently"))
+            add(
+                Check(
+                    label = "Notifications",
+                    // Messages still arrive without it; they just do so silently.
+                    severity = if (granted) Severity.OK else Severity.WARNING,
+                    detail = if (granted) "granted" else "denied — messages still arrive, silently",
+                ),
+            )
         }
 
         // A component the system cannot resolve makes the app ineligible for the role, which is
@@ -138,7 +183,8 @@ class Diagnostics(
         add(
             Check(
                 label = "Battery restrictions",
-                ok = isIgnoringBatteryOptimizations(),
+                // The foreground watcher covers this; it only matters if that is switched off.
+                severity = if (isIgnoringBatteryOptimizations()) Severity.OK else Severity.WARNING,
                 detail = if (isIgnoringBatteryOptimizations()) {
                     "unrestricted"
                 } else {
@@ -152,7 +198,7 @@ class Diagnostics(
         add(
             Check(
                 label = "Background watcher",
-                ok = watcherRunning,
+                severity = if (watcherRunning) Severity.OK else Severity.WARNING,
                 detail = if (watcherRunning) {
                     "running — the SMS store is being watched directly"
                 } else {
@@ -166,19 +212,30 @@ class Diagnostics(
         add(
             Check(
                 label = "Contact names",
-                ok = threads.isEmpty() || named > 0 || !contactsPermissionGranted(),
+                severity = if (threads.isEmpty() || named > 0 || !contactsPermissionGranted()) {
+                    Severity.OK
+                } else {
+                    Severity.WARNING
+                },
                 detail = "$named of ${threads.size} conversations resolved to a contact",
             ),
         )
 
         val stored = messageDao.count()
-        add(Check("Messages stored", stored > 0, "$stored in the app database"))
+        add(
+            Check(
+                label = "Messages stored",
+                // A symptom, never a cause — an empty database on a fresh install is normal.
+                severity = if (stored > 0) Severity.OK else Severity.WARNING,
+                detail = "$stored in the app database",
+            ),
+        )
 
         val alreadyImported = prefs.settings.first().systemSmsImported
         add(
             Check(
                 label = "History import",
-                ok = !alreadyImported || stored > 0,
+                severity = if (!alreadyImported || stored > 0) Severity.OK else Severity.WARNING,
                 detail = if (alreadyImported) {
                     "already run — use \"Import existing messages now\" to run it again"
                 } else {
@@ -191,7 +248,7 @@ class Diagnostics(
         add(
             Check(
                 label = "Messages in the phone's SMS store",
-                ok = inProvider >= 0,
+                severity = if (inProvider >= 0) Severity.OK else Severity.PROBLEM,
                 detail = if (inProvider < 0) "not readable (READ_SMS denied)" else "$inProvider readable",
             ),
         )
@@ -214,7 +271,7 @@ class Diagnostics(
         val mine = context.packageName in resolved
         return Check(
             label = label,
-            ok = mine,
+            severity = if (mine) Severity.OK else Severity.PROBLEM,
             detail = if (mine) "registered" else "NOT registered (resolvers: ${resolved.size})",
         )
     }
