@@ -4,6 +4,9 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.util.Log
+import com.hmessaging.di.AppGraph
+import com.hmessaging.system.Diagnostics
+import kotlinx.coroutines.launch
 
 /**
  * Required for the app to be eligible as the default SMS app: Android will not offer the role to
@@ -16,6 +19,15 @@ class MmsDeliverReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
         Log.i(TAG, "Ignoring MMS push: this build handles SMS only (${intent.action})")
+        val graph = AppGraph.from(context)
+        val pending = goAsync()
+        graph.applicationScope.launch {
+            try {
+                graph.diagnostics.record(Diagnostics.KIND_WAP_PUSH, "MMS push ignored (SMS-only build)")
+            } finally {
+                pending.finish()
+            }
+        }
     }
 
     private companion object {

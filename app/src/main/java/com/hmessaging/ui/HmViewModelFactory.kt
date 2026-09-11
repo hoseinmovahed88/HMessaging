@@ -10,6 +10,7 @@ import com.hmessaging.ui.autoreply.AutoReplyViewModel
 import com.hmessaging.ui.blocked.BlockedViewModel
 import com.hmessaging.ui.compose.NewMessageViewModel
 import com.hmessaging.ui.conversations.ConversationsViewModel
+import com.hmessaging.ui.diagnostics.DiagnosticsViewModel
 import com.hmessaging.ui.forward.ForwardViewModel
 import com.hmessaging.ui.otp.OtpViewModel
 import com.hmessaging.ui.scheduled.ScheduledViewModel
@@ -38,6 +39,7 @@ object HmViewModelFactory {
         initializer { TemplatesViewModel(graph()) }
         initializer { StatsViewModel(graph()) }
         initializer { SettingsViewModel(graph()) }
+        initializer { DiagnosticsViewModel(graph()) }
     }
 
     private fun CreationExtras.graph(): AppGraph {

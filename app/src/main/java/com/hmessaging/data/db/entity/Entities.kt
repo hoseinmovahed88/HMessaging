@@ -182,3 +182,18 @@ data class TemplateEntity(
     val sortOrder: Int = 0,
     val usageCount: Int = 0,
 )
+
+/**
+ * Append-only record of what the system actually delivered to this app.
+ *
+ * Exists because "no messages arrive" has several very different causes — the role is not held,
+ * the permission is denied, the broadcast never fires, or the message was blocked — and they are
+ * indistinguishable from the outside.
+ */
+@Entity(tableName = "diag_events", indices = [Index(value = ["at"])])
+data class DiagEventEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val at: Long,
+    val kind: String,
+    val detail: String,
+)

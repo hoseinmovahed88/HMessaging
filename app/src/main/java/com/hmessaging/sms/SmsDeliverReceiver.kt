@@ -6,6 +6,7 @@ import android.content.Intent
 import android.provider.Telephony
 import android.telephony.SmsMessage
 import com.hmessaging.di.AppGraph
+import com.hmessaging.system.Diagnostics
 import com.hmessaging.util.AppRoles
 import kotlinx.coroutines.launch
 
@@ -19,12 +20,22 @@ class SmsDeliverReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action != Telephony.Sms.Intents.SMS_DELIVER_ACTION) return
-        val incoming = IncomingSms.fromIntent(intent) ?: return
-
         val graph = AppGraph.from(context)
+        val incoming = IncomingSms.fromIntent(intent)
         val pending = goAsync()
         graph.applicationScope.launch {
             try {
+                if (incoming == null) {
+                    graph.diagnostics.record(
+                        Diagnostics.KIND_SMS_DELIVER,
+                        "broadcast arrived but carried no readable message",
+                    )
+                    return@launch
+                }
+                graph.diagnostics.record(
+                    Diagnostics.KIND_SMS_DELIVER,
+                    "from ${incoming.address}, ${incoming.parts} part(s)",
+                )
                 graph.incomingPipeline.handle(
                     address = incoming.address,
                     body = incoming.body,
@@ -51,13 +62,22 @@ class SmsReceivedReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action != Telephony.Sms.Intents.SMS_RECEIVED_ACTION) return
-        if (AppRoles.isDefaultSmsApp(context)) return // SmsDeliverReceiver owns this message.
-        val incoming = IncomingSms.fromIntent(intent) ?: return
-
         val graph = AppGraph.from(context)
+        val isDefault = AppRoles.isDefaultSmsApp(context)
+        val incoming = IncomingSms.fromIntent(intent)
         val pending = goAsync()
         graph.applicationScope.launch {
             try {
+                graph.diagnostics.record(
+                    Diagnostics.KIND_SMS_RECEIVED,
+                    when {
+                        incoming == null -> "broadcast arrived but carried no readable message"
+                        isDefault -> "from ${incoming.address} — ignored, SMS_DELIVER owns it"
+                        else -> "from ${incoming.address}, ${incoming.parts} part(s)"
+                    },
+                )
+                // SmsDeliverReceiver owns the message whenever we hold the role.
+                if (incoming == null || isDefault) return@launch
                 graph.incomingPipeline.handle(
                     address = incoming.address,
                     body = incoming.body,

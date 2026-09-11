@@ -4,6 +4,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.Forum
 import androidx.compose.material.icons.filled.Insights
+import androidx.compose.material.icons.filled.MonitorHeart
 import androidx.compose.material.icons.filled.Password
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Settings
@@ -25,6 +26,7 @@ object Routes {
     const val TEMPLATES = "templates"
     const val STATS = "stats"
     const val SETTINGS = "settings"
+    const val DIAGNOSTICS = "diagnostics"
 
     fun thread(threadId: Long): String = "thread/$threadId"
 }
@@ -45,5 +47,6 @@ val drawerDestinations = listOf(
     DrawerDestination(Routes.OTP, R.string.nav_otp, Icons.Filled.Password),
     DrawerDestination(Routes.TEMPLATES, R.string.nav_templates, Icons.Filled.Bookmark),
     DrawerDestination(Routes.STATS, R.string.nav_stats, Icons.Filled.Insights),
+    DrawerDestination(Routes.DIAGNOSTICS, R.string.nav_diagnostics, Icons.Filled.MonitorHeart),
     DrawerDestination(Routes.SETTINGS, R.string.nav_settings, Icons.Filled.Settings),
 )

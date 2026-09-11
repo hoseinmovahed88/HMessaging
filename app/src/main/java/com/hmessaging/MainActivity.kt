@@ -29,6 +29,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.hmessaging.data.prefs.AppSettings
 import com.hmessaging.di.AppGraph
+import com.hmessaging.system.Diagnostics
 import com.hmessaging.ui.nav.HmApp
 import com.hmessaging.ui.nav.Routes
 import com.hmessaging.ui.theme.HmTheme
@@ -51,7 +52,7 @@ class MainActivity : AppCompatActivity() {
 
     private val roleLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult(),
-    ) { importSystemSmsOnceIfDefault() }
+    ) { importSystemSmsOnce() }
 
     private var unlocked by mutableStateOf(false)
 
@@ -103,7 +104,7 @@ class MainActivity : AppCompatActivity() {
         super.onResume()
         // The role can be granted from system Settings as well as from our own prompt, so the
         // one-time history import is driven by observing the role, not by a dialog result.
-        importSystemSmsOnceIfDefault()
+        importSystemSmsOnce()
     }
 
     /** App lock is only meaningful when the device can actually authenticate. */
@@ -141,17 +142,23 @@ class MainActivity : AppCompatActivity() {
     }
 
     /**
-     * Becoming the default SMS app is the first moment the phone's existing history is readable,
-     * so the one-time import runs as soon as we notice we hold the role.
+     * Pulls the phone's existing SMS history in once.
+     *
+     * Reading the SMS provider needs READ_SMS, not the default-SMS role — gating this on the role
+     * meant a user who had granted the permission but not the role saw a permanently empty list
+     * with no explanation.
      */
-    private fun importSystemSmsOnceIfDefault() {
-        if (!AppRoles.isDefaultSmsApp(this)) return
+    private fun importSystemSmsOnce() {
         if (!Permissions.has(this, android.Manifest.permission.READ_SMS)) return
         val graph = AppGraph.from(this)
         graph.applicationScope.launch {
             if (graph.prefs.settings.first().systemSmsImported) return@launch
-            graph.smsImporter.importAll()
+            val progress = graph.smsImporter.importAll()
             graph.prefs.setSystemSmsImported(true)
+            graph.diagnostics.record(
+                Diagnostics.KIND_IMPORT,
+                "imported ${progress.imported}, skipped ${progress.skipped}",
+            )
         }
     }
 

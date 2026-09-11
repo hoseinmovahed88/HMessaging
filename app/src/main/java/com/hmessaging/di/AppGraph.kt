@@ -16,6 +16,7 @@ import com.hmessaging.sms.SimManager
 import com.hmessaging.sms.SmsImporter
 import com.hmessaging.sms.SmsSender
 import com.hmessaging.sms.SystemSmsWriter
+import com.hmessaging.system.Diagnostics
 import com.hmessaging.util.ContactsLookup
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -44,6 +45,9 @@ class AppGraph private constructor(private val appContext: Context) {
     val forwardDao by lazy { database.forwardDao() }
     val otpDao by lazy { database.otpDao() }
     val templateDao by lazy { database.templateDao() }
+    val diagDao by lazy { database.diagDao() }
+
+    val diagnostics: Diagnostics by lazy { Diagnostics(appContext, diagDao, messageDao) }
 
     val contacts: ContactsLookup by lazy { ContactsLookup(appContext) }
     val simManager: SimManager by lazy { SimManager(appContext) }
@@ -73,6 +77,7 @@ class AppGraph private constructor(private val appContext: Context) {
     val incomingPipeline: IncomingMessagePipeline by lazy {
         IncomingMessagePipeline(
             repository = messageRepository,
+            diagnostics = diagnostics,
             blockEngine = blockEngine,
             otpPresenter = otpPresenter,
             autoReplyEngine = autoReplyEngine,

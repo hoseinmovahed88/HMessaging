@@ -31,6 +31,7 @@ import com.hmessaging.ui.autoreply.AutoReplyScreen
 import com.hmessaging.ui.blocked.BlockedScreen
 import com.hmessaging.ui.compose.NewMessageScreen
 import com.hmessaging.ui.conversations.ConversationsScreen
+import com.hmessaging.ui.diagnostics.DiagnosticsScreen
 import com.hmessaging.ui.forward.ForwardScreen
 import com.hmessaging.ui.otp.OtpScreen
 import com.hmessaging.ui.scheduled.ScheduledScreen
@@ -108,6 +109,7 @@ fun HmApp(
                     onOpenThread = { navController.navigate(Routes.thread(it)) },
                     onNewMessage = { navController.navigate(Routes.NEW_MESSAGE) },
                     onRequestDefaultSmsApp = onRequestDefaultSmsApp,
+                    onOpenDiagnostics = { navController.navigate(Routes.DIAGNOSTICS) },
                 )
             }
             composable(
@@ -148,6 +150,9 @@ fun HmApp(
             }
             composable(Routes.SETTINGS) {
                 SettingsScreen(onOpenDrawer = openDrawer)
+            }
+            composable(Routes.DIAGNOSTICS) {
+                DiagnosticsScreen(onOpenDrawer = openDrawer)
             }
         }
     }

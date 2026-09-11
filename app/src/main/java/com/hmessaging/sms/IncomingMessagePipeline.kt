@@ -9,6 +9,7 @@ import com.hmessaging.feature.forward.ForwardEngine
 import com.hmessaging.feature.otp.OtpDetector
 import com.hmessaging.feature.otp.OtpPresenter
 import com.hmessaging.notify.Notifications
+import com.hmessaging.system.Diagnostics
 import kotlinx.coroutines.flow.first
 
 /**
@@ -20,6 +21,7 @@ import kotlinx.coroutines.flow.first
  */
 class IncomingMessagePipeline(
     private val repository: MessageRepository,
+    private val diagnostics: Diagnostics,
     private val blockEngine: BlockEngine,
     private val otpPresenter: OtpPresenter,
     private val autoReplyEngine: AutoReplyEngine,
@@ -39,6 +41,7 @@ class IncomingMessagePipeline(
         when (val decision = blockEngine.evaluateMessage(address, body)) {
             is BlockDecision.Blocked -> {
                 blockEngine.record(address, body, receivedAt, decision)
+                diagnostics.record(Diagnostics.KIND_BLOCKED, "from $address — ${decision.reason}")
                 return
             }
 
@@ -56,6 +59,11 @@ class IncomingMessagePipeline(
             parts = parts,
             isOtp = otpMatch != null,
             mirrorToSystem = mirrorToSystem,
+        )
+
+        diagnostics.record(
+            Diagnostics.KIND_STORED,
+            "from $address, $parts part(s), thread $threadId" + if (otpMatch != null) ", OTP" else "",
         )
 
         if (otpMatch != null) {

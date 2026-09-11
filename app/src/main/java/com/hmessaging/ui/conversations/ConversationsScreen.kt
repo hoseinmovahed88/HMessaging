@@ -65,6 +65,7 @@ fun ConversationsScreen(
     onOpenThread: (Long) -> Unit,
     onNewMessage: () -> Unit,
     onRequestDefaultSmsApp: () -> Unit,
+    onOpenDiagnostics: () -> Unit,
     viewModel: ConversationsViewModel = viewModel(factory = HmViewModelFactory.Factory),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -110,7 +111,10 @@ fun ConversationsScreen(
         ) {
             if (!isDefaultSmsApp) {
                 item("default-app-banner") {
-                    DefaultSmsAppBanner(onRequest = onRequestDefaultSmsApp)
+                    DefaultSmsAppBanner(
+                        onRequest = onRequestDefaultSmsApp,
+                        onOpenDiagnostics = onOpenDiagnostics,
+                    )
                 }
             }
 

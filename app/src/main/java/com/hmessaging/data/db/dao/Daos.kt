@@ -11,6 +11,7 @@ import com.hmessaging.data.db.entity.AutoReplyLogEntity
 import com.hmessaging.data.db.entity.AutoReplyRuleEntity
 import com.hmessaging.data.db.entity.BlockRuleEntity
 import com.hmessaging.data.db.entity.BlockedMessageEntity
+import com.hmessaging.data.db.entity.DiagEventEntity
 import com.hmessaging.data.db.entity.ForwardLogEntity
 import com.hmessaging.data.db.entity.ForwardRuleEntity
 import com.hmessaging.data.db.entity.MessageEntity
@@ -356,4 +357,24 @@ interface TemplateDao {
 
     @Query("UPDATE templates SET usageCount = usageCount + 1 WHERE id = :id")
     suspend fun incrementUsage(id: Long)
+}
+
+@Dao
+interface DiagDao {
+
+    @Query("SELECT * FROM diag_events ORDER BY at DESC LIMIT :limit")
+    fun observeRecent(limit: Int = 200): Flow<List<DiagEventEntity>>
+
+    @Query("SELECT * FROM diag_events ORDER BY at DESC LIMIT :limit")
+    suspend fun recent(limit: Int = 200): List<DiagEventEntity>
+
+    @Insert
+    suspend fun insert(event: DiagEventEntity)
+
+    @Query("DELETE FROM diag_events")
+    suspend fun clear()
+
+    /** Keeps the log bounded without needing a scheduled sweep. */
+    @Query("DELETE FROM diag_events WHERE id NOT IN (SELECT id FROM diag_events ORDER BY at DESC LIMIT :keep)")
+    suspend fun trimTo(keep: Int)
 }

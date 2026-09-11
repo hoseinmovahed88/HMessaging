@@ -15,6 +15,22 @@
     <string name="stat_last_week">۷ روز اخیر</string>
     <string name="stat_top_senders">پرتکرارترین فرستنده‌ها</string>
     <string name="nav_settings">تنظیمات</string>
+    <string name="nav_diagnostics">عیب‌یابی</string>
+    <string name="diag_refresh">بازخوانی</string>
+    <string name="diag_running">در حال بررسی…</string>
+    <string name="diag_none">هنوز گزارشی نیست</string>
+    <string name="diag_all_ok">همه پیش‌نیازهای دریافت پیام برقرار است.</string>
+    <string name="diag_problems">یکی از موارد زیر جلوی دریافت پیام را گرفته است.</string>
+    <string name="diag_checks">بررسی‌ها</string>
+    <string name="diag_actions">راه‌حل‌ها</string>
+    <string name="diag_events">آنچه سیستم تحویل داده است</string>
+    <string name="diag_no_events">هنوز هیچ چیزی به این برنامه تحویل داده نشده. اگر از زمان نصب پیامکی دریافت کرده‌اید، یعنی اصلاً broadcast به برنامه نمی‌رسد.</string>
+    <string name="diag_open_default_apps">باز کردن تنظیمات برنامه‌های پیش‌فرض</string>
+    <string name="diag_open_app_settings">باز کردن تنظیمات این برنامه</string>
+    <string name="diag_import_now">درون‌ریزی پیامک‌های موجود</string>
+    <string name="diag_copy_report">کپی گزارش کامل</string>
+    <string name="diag_clear_log">پاک کردن گزارش</string>
+    <string name="default_app_why">کار نمی‌کند؟ عیب‌یابی را باز کنید</string>
     <string name="nav_archived">بایگانی</string>
 
     <string name="save">ذخیره</string>

@@ -9,6 +9,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -22,7 +23,11 @@ import com.hmessaging.R
  * of the navigation host it had none and sat underneath the status bar.
  */
 @Composable
-fun DefaultSmsAppBanner(onRequest: () -> Unit, modifier: Modifier = Modifier) {
+fun DefaultSmsAppBanner(
+    onRequest: () -> Unit,
+    onOpenDiagnostics: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     HyperCard(modifier = modifier) {
         Column(
             modifier = Modifier.padding(18.dp),
@@ -52,6 +57,16 @@ fun DefaultSmsAppBanner(onRequest: () -> Unit, modifier: Modifier = Modifier) {
                 Text(
                     text = stringResource(R.string.default_app_action),
                     style = MaterialTheme.typography.labelLarge,
+                )
+            }
+            TextButton(
+                onClick = onOpenDiagnostics,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(
+                    text = stringResource(R.string.default_app_why),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         }

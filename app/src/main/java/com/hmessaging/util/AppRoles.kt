@@ -17,8 +17,48 @@ import androidx.core.net.toUri
  */
 object AppRoles {
 
-    fun isDefaultSmsApp(context: Context): Boolean =
-        context.packageName == Telephony.Sms.getDefaultSmsPackage(context)
+    /**
+     * True when this app holds the SMS role.
+     *
+     * Two sources are consulted because they disagree on some vendor ROMs: [RoleManager] is the
+     * modern authority, while [Telephony.Sms.getDefaultSmsPackage] is what older code — and some
+     * OEM settings screens — actually update. Trusting either alone leaves the app insisting it is
+     * not the default while messages are being delivered to it, or the reverse.
+     */
+    fun isDefaultSmsApp(context: Context): Boolean {
+        val byPackage = runCatching {
+            context.packageName == Telephony.Sms.getDefaultSmsPackage(context)
+        }.getOrDefault(false)
+        return byPackage || isSmsRoleHeld(context)
+    }
+
+    fun isSmsRoleHeld(context: Context): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return false
+        val roleManager = context.getSystemService(RoleManager::class.java) ?: return false
+        return runCatching {
+            roleManager.isRoleAvailable(RoleManager.ROLE_SMS) && roleManager.isRoleHeld(RoleManager.ROLE_SMS)
+        }.getOrDefault(false)
+    }
+
+    fun isSmsRoleAvailable(context: Context): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return false
+        val roleManager = context.getSystemService(RoleManager::class.java) ?: return false
+        return runCatching { roleManager.isRoleAvailable(RoleManager.ROLE_SMS) }.getOrDefault(false)
+    }
+
+    /** Where the user can change the default SMS app by hand when the role prompt does not stick. */
+    fun defaultAppsSettingsIntent(): Intent =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            Intent(Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS)
+        } else {
+            Intent(Settings.ACTION_SETTINGS)
+        }
+
+    fun appDetailsSettingsIntent(context: Context): Intent =
+        Intent(
+            Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+            "package:${context.packageName}".toUri(),
+        )
 
     /** Intent that asks the user to promote this app to default SMS handler. */
     fun defaultSmsRequestIntent(context: Context): Intent =
