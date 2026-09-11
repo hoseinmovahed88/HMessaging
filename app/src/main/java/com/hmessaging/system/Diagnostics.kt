@@ -15,6 +15,7 @@ import com.hmessaging.data.db.dao.ThreadDao
 import com.hmessaging.data.db.entity.DiagEventEntity
 import com.hmessaging.data.prefs.AppPrefs
 import com.hmessaging.sms.SmsSyncService
+import com.hmessaging.sms.SystemSmsWriter
 import com.hmessaging.util.AppRoles
 import com.hmessaging.util.Permissions
 import com.hmessaging.util.TimeFormat
@@ -32,6 +33,7 @@ class Diagnostics(
     private val messageDao: MessageDao,
     private val threadDao: ThreadDao,
     private val prefs: AppPrefs,
+    private val systemWriter: SystemSmsWriter,
 ) {
 
     private fun contactsPermissionGranted(): Boolean =
@@ -221,6 +223,31 @@ class Diagnostics(
             ),
         )
 
+        // The question another app asking "what was the last message?" actually depends on.
+        val recentSent = messageDao.recentSent(SENT_SAMPLE)
+        val mirrored = recentSent.count { systemWriter.exists(it.address, it.date, it.body) }
+        add(
+            Check(
+                label = "Sent messages visible to other apps",
+                severity = when {
+                    recentSent.isEmpty() -> Severity.OK
+                    mirrored == recentSent.size -> Severity.OK
+                    else -> Severity.WARNING
+                },
+                detail = when {
+                    recentSent.isEmpty() -> "nothing sent from this app yet"
+                    mirrored == recentSent.size ->
+                        "the last $mirrored are in the phone's SMS store"
+                    systemWriter.canWrite() ->
+                        "only $mirrored of the last ${recentSent.size} reached the phone's SMS store"
+                    else ->
+                        "$mirrored of the last ${recentSent.size} reached the phone's SMS store — " +
+                            "Android refuses these writes unless it names this app as default, so " +
+                            "other apps cannot see messages sent from here"
+                },
+            ),
+        )
+
         val stored = messageDao.count()
         add(
             Check(
@@ -317,5 +344,6 @@ class Diagnostics(
         const val KIND_ERROR = "ERROR"
 
         private const val MAX_EVENTS = 300
+        private const val SENT_SAMPLE = 10
     }
 }

@@ -43,6 +43,8 @@ class SystemSmsWriter(private val context: Context) {
         return runCatching { context.contentResolver.delete(uri, null, null) > 0 }.getOrDefault(false)
     }
 
+    fun canWrite(): Boolean = AppRoles.isPlatformDefaultSmsApp(context)
+
     private fun insert(
         uri: String,
         address: String,
@@ -69,4 +71,21 @@ class SystemSmsWriter(private val context: Context) {
             context.contentResolver.insert(uri.toUri(), values)?.lastPathSegment?.toLongOrNull()
         }.getOrNull()
     }
+
+    /**
+     * True when a message with this address, timestamp and body exists in the platform store.
+     *
+     * Android refuses provider writes from an app it does not consider the default SMS app, and
+     * the refusal is silent — the insert returns a URI that points at no row. Reading back is the
+     * only way to know whether anything landed.
+     */
+    fun exists(address: String, date: Long, body: String): Boolean = runCatching {
+        context.contentResolver.query(
+            Telephony.Sms.CONTENT_URI,
+            arrayOf(Telephony.Sms._ID),
+            "${Telephony.Sms.DATE} = ? AND ${Telephony.Sms.BODY} = ?",
+            arrayOf(date.toString(), body),
+            null,
+        )?.use { it.count > 0 } ?: false
+    }.getOrDefault(false)
 }

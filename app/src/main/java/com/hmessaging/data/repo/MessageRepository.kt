@@ -144,12 +144,20 @@ class MessageRepository(
         return threadId to messageId
     }
 
+    /**
+     * [mirrorToSystem] is advisory for sent messages: the write is always attempted.
+     *
+     * No other app writes the messages this one sends, so there is nothing to duplicate, and a
+     * phone that refuses the write simply ignores it. Skipping it outright is the only option
+     * that guarantees other apps — a dialer showing a contact's last message, for instance —
+     * never see anything sent from here.
+     */
     suspend fun markSent(messageId: Long, mirrorToSystem: Boolean) {
         val message = messageDao.byId(messageId) ?: return
         if (message.status == DeliveryStatus.FAILED) return
         messageDao.setType(messageId, MessageType.SENT)
         messageDao.setStatus(messageId, DeliveryStatus.SENT, null)
-        if (mirrorToSystem && message.systemId == null) {
+        if (message.systemId == null) {
             val systemId = systemWriter.writeSent(
                 message.address,
                 message.body,
