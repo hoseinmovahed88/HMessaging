@@ -1,38 +1,35 @@
 package com.hmessaging.ui.conversations
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Archive
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Forum
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.NotificationsOff
 import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.Badge
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
-import androidx.compose.material3.TextFieldDefaults
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -40,7 +37,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -52,104 +48,163 @@ import com.hmessaging.data.db.entity.ThreadEntity
 import com.hmessaging.ui.HmViewModelFactory
 import com.hmessaging.ui.components.Avatar
 import com.hmessaging.ui.components.EmptyState
-import com.hmessaging.ui.components.SectionHeader
+import com.hmessaging.ui.components.HyperCard
+import com.hmessaging.ui.components.HyperGroupTitle
+import com.hmessaging.ui.components.HyperIconButton
+import com.hmessaging.ui.components.HyperRowDivider
+import com.hmessaging.ui.components.HyperScreen
+import com.hmessaging.ui.components.HyperSearchField
+import com.hmessaging.ui.components.DefaultSmsAppBanner
+import com.hmessaging.ui.rememberIsDefaultSmsApp
 import com.hmessaging.util.PhoneNumbers
 import com.hmessaging.util.TimeFormat
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ConversationsScreen(
     onOpenDrawer: () -> Unit,
     onOpenThread: (Long) -> Unit,
     onNewMessage: () -> Unit,
+    onRequestDefaultSmsApp: () -> Unit,
     viewModel: ConversationsViewModel = viewModel(factory = HmViewModelFactory.Factory),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val isDefaultSmsApp = rememberIsDefaultSmsApp()
     var searchVisible by remember { mutableStateOf(false) }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                navigationIcon = {
-                    IconButton(onClick = onOpenDrawer) {
-                        Icon(Icons.Filled.Menu, contentDescription = null)
-                    }
+    HyperScreen(
+        title = stringResource(R.string.nav_conversations),
+        navigationIcon = {
+            HyperIconButton(Icons.Filled.Menu, null, onOpenDrawer)
+        },
+        actions = {
+            HyperIconButton(
+                icon = Icons.Filled.Search,
+                contentDescription = stringResource(R.string.search),
+                onClick = {
+                    searchVisible = !searchVisible
+                    if (!searchVisible) viewModel.onQueryChange("")
                 },
-                title = {
-                    if (searchVisible) {
-                        TextField(
-                            value = state.query,
-                            onValueChange = viewModel::onQueryChange,
-                            placeholder = { Text(stringResource(R.string.search)) },
-                            singleLine = true,
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = TextFieldDefaults.colors(
-                                focusedContainerColor = Color.Transparent,
-                                unfocusedContainerColor = Color.Transparent,
-                            ),
-                        )
-                    } else {
-                        Text(stringResource(R.string.nav_conversations))
-                    }
-                },
-                actions = {
-                    IconButton(
-                        onClick = {
-                            searchVisible = !searchVisible
-                            if (!searchVisible) viewModel.onQueryChange("")
-                        },
-                    ) {
-                        Icon(
-                            imageVector = if (searchVisible) Icons.Filled.Close else Icons.Filled.Search,
-                            contentDescription = stringResource(R.string.search),
-                        )
-                    }
-                    IconButton(onClick = viewModel::toggleArchivedVisible) {
-                        Icon(Icons.Filled.Archive, contentDescription = stringResource(R.string.nav_archived))
-                    }
-                },
+            )
+            HyperIconButton(
+                icon = Icons.Filled.Archive,
+                contentDescription = stringResource(R.string.nav_archived),
+                onClick = viewModel::toggleArchivedVisible,
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = onNewMessage) {
+            FloatingActionButton(
+                onClick = onNewMessage,
+                shape = RoundedCornerShape(20.dp),
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary,
+            ) {
                 Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.new_message))
             }
         },
     ) { padding ->
-        Box(modifier = Modifier.fillMaxSize().padding(padding)) {
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding),
+            contentPadding = PaddingValues(bottom = 96.dp),
+        ) {
+            if (!isDefaultSmsApp) {
+                item("default-app-banner") {
+                    DefaultSmsAppBanner(onRequest = onRequestDefaultSmsApp)
+                }
+            }
+
+            item("search") {
+                AnimatedVisibility(visible = searchVisible) {
+                    HyperSearchField(
+                        value = state.query,
+                        onValueChange = viewModel::onQueryChange,
+                        placeholder = stringResource(R.string.search),
+                    )
+                }
+            }
+
             when {
-                state.isSearching -> SearchResults(state, onOpenThread)
+                state.isSearching -> searchResults(state, onOpenThread)
 
                 state.threads.isEmpty() && (!state.showArchived || state.archived.isEmpty()) ->
-                    EmptyState(
-                        text = stringResource(R.string.no_conversations),
-                        icon = Icons.Filled.Forum,
-                    )
+                    item("empty") {
+                        EmptyState(
+                            text = stringResource(R.string.no_conversations),
+                            icon = Icons.Filled.Forum,
+                            modifier = Modifier.padding(top = 96.dp),
+                        )
+                    }
 
-                else -> ThreadList(state, viewModel, onOpenThread)
+                else -> {
+                    if (state.threads.isNotEmpty()) {
+                        item("threads") {
+                            HyperCard {
+                                state.threads.forEachIndexed { index, thread ->
+                                    ThreadRow(thread, viewModel, onOpenThread)
+                                    if (index != state.threads.lastIndex) HyperRowDivider(startInset = 72)
+                                }
+                            }
+                        }
+                    }
+                    if (state.showArchived && state.archived.isNotEmpty()) {
+                        item("archived-title") {
+                            HyperGroupTitle(stringResource(R.string.nav_archived))
+                        }
+                        item("archived") {
+                            HyperCard {
+                                state.archived.forEachIndexed { index, thread ->
+                                    ThreadRow(thread, viewModel, onOpenThread)
+                                    if (index != state.archived.lastIndex) HyperRowDivider(startInset = 72)
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
     }
 }
 
-@Composable
-private fun ThreadList(
+private fun androidx.compose.foundation.lazy.LazyListScope.searchResults(
     state: ConversationsUiState,
-    viewModel: ConversationsViewModel,
     onOpenThread: (Long) -> Unit,
 ) {
-    LazyColumn(modifier = Modifier.fillMaxSize()) {
-        items(state.threads, key = { it.id }) { thread ->
-            ThreadRow(thread, viewModel, onOpenThread)
-            HorizontalDivider()
+    if (state.searchResults.isEmpty()) {
+        item("no-results") {
+            EmptyState(
+                text = stringResource(R.string.no_conversations),
+                modifier = Modifier.padding(top = 96.dp),
+            )
         }
-        if (state.showArchived && state.archived.isNotEmpty()) {
-            item {
-                SectionHeader(stringResource(R.string.nav_archived))
-            }
-            items(state.archived, key = { "archived-${it.id}" }) { thread ->
-                ThreadRow(thread, viewModel, onOpenThread)
-                HorizontalDivider()
+        return
+    }
+    items(state.searchResults, key = { it.id }) { message ->
+        HyperCard {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onOpenThread(message.threadId) }
+                    .padding(16.dp),
+            ) {
+                Text(
+                    text = PhoneNumbers.format(message.address),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                Text(
+                    text = message.body,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    text = TimeFormat.full(message.date),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 4.dp),
+                )
             }
         }
     }
@@ -163,6 +218,7 @@ private fun ThreadRow(
 ) {
     var menuOpen by remember { mutableStateOf(false) }
     val title = thread.contactName ?: PhoneNumbers.format(thread.address)
+    val unread = thread.unreadCount > 0
 
     Row(
         modifier = Modifier
@@ -172,48 +228,81 @@ private fun ThreadRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Avatar(name = title)
+        Avatar(name = title, size = 48)
+
         Column(modifier = Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                if (thread.pinned) {
-                    Icon(
-                        Icons.Filled.PushPin,
-                        contentDescription = null,
-                        modifier = Modifier.padding(end = 4.dp),
-                        tint = MaterialTheme.colorScheme.primary,
-                    )
-                }
                 Text(
                     text = title,
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = if (thread.unreadCount > 0) FontWeight.Bold else FontWeight.Normal,
+                    fontWeight = if (unread) FontWeight.Bold else FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f, fill = false),
                 )
+                if (thread.pinned) {
+                    Icon(
+                        Icons.Filled.PushPin,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier
+                            .padding(start = 6.dp)
+                            .size(14.dp),
+                    )
+                }
+                if (thread.muted) {
+                    Icon(
+                        Icons.Filled.NotificationsOff,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier
+                            .padding(start = 6.dp)
+                            .size(14.dp),
+                    )
+                }
             }
             Text(
                 text = thread.snippet,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 2,
+                maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(top = 2.dp),
             )
         }
-        Column(horizontalAlignment = Alignment.End) {
+
+        Column(
+            horizontalAlignment = Alignment.End,
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
             Text(
                 text = TimeFormat.listStamp(thread.lastMessageAt),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            if (thread.unreadCount > 0) {
-                Badge(modifier = Modifier.padding(top = 4.dp)) { Text(thread.unreadCount.toString()) }
+            if (unread) {
+                Surface(
+                    shape = RoundedCornerShape(50),
+                    color = MaterialTheme.colorScheme.primary,
+                ) {
+                    Text(
+                        text = thread.unreadCount.toString(),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp),
+                    )
+                }
             }
         }
+
         Box {
-            IconButton(onClick = { menuOpen = true }) {
-                Icon(Icons.Filled.MoreVert, contentDescription = null)
-            }
+            HyperIconButton(
+                icon = Icons.Filled.MoreVert,
+                contentDescription = null,
+                onClick = { menuOpen = true },
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
             DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                 DropdownMenuItem(
                     text = { Text(stringResource(if (thread.pinned) R.string.unpin else R.string.pin)) },
@@ -258,42 +347,6 @@ private fun ThreadRow(
                     },
                 )
             }
-        }
-    }
-}
-
-@Composable
-private fun SearchResults(state: ConversationsUiState, onOpenThread: (Long) -> Unit) {
-    if (state.searchResults.isEmpty()) {
-        EmptyState(text = stringResource(R.string.no_conversations))
-        return
-    }
-    LazyColumn(modifier = Modifier.fillMaxSize()) {
-        items(state.searchResults, key = { it.id }) { message ->
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { onOpenThread(message.threadId) }
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-            ) {
-                Text(
-                    text = PhoneNumbers.format(message.address),
-                    style = MaterialTheme.typography.titleMedium,
-                )
-                Text(
-                    text = message.body,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Text(
-                    text = TimeFormat.full(message.date),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.outline,
-                )
-            }
-            HorizontalDivider()
         }
     }
 }

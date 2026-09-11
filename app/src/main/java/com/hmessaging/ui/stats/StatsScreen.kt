@@ -29,6 +29,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.hmessaging.R
 import com.hmessaging.ui.HmViewModelFactory
+import com.hmessaging.ui.components.HyperCard
+import com.hmessaging.ui.components.HyperIconButton
+import com.hmessaging.ui.components.HyperScreen
 import com.hmessaging.ui.components.SectionHeader
 import com.hmessaging.util.PhoneNumbers
 
@@ -40,15 +43,9 @@ fun StatsScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                navigationIcon = {
-                    IconButton(onClick = onOpenDrawer) { Icon(Icons.Filled.Menu, contentDescription = null) }
-                },
-                title = { Text(stringResource(R.string.nav_stats)) },
-            )
-        },
+    HyperScreen(
+        title = stringResource(R.string.nav_stats),
+        navigationIcon = { HyperIconButton(Icons.Filled.Menu, null, onOpenDrawer) },
     ) { padding ->
         Column(
             modifier = Modifier

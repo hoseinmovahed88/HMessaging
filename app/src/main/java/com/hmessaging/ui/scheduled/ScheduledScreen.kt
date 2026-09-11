@@ -42,6 +42,9 @@ import com.hmessaging.data.db.entity.ScheduledMessageEntity
 import com.hmessaging.data.model.RepeatMode
 import com.hmessaging.data.model.ScheduleStatus
 import com.hmessaging.ui.HmViewModelFactory
+import com.hmessaging.ui.components.HyperCard
+import com.hmessaging.ui.components.HyperIconButton
+import com.hmessaging.ui.components.HyperScreen
 import com.hmessaging.ui.components.DateTimePickerDialog
 import com.hmessaging.ui.components.EmptyState
 import com.hmessaging.ui.components.SectionHeader
@@ -57,19 +60,13 @@ fun ScheduledScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var editing by remember { mutableStateOf<ScheduledMessageEntity?>(null) }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                navigationIcon = {
-                    IconButton(onClick = onOpenDrawer) { Icon(Icons.Filled.Menu, contentDescription = null) }
-                },
-                title = { Text(stringResource(R.string.nav_scheduled)) },
-                actions = {
-                    TextButton(onClick = viewModel::clearFinished) {
-                        Text(stringResource(R.string.delete))
-                    }
-                },
-            )
+    HyperScreen(
+        title = stringResource(R.string.nav_scheduled),
+        navigationIcon = { HyperIconButton(Icons.Filled.Menu, null, onOpenDrawer) },
+        actions = {
+            TextButton(onClick = viewModel::clearFinished) {
+                Text(stringResource(R.string.delete))
+            }
         },
         floatingActionButton = {
             FloatingActionButton(

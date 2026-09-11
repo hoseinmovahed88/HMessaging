@@ -4,27 +4,22 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -42,11 +37,16 @@ import com.hmessaging.backup.BackupManager
 import com.hmessaging.data.model.ThemeMode
 import com.hmessaging.data.prefs.AppSettings
 import com.hmessaging.ui.HmViewModelFactory
-import com.hmessaging.ui.components.SectionHeader
-import com.hmessaging.ui.components.SwitchRow
+import com.hmessaging.ui.components.HyperCard
+import com.hmessaging.ui.components.HyperGroupTitle
+import com.hmessaging.ui.components.HyperIconButton
+import com.hmessaging.ui.components.HyperRow
+import com.hmessaging.ui.components.HyperRowDivider
+import com.hmessaging.ui.components.HyperScreen
+import com.hmessaging.ui.components.HyperSwitchRow
+import com.hmessaging.ui.rememberIsDefaultSmsApp
 import com.hmessaging.util.AppRoles
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     onOpenDrawer: () -> Unit,
@@ -56,6 +56,7 @@ fun SettingsScreen(
     val status by viewModel.statusMessage.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val snackbarHost = remember { SnackbarHostState() }
+    val isDefaultSmsApp = rememberIsDefaultSmsApp()
 
     var signature by remember(settings.signature) { mutableStateOf(settings.signature) }
     var includeMessagesInBackup by remember { mutableStateOf(false) }
@@ -79,219 +80,261 @@ fun SettingsScreen(
         }
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                navigationIcon = {
-                    IconButton(onClick = onOpenDrawer) { Icon(Icons.Filled.Menu, contentDescription = null) }
-                },
-                title = { Text(stringResource(R.string.nav_settings)) },
-            )
-        },
-        snackbarHost = { SnackbarHost(snackbarHost) },
+    HyperScreen(
+        title = stringResource(R.string.nav_settings),
+        navigationIcon = { HyperIconButton(Icons.Filled.Menu, null, onOpenDrawer) },
+        snackbarHostState = snackbarHost,
     ) { padding ->
-        Column(
+        LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
-                .verticalScroll(rememberScrollState()),
+                .padding(padding),
+            contentPadding = PaddingValues(bottom = 40.dp),
         ) {
-            SectionHeader(stringResource(R.string.settings_appearance))
-            Text(
-                text = stringResource(R.string.settings_theme),
-                style = MaterialTheme.typography.labelLarge,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
-            )
-            Row(
-                modifier = Modifier.padding(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                ThemeMode.entries.forEach { mode ->
-                    FilterChip(
-                        selected = settings.themeMode == mode,
-                        onClick = { viewModel.setThemeMode(mode) },
-                        label = { Text(themeLabel(mode)) },
+            item("appearance-title") { HyperGroupTitle(stringResource(R.string.settings_appearance)) }
+            item("appearance") {
+                HyperCard {
+                    Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
+                        Text(
+                            text = stringResource(R.string.settings_theme),
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.padding(top = 10.dp),
+                        ) {
+                            ThemeMode.entries.forEach { mode ->
+                                FilterChip(
+                                    selected = settings.themeMode == mode,
+                                    onClick = { viewModel.setThemeMode(mode) },
+                                    label = { Text(themeLabel(mode)) },
+                                    shape = RoundedCornerShape(50),
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                        selectedContainerColor = MaterialTheme.colorScheme.primary,
+                                        selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+                                    ),
+                                    border = null,
+                                )
+                            }
+                        }
+                    }
+                    HyperRowDivider()
+                    HyperSwitchRow(
+                        title = stringResource(R.string.settings_dynamic_color),
+                        checked = settings.dynamicColor,
+                        onCheckedChange = viewModel::setDynamicColor,
                     )
                 }
             }
-            SwitchRow(
-                title = stringResource(R.string.settings_dynamic_color),
-                checked = settings.dynamicColor,
-                onCheckedChange = viewModel::setDynamicColor,
-            )
 
-            HorizontalDivider()
-            SectionHeader(stringResource(R.string.settings_sending))
-            SwitchRow(
-                title = stringResource(R.string.settings_delivery_reports),
-                checked = settings.deliveryReports,
-                onCheckedChange = viewModel::setDeliveryReports,
-            )
-            SwitchRow(
-                title = stringResource(R.string.settings_split_counter),
-                subtitle = stringResource(R.string.settings_split_counter_desc),
-                checked = settings.numberLongMessages,
-                onCheckedChange = viewModel::setNumberLongMessages,
-            )
-            if (settings.numberLongMessages) {
-                OutlinedTextField(
-                    value = settings.chunkChars.toString(),
-                    onValueChange = { value ->
-                        value.filter(Char::isDigit).toIntOrNull()?.let(viewModel::setChunkChars)
-                    },
-                    label = { Text(stringResource(R.string.settings_chunk_chars)) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 4.dp),
-                )
-            }
-            SwitchRow(
-                title = stringResource(R.string.settings_signature),
-                checked = settings.signatureEnabled,
-                onCheckedChange = viewModel::setSignatureEnabled,
-            )
-            OutlinedTextField(
-                value = signature,
-                onValueChange = { signature = it },
-                label = { Text(stringResource(R.string.settings_signature)) },
-                enabled = settings.signatureEnabled,
-                trailingIcon = {
-                    TextButton(onClick = { viewModel.setSignature(signature) }) {
-                        Text(stringResource(R.string.save))
-                    }
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 4.dp),
-            )
-
-            val slots = remember { viewModel.simSlots() }
-            if (slots.size > 1) {
-                Text(
-                    text = stringResource(R.string.settings_sim),
-                    style = MaterialTheme.typography.labelLarge,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
-                )
-                Row(
-                    modifier = Modifier.padding(horizontal = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    FilterChip(
-                        selected = settings.defaultSubscriptionId == AppSettings.SUBSCRIPTION_UNSET,
-                        onClick = { viewModel.setDefaultSubscriptionId(AppSettings.SUBSCRIPTION_UNSET) },
-                        label = { Text(stringResource(R.string.theme_system)) },
+            item("permissions-title") { HyperGroupTitle(stringResource(R.string.settings_permissions)) }
+            item("permissions") {
+                HyperCard {
+                    PermissionRow(
+                        label = stringResource(R.string.default_app_title),
+                        granted = isDefaultSmsApp,
+                        onRequest = { roleLauncher.launch(AppRoles.defaultSmsRequestIntent(context)) },
                     )
-                    slots.forEach { slot ->
-                        FilterChip(
-                            selected = settings.defaultSubscriptionId == slot.subscriptionId,
-                            onClick = { viewModel.setDefaultSubscriptionId(slot.subscriptionId) },
-                            label = { Text(slot.displayName) },
+                    HyperRowDivider()
+                    PermissionRow(
+                        label = stringResource(R.string.otp_popup_enabled),
+                        granted = AppRoles.canDrawOverlays(context),
+                        onRequest = { roleLauncher.launch(AppRoles.overlayPermissionIntent(context)) },
+                    )
+                    AppRoles.exactAlarmSettingsIntent(context)?.let { intent ->
+                        HyperRowDivider()
+                        PermissionRow(
+                            label = stringResource(R.string.settings_exact_alarms),
+                            granted = AppRoles.canScheduleExactAlarms(context),
+                            onRequest = { roleLauncher.launch(intent) },
+                        )
+                    }
+                    if (AppRoles.canRequestCallScreeningRole()) {
+                        HyperRowDivider()
+                        PermissionRow(
+                            label = stringResource(R.string.block_calls_too),
+                            granted = AppRoles.isCallScreeningApp(context),
+                            onRequest = {
+                                AppRoles.callScreeningRequestIntent(context)?.let(roleLauncher::launch)
+                            },
                         )
                     }
                 }
             }
 
-            HorizontalDivider()
-            SectionHeader(stringResource(R.string.channel_messages))
-            SwitchRow(
-                title = stringResource(R.string.settings_notification_preview),
-                checked = settings.notificationPreview,
-                onCheckedChange = viewModel::setNotificationPreview,
-            )
-
-            HorizontalDivider()
-            SectionHeader(stringResource(R.string.settings_security))
-            SwitchRow(
-                title = stringResource(R.string.settings_app_lock),
-                subtitle = stringResource(R.string.settings_app_lock_desc),
-                checked = settings.appLockEnabled,
-                onCheckedChange = viewModel::setAppLockEnabled,
-            )
-
-            HorizontalDivider()
-            SectionHeader(stringResource(R.string.settings_permissions))
-            PermissionRow(
-                label = stringResource(R.string.default_app_title),
-                granted = AppRoles.isDefaultSmsApp(context),
-                onRequest = { roleLauncher.launch(AppRoles.defaultSmsRequestIntent(context)) },
-            )
-            PermissionRow(
-                label = stringResource(R.string.otp_popup_enabled),
-                granted = AppRoles.canDrawOverlays(context),
-                onRequest = { roleLauncher.launch(AppRoles.overlayPermissionIntent(context)) },
-            )
-            AppRoles.exactAlarmSettingsIntent(context)?.let { intent ->
-                PermissionRow(
-                    label = stringResource(R.string.settings_exact_alarms),
-                    granted = AppRoles.canScheduleExactAlarms(context),
-                    onRequest = { roleLauncher.launch(intent) },
-                )
-            }
-            if (AppRoles.canRequestCallScreeningRole()) {
-                PermissionRow(
-                    label = stringResource(R.string.block_calls_too),
-                    granted = AppRoles.isCallScreeningApp(context),
-                    onRequest = {
-                        AppRoles.callScreeningRequestIntent(context)?.let(roleLauncher::launch)
-                    },
-                )
-            }
-
-            HorizontalDivider()
-            SectionHeader(stringResource(R.string.settings_backup))
-            TextButton(
-                onClick = viewModel::importSystemSms,
-                modifier = Modifier.padding(horizontal = 8.dp),
-            ) { Text(stringResource(R.string.settings_import_system)) }
-            SwitchRow(
-                title = stringResource(R.string.settings_backup_include_messages),
-                checked = includeMessagesInBackup,
-                onCheckedChange = { includeMessagesInBackup = it },
-            )
-            Row(modifier = Modifier.padding(horizontal = 8.dp)) {
-                TextButton(onClick = { exportLauncher.launch(BackupManager.suggestedFileName()) }) {
-                    Text(stringResource(R.string.settings_export))
-                }
-                TextButton(onClick = { importLauncher.launch(arrayOf(BackupManager.MIME_TYPE)) }) {
-                    Text(stringResource(R.string.settings_import))
+            item("sending-title") { HyperGroupTitle(stringResource(R.string.settings_sending)) }
+            item("sending") {
+                HyperCard {
+                    HyperSwitchRow(
+                        title = stringResource(R.string.settings_delivery_reports),
+                        checked = settings.deliveryReports,
+                        onCheckedChange = viewModel::setDeliveryReports,
+                    )
+                    HyperRowDivider()
+                    HyperSwitchRow(
+                        title = stringResource(R.string.settings_split_counter),
+                        subtitle = stringResource(R.string.settings_split_counter_desc),
+                        checked = settings.numberLongMessages,
+                        onCheckedChange = viewModel::setNumberLongMessages,
+                    )
+                    if (settings.numberLongMessages) {
+                        HyperRowDivider()
+                        NumberField(
+                            label = stringResource(R.string.settings_chunk_chars),
+                            value = settings.chunkChars,
+                            onValueChange = viewModel::setChunkChars,
+                        )
+                    }
+                    HyperRowDivider()
+                    HyperSwitchRow(
+                        title = stringResource(R.string.settings_signature),
+                        checked = settings.signatureEnabled,
+                        onCheckedChange = viewModel::setSignatureEnabled,
+                    )
+                    if (settings.signatureEnabled) {
+                        HyperRowDivider()
+                        OutlinedTextField(
+                            value = signature,
+                            onValueChange = { signature = it },
+                            label = { Text(stringResource(R.string.settings_signature)) },
+                            shape = RoundedCornerShape(16.dp),
+                            trailingIcon = {
+                                TextButton(onClick = { viewModel.setSignature(signature) }) {
+                                    Text(stringResource(R.string.save))
+                                }
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                        )
+                    }
                 }
             }
 
-            HorizontalDivider()
-            SectionHeader(stringResource(R.string.settings_about))
-            Text(
-                text = stringResource(R.string.about_body),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(16.dp),
-            )
+            val slots = viewModel.simSlots()
+            if (slots.size > 1) {
+                item("sim-title") { HyperGroupTitle(stringResource(R.string.settings_sim)) }
+                item("sim") {
+                    HyperCard {
+                        HyperRow(
+                            title = stringResource(R.string.theme_system),
+                            onClick = { viewModel.setDefaultSubscriptionId(AppSettings.SUBSCRIPTION_UNSET) },
+                            value = if (settings.defaultSubscriptionId == AppSettings.SUBSCRIPTION_UNSET) "✓" else null,
+                        )
+                        slots.forEach { slot ->
+                            HyperRowDivider()
+                            HyperRow(
+                                title = slot.displayName,
+                                subtitle = slot.carrierName,
+                                onClick = { viewModel.setDefaultSubscriptionId(slot.subscriptionId) },
+                                value = if (settings.defaultSubscriptionId == slot.subscriptionId) "✓" else null,
+                            )
+                        }
+                    }
+                }
+            }
+
+            item("notifications-title") { HyperGroupTitle(stringResource(R.string.channel_messages)) }
+            item("notifications") {
+                HyperCard {
+                    HyperSwitchRow(
+                        title = stringResource(R.string.settings_notification_preview),
+                        checked = settings.notificationPreview,
+                        onCheckedChange = viewModel::setNotificationPreview,
+                    )
+                }
+            }
+
+            item("security-title") { HyperGroupTitle(stringResource(R.string.settings_security)) }
+            item("security") {
+                HyperCard {
+                    HyperSwitchRow(
+                        title = stringResource(R.string.settings_app_lock),
+                        subtitle = stringResource(R.string.settings_app_lock_desc),
+                        checked = settings.appLockEnabled,
+                        onCheckedChange = viewModel::setAppLockEnabled,
+                    )
+                }
+            }
+
+            item("backup-title") { HyperGroupTitle(stringResource(R.string.settings_backup)) }
+            item("backup") {
+                HyperCard {
+                    HyperRow(
+                        title = stringResource(R.string.settings_import_system),
+                        showChevron = true,
+                        onClick = viewModel::importSystemSms,
+                    )
+                    HyperRowDivider()
+                    HyperSwitchRow(
+                        title = stringResource(R.string.settings_backup_include_messages),
+                        checked = includeMessagesInBackup,
+                        onCheckedChange = { includeMessagesInBackup = it },
+                    )
+                    HyperRowDivider()
+                    HyperRow(
+                        title = stringResource(R.string.settings_export),
+                        showChevron = true,
+                        onClick = { exportLauncher.launch(BackupManager.suggestedFileName()) },
+                    )
+                    HyperRowDivider()
+                    HyperRow(
+                        title = stringResource(R.string.settings_import),
+                        showChevron = true,
+                        onClick = { importLauncher.launch(arrayOf(BackupManager.MIME_TYPE)) },
+                    )
+                }
+            }
+
+            item("about-title") { HyperGroupTitle(stringResource(R.string.settings_about)) }
+            item("about") {
+                HyperCard {
+                    Text(
+                        text = stringResource(R.string.about_body),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(16.dp),
+                    )
+                }
+            }
         }
     }
 }
 
 @Composable
-private fun PermissionRow(label: String, granted: Boolean, onRequest: () -> Unit) {
-    Row(
+private fun NumberField(label: String, value: Int, onValueChange: (Int) -> Unit) {
+    OutlinedTextField(
+        value = value.toString(),
+        onValueChange = { text -> text.filter(Char::isDigit).toIntOrNull()?.let(onValueChange) },
+        label = { Text(label) },
+        shape = RoundedCornerShape(16.dp),
+        singleLine = true,
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 6.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-    ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodyLarge,
-            modifier = Modifier.weight(1f),
-        )
-        if (granted) {
+            .padding(16.dp),
+    )
+}
+
+@Composable
+private fun PermissionRow(label: String, granted: Boolean, onRequest: () -> Unit) {
+    HyperRow(
+        title = label,
+        onClick = if (granted) null else onRequest,
+        showChevron = !granted,
+        trailing = {
             Text(
-                text = stringResource(R.string.enabled),
+                text = stringResource(if (granted) R.string.enabled else R.string.disabled),
                 style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.primary,
+                color = if (granted) {
+                    MaterialTheme.colorScheme.primary
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                },
             )
-        } else {
-            TextButton(onClick = onRequest) { Text(stringResource(R.string.open)) }
-        }
-    }
+        },
+    )
 }
 
 @Composable

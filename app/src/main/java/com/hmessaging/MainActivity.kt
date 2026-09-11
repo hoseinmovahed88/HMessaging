@@ -9,10 +9,8 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -20,11 +18,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.biometric.BiometricManager
@@ -55,7 +51,7 @@ class MainActivity : AppCompatActivity() {
 
     private val roleLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult(),
-    ) { onDefaultSmsRoleResult() }
+    ) { importSystemSmsOnceIfDefault() }
 
     private var unlocked by mutableStateOf(false)
 
@@ -81,15 +77,15 @@ class MainActivity : AppCompatActivity() {
                     when {
                         settings.appLockEnabled && !unlocked -> LockScreen(onUnlock = ::promptUnlock)
 
-                        else -> Column(modifier = Modifier.fillMaxSize()) {
-                            val context = LocalContext.current
-                            var isDefault by remember { mutableStateOf(AppRoles.isDefaultSmsApp(context)) }
-                            LaunchedEffect(Unit) { isDefault = AppRoles.isDefaultSmsApp(context) }
-                            if (!isDefault) {
-                                DefaultSmsAppBanner(onRequest = ::requestDefaultSmsRole)
-                            }
-                            HmApp(initialThreadId = threadId, initialRoute = startRoute)
-                        }
+                        // The default-SMS banner used to live here, above the navigation host,
+                        // which pushed it under the status bar and gave it no insets of its own.
+                        // It is now part of the conversations screen, inside that screen's
+                        // Scaffold, so the window insets apply to it like any other content.
+                        else -> HmApp(
+                            initialThreadId = threadId,
+                            initialRoute = startRoute,
+                            onRequestDefaultSmsApp = ::requestDefaultSmsRole,
+                        )
                     }
                 }
             }
@@ -101,6 +97,13 @@ class MainActivity : AppCompatActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // The role can be granted from system Settings as well as from our own prompt, so the
+        // one-time history import is driven by observing the role, not by a dialog result.
+        importSystemSmsOnceIfDefault()
     }
 
     /** App lock is only meaningful when the device can actually authenticate. */
@@ -138,17 +141,17 @@ class MainActivity : AppCompatActivity() {
     }
 
     /**
-     * Becoming the default SMS app is the first moment the phone's existing history is readable
-     * and writable, so the one-time import runs here.
+     * Becoming the default SMS app is the first moment the phone's existing history is readable,
+     * so the one-time import runs as soon as we notice we hold the role.
      */
-    private fun onDefaultSmsRoleResult() {
+    private fun importSystemSmsOnceIfDefault() {
         if (!AppRoles.isDefaultSmsApp(this)) return
+        if (!Permissions.has(this, android.Manifest.permission.READ_SMS)) return
         val graph = AppGraph.from(this)
         graph.applicationScope.launch {
-            if (!graph.prefs.settings.first().systemSmsImported) {
-                graph.smsImporter.importAll()
-                graph.prefs.setSystemSmsImported(true)
-            }
+            if (graph.prefs.settings.first().systemSmsImported) return@launch
+            graph.smsImporter.importAll()
+            graph.prefs.setSystemSmsImported(true)
         }
     }
 
@@ -159,33 +162,6 @@ class MainActivity : AppCompatActivity() {
 
         private const val AUTHENTICATORS = BiometricManager.Authenticators.BIOMETRIC_WEAK or
             BiometricManager.Authenticators.DEVICE_CREDENTIAL
-    }
-}
-
-@Composable
-private fun DefaultSmsAppBanner(onRequest: () -> Unit) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp),
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Text(
-                text = stringResource(R.string.default_app_title),
-                style = MaterialTheme.typography.titleMedium,
-            )
-            Text(
-                text = stringResource(R.string.default_app_body),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Button(onClick = onRequest) {
-                Text(stringResource(R.string.default_app_action))
-            }
-        }
     }
 }
 

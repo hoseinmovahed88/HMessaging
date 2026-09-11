@@ -1,6 +1,7 @@
 package com.hmessaging.ui.nav
 
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.DrawerValue
@@ -44,6 +45,7 @@ import kotlinx.coroutines.launch
 fun HmApp(
     initialThreadId: Long? = null,
     initialRoute: String? = null,
+    onRequestDefaultSmsApp: () -> Unit = {},
 ) {
     val navController = rememberNavController()
     val drawerState = rememberDrawerState(DrawerValue.Closed)
@@ -71,11 +73,15 @@ fun HmApp(
     ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
-            ModalDrawerSheet {
-                Spacer(Modifier.height(24.dp))
+            ModalDrawerSheet(
+                drawerContainerColor = MaterialTheme.colorScheme.background,
+                drawerShape = RoundedCornerShape(topEnd = 28.dp, bottomEnd = 28.dp),
+            ) {
+                Spacer(Modifier.height(36.dp))
                 Text(
                     text = stringResource(R.string.app_name),
-                    style = MaterialTheme.typography.titleLarge,
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.padding(horizontal = 28.dp, vertical = 12.dp),
                 )
                 drawerDestinations.forEach { destination ->
@@ -84,6 +90,11 @@ fun HmApp(
                         icon = { Icon(destination.icon, contentDescription = null) },
                         selected = currentRoute == destination.route,
                         onClick = { navigateTo(destination.route) },
+                        shape = RoundedCornerShape(16.dp),
+                        colors = NavigationDrawerItemDefaults.colors(
+                            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                            unselectedContainerColor = MaterialTheme.colorScheme.background,
+                        ),
                         modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
                     )
                 }
@@ -96,6 +107,7 @@ fun HmApp(
                     onOpenDrawer = openDrawer,
                     onOpenThread = { navController.navigate(Routes.thread(it)) },
                     onNewMessage = { navController.navigate(Routes.NEW_MESSAGE) },
+                    onRequestDefaultSmsApp = onRequestDefaultSmsApp,
                 )
             }
             composable(

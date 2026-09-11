@@ -39,10 +39,13 @@ import com.hmessaging.R
 import com.hmessaging.data.db.entity.ForwardRuleEntity
 import com.hmessaging.data.model.SourceMatch
 import com.hmessaging.ui.HmViewModelFactory
+import com.hmessaging.ui.components.HyperCard
+import com.hmessaging.ui.components.HyperIconButton
+import com.hmessaging.ui.components.HyperScreen
 import com.hmessaging.ui.autoreply.SourceMatchChips
 import com.hmessaging.ui.autoreply.sourceMatchLabel
 import com.hmessaging.ui.components.SectionHeader
-import com.hmessaging.ui.components.SwitchRow
+import com.hmessaging.ui.components.HyperSwitchRow
 import com.hmessaging.util.PhoneNumbers
 import com.hmessaging.util.TimeFormat
 
@@ -55,15 +58,9 @@ fun ForwardScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var editing by remember { mutableStateOf<ForwardRuleEntity?>(null) }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                navigationIcon = {
-                    IconButton(onClick = onOpenDrawer) { Icon(Icons.Filled.Menu, contentDescription = null) }
-                },
-                title = { Text(stringResource(R.string.nav_forwarding)) },
-            )
-        },
+    HyperScreen(
+        title = stringResource(R.string.nav_forwarding),
+        navigationIcon = { HyperIconButton(Icons.Filled.Menu, null, onOpenDrawer) },
         floatingActionButton = {
             FloatingActionButton(onClick = { editing = ForwardRuleEntity(name = "", targets = "") }) {
                 Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.add))
@@ -76,7 +73,7 @@ fun ForwardScreen(
                 .padding(padding)
                 .verticalScroll(rememberScrollState()),
         ) {
-            SwitchRow(
+            HyperSwitchRow(
                 title = stringResource(R.string.nav_forwarding),
                 checked = state.settings.forwardingEnabled,
                 onCheckedChange = viewModel::setEnabled,
@@ -244,12 +241,12 @@ private fun ForwardRuleDialog(
                         modifier = Modifier.fillMaxWidth(),
                     )
                 }
-                SwitchRow(
+                HyperSwitchRow(
                     title = stringResource(R.string.forward_include_sender),
                     checked = includeSender,
                     onCheckedChange = { includeSender = it },
                 )
-                SwitchRow(
+                HyperSwitchRow(
                     title = stringResource(R.string.forward_include_time),
                     checked = includeTimestamp,
                     onCheckedChange = { includeTimestamp = it },

@@ -47,8 +47,11 @@ import com.hmessaging.data.db.entity.BlockRuleEntity
 import com.hmessaging.data.model.MatchTarget
 import com.hmessaging.data.model.MatchType
 import com.hmessaging.ui.HmViewModelFactory
+import com.hmessaging.ui.components.HyperCard
+import com.hmessaging.ui.components.HyperIconButton
+import com.hmessaging.ui.components.HyperScreen
 import com.hmessaging.ui.components.EmptyState
-import com.hmessaging.ui.components.SwitchRow
+import com.hmessaging.ui.components.HyperSwitchRow
 import com.hmessaging.util.PhoneNumbers
 import com.hmessaging.util.TimeFormat
 
@@ -62,15 +65,9 @@ fun BlockedScreen(
     var tab by remember { mutableIntStateOf(0) }
     var editing by remember { mutableStateOf<BlockRuleEntity?>(null) }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                navigationIcon = {
-                    IconButton(onClick = onOpenDrawer) { Icon(Icons.Filled.Menu, contentDescription = null) }
-                },
-                title = { Text(stringResource(R.string.nav_blocked)) },
-            )
-        },
+    HyperScreen(
+        title = stringResource(R.string.nav_blocked),
+        navigationIcon = { HyperIconButton(Icons.Filled.Menu, null, onOpenDrawer) },
         floatingActionButton = {
             if (tab == 0) {
                 FloatingActionButton(onClick = { editing = BlockRuleEntity(pattern = "") }) {
@@ -95,22 +92,22 @@ fun BlockedScreen(
                         .weight(1f)
                         .verticalScroll(rememberScrollState()),
                 ) {
-                    SwitchRow(
+                    HyperSwitchRow(
                         title = stringResource(R.string.block_private_numbers),
                         checked = state.settings.blockPrivateNumbers,
                         onCheckedChange = viewModel::setBlockPrivateNumbers,
                     )
-                    SwitchRow(
+                    HyperSwitchRow(
                         title = stringResource(R.string.block_non_contacts),
                         checked = state.settings.blockNonContacts,
                         onCheckedChange = viewModel::setBlockNonContacts,
                     )
-                    SwitchRow(
+                    HyperSwitchRow(
                         title = stringResource(R.string.block_calls_too),
                         checked = state.settings.screenCalls,
                         onCheckedChange = viewModel::setScreenCalls,
                     )
-                    SwitchRow(
+                    HyperSwitchRow(
                         title = stringResource(R.string.blocked_messages),
                         checked = state.settings.keepBlockedMessages,
                         onCheckedChange = viewModel::setKeepBlockedMessages,

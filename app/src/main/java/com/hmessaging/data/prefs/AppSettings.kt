@@ -6,7 +6,8 @@ import com.hmessaging.data.model.ThemeMode
 data class AppSettings(
     // Appearance
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
-    val dynamicColor: Boolean = true,
+    // Off by default so the app's own HyperOS-style palette is what ships.
+    val dynamicColor: Boolean = false,
     // Sending
     val deliveryReports: Boolean = false,
     val numberLongMessages: Boolean = false,

@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.Schedule
@@ -37,7 +38,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.hmessaging.R
 import com.hmessaging.data.model.RepeatMode
 import com.hmessaging.ui.HmViewModelFactory
-import com.hmessaging.ui.components.BackButton
+import com.hmessaging.ui.components.HyperDetailScreen
 import com.hmessaging.ui.components.DateTimePickerDialog
 import com.hmessaging.ui.thread.TemplatePickerDialog
 import com.hmessaging.util.PhoneNumbers
@@ -61,35 +62,28 @@ fun NewMessageScreen(
         }
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                navigationIcon = { BackButton(onBack) },
-                title = { Text(stringResource(R.string.new_message)) },
-                actions = {
-                    IconButton(onClick = { showTemplates = true }) {
-                        Icon(Icons.Filled.Bookmark, contentDescription = stringResource(R.string.nav_templates))
-                    }
-                    IconButton(
-                        onClick = { showSchedulePicker = true },
-                        enabled = state.canSend,
-                    ) {
-                        Icon(Icons.Filled.Schedule, contentDescription = stringResource(R.string.schedule_send))
-                    }
-                    IconButton(
-                        onClick = {
-                            viewModel.send { threadId ->
-                                if (threadId != null) onOpenThread(threadId) else onBack()
-                            }
-                        },
-                        enabled = state.canSend,
-                    ) {
-                        Icon(Icons.Filled.Send, contentDescription = stringResource(R.string.send))
+    HyperDetailScreen(
+        title = stringResource(R.string.new_message),
+        onBack = onBack,
+        snackbarHostState = snackbarHost,
+        actions = {
+            IconButton(onClick = { showTemplates = true }) {
+                Icon(Icons.Filled.Bookmark, contentDescription = stringResource(R.string.nav_templates))
+            }
+            IconButton(onClick = { showSchedulePicker = true }, enabled = state.canSend) {
+                Icon(Icons.Filled.Schedule, contentDescription = stringResource(R.string.schedule_send))
+            }
+            IconButton(
+                onClick = {
+                    viewModel.send { threadId ->
+                        if (threadId != null) onOpenThread(threadId) else onBack()
                     }
                 },
-            )
+                enabled = state.canSend,
+            ) {
+                Icon(Icons.Filled.Send, contentDescription = stringResource(R.string.send))
+            }
         },
-        snackbarHost = { SnackbarHost(snackbarHost) },
     ) { padding ->
         Column(
             modifier = Modifier
@@ -103,6 +97,7 @@ fun NewMessageScreen(
                 value = state.recipients,
                 onValueChange = viewModel::onRecipientsChange,
                 label = { Text(stringResource(R.string.recipient_hint)) },
+                shape = RoundedCornerShape(18.dp),
                 supportingText = {
                     val parsed = state.parsedRecipients
                     if (parsed.isNotEmpty()) {
@@ -136,6 +131,7 @@ fun NewMessageScreen(
                 value = state.body,
                 onValueChange = viewModel::onBodyChange,
                 label = { Text(stringResource(R.string.type_a_message)) },
+                shape = RoundedCornerShape(18.dp),
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f),

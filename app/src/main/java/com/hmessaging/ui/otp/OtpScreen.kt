@@ -32,8 +32,11 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.hmessaging.R
 import com.hmessaging.ui.HmViewModelFactory
+import com.hmessaging.ui.components.HyperCard
+import com.hmessaging.ui.components.HyperIconButton
+import com.hmessaging.ui.components.HyperScreen
 import com.hmessaging.ui.components.EmptyState
-import com.hmessaging.ui.components.SwitchRow
+import com.hmessaging.ui.components.HyperSwitchRow
 import com.hmessaging.util.AppRoles
 import com.hmessaging.util.Clipboards
 import com.hmessaging.util.PhoneNumbers
@@ -48,17 +51,11 @@ fun OtpScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                navigationIcon = {
-                    IconButton(onClick = onOpenDrawer) { Icon(Icons.Filled.Menu, contentDescription = null) }
-                },
-                title = { Text(stringResource(R.string.nav_otp)) },
-                actions = {
-                    TextButton(onClick = viewModel::clear) { Text(stringResource(R.string.delete)) }
-                },
-            )
+    HyperScreen(
+        title = stringResource(R.string.nav_otp),
+        navigationIcon = { HyperIconButton(Icons.Filled.Menu, null, onOpenDrawer) },
+        actions = {
+            TextButton(onClick = viewModel::clear) { Text(stringResource(R.string.delete)) }
         },
     ) { padding ->
         Column(
@@ -67,18 +64,18 @@ fun OtpScreen(
                 .padding(padding)
                 .verticalScroll(rememberScrollState()),
         ) {
-            SwitchRow(
+            HyperSwitchRow(
                 title = stringResource(R.string.nav_otp),
                 checked = state.settings.otpDetectionEnabled,
                 onCheckedChange = viewModel::setDetectionEnabled,
             )
-            SwitchRow(
+            HyperSwitchRow(
                 title = stringResource(R.string.otp_popup_enabled),
                 checked = state.settings.otpPopupEnabled,
                 onCheckedChange = viewModel::setPopupEnabled,
                 enabled = state.settings.otpDetectionEnabled,
             )
-            SwitchRow(
+            HyperSwitchRow(
                 title = stringResource(R.string.otp_auto_copy),
                 checked = state.settings.otpAutoCopy,
                 onCheckedChange = viewModel::setAutoCopy,

@@ -40,8 +40,11 @@ import com.hmessaging.R
 import com.hmessaging.data.db.entity.AutoReplyRuleEntity
 import com.hmessaging.data.model.SourceMatch
 import com.hmessaging.ui.HmViewModelFactory
+import com.hmessaging.ui.components.HyperCard
+import com.hmessaging.ui.components.HyperIconButton
+import com.hmessaging.ui.components.HyperScreen
 import com.hmessaging.ui.components.DateTimePickerDialog
-import com.hmessaging.ui.components.SwitchRow
+import com.hmessaging.ui.components.HyperSwitchRow
 import com.hmessaging.ui.components.TimeOfDayPickerDialog
 import com.hmessaging.util.TimeFormat
 
@@ -55,15 +58,9 @@ fun AutoReplyScreen(
     var editing by remember { mutableStateOf<AutoReplyRuleEntity?>(null) }
     var showAwayPicker by remember { mutableStateOf(false) }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                navigationIcon = {
-                    IconButton(onClick = onOpenDrawer) { Icon(Icons.Filled.Menu, contentDescription = null) }
-                },
-                title = { Text(stringResource(R.string.nav_auto_reply)) },
-            )
-        },
+    HyperScreen(
+        title = stringResource(R.string.nav_auto_reply),
+        navigationIcon = { HyperIconButton(Icons.Filled.Menu, null, onOpenDrawer) },
         floatingActionButton = {
             FloatingActionButton(
                 onClick = {
@@ -80,7 +77,7 @@ fun AutoReplyScreen(
                 .padding(padding)
                 .verticalScroll(rememberScrollState()),
         ) {
-            SwitchRow(
+            HyperSwitchRow(
                 title = stringResource(R.string.auto_reply_master),
                 subtitle = stringResource(R.string.auto_reply_master_desc),
                 checked = state.settings.autoReplyEnabled,

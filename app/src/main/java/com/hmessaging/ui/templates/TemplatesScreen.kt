@@ -37,6 +37,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.hmessaging.R
 import com.hmessaging.data.db.entity.TemplateEntity
 import com.hmessaging.ui.HmViewModelFactory
+import com.hmessaging.ui.components.HyperCard
+import com.hmessaging.ui.components.HyperIconButton
+import com.hmessaging.ui.components.HyperScreen
 import com.hmessaging.ui.components.EmptyState
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -48,15 +51,9 @@ fun TemplatesScreen(
     val templates by viewModel.templates.collectAsStateWithLifecycle()
     var editing by remember { mutableStateOf<TemplateEntity?>(null) }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                navigationIcon = {
-                    IconButton(onClick = onOpenDrawer) { Icon(Icons.Filled.Menu, contentDescription = null) }
-                },
-                title = { Text(stringResource(R.string.nav_templates)) },
-            )
-        },
+    HyperScreen(
+        title = stringResource(R.string.nav_templates),
+        navigationIcon = { HyperIconButton(Icons.Filled.Menu, null, onOpenDrawer) },
         floatingActionButton = {
             FloatingActionButton(onClick = { editing = TemplateEntity(title = "", body = "") }) {
                 Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.add))
