@@ -1,0 +1,181 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- ==================== SMS core ==================== -->
+    <uses-permission android:name="android.permission.RECEIVE_SMS" />
+    <uses-permission android:name="android.permission.READ_SMS" />
+    <uses-permission android:name="android.permission.SEND_SMS" />
+    <uses-permission android:name="android.permission.RECEIVE_MMS" />
+    <uses-permission android:name="android.permission.RECEIVE_WAP_PUSH" />
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+    <uses-permission android:name="android.permission.READ_PHONE_NUMBERS" />
+
+    <!-- Contacts: resolve names, and support "block everyone who is not a contact" -->
+    <uses-permission android:name="android.permission.READ_CONTACTS" />
+
+    <!-- Notifications, boot-persistence, exact scheduling -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+
+    <!-- OTP pop-up over other apps (optional; the app degrades to a heads-up notification) -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+
+    <!-- App lock -->
+    <uses-permission android:name="android.permission.USE_BIOMETRIC" />
+
+    <!-- Optional: block calls from blocked numbers as well as SMS -->
+    <uses-permission android:name="android.permission.ANSWER_PHONE_CALLS" />
+
+    <uses-feature
+        android:name="android.hardware.telephony"
+        android:required="true" />
+
+    <application
+        android:name=".HMessagingApp"
+        android:allowBackup="false"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="false"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:enableOnBackInvokedCallback="true"
+        android:theme="@style/Theme.HMessaging"
+        tools:targetApi="33">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:windowSoftInputMode="adjustResize"
+            android:theme="@style/Theme.HMessaging">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
+            <!-- Requirement #3 for being a default SMS app: handle SENDTO -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <action android:name="android.intent.action.SENDTO" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="sms" />
+                <data android:scheme="smsto" />
+                <data android:scheme="mms" />
+                <data android:scheme="mmsto" />
+            </intent-filter>
+        </activity>
+
+        <!-- OTP pop-up: dialog-styled, shows over the lock screen, auto-copies the code -->
+        <activity
+            android:name=".feature.otp.OtpPopupActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:launchMode="singleTop"
+            android:noHistory="true"
+            android:showOnLockScreen="true"
+            android:turnScreenOn="true"
+            android:taskAffinity=".otp"
+            android:theme="@style/Theme.HMessaging.Popup" />
+
+        <!-- ==================== Default-SMS-app requirements ==================== -->
+
+        <!-- #1 SMS_DELIVER: only the default SMS app receives this -->
+        <receiver
+            android:name=".sms.SmsDeliverReceiver"
+            android:exported="true"
+            android:permission="android.permission.BROADCAST_SMS">
+            <intent-filter android:priority="999">
+                <action android:name="android.provider.Telephony.SMS_DELIVER" />
+            </intent-filter>
+        </receiver>
+
+        <!-- Fallback for when we are NOT the default SMS app -->
+        <receiver
+            android:name=".sms.SmsReceivedReceiver"
+            android:exported="true"
+            android:permission="android.permission.BROADCAST_SMS">
+            <intent-filter android:priority="999">
+                <action android:name="android.provider.Telephony.SMS_RECEIVED" />
+            </intent-filter>
+        </receiver>
+
+        <!-- #2 WAP_PUSH_DELIVER (MMS) -->
+        <receiver
+            android:name=".sms.MmsDeliverReceiver"
+            android:exported="true"
+            android:permission="android.permission.BROADCAST_WAP_PUSH">
+            <intent-filter>
+                <action android:name="android.provider.Telephony.WAP_PUSH_DELIVER" />
+                <data android:mimeType="application/vnd.wap.mms-message" />
+            </intent-filter>
+        </receiver>
+
+        <!-- #4 Quick-response service ("respond via message" from the dialer) -->
+        <service
+            android:name=".sms.HeadlessSmsSendService"
+            android:exported="true"
+            android:permission="android.permission.SEND_RESPOND_VIA_MESSAGE">
+            <intent-filter>
+                <action android:name="android.intent.action.RESPOND_VIA_MESSAGE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="sms" />
+                <data android:scheme="smsto" />
+                <data android:scheme="mms" />
+                <data android:scheme="mmsto" />
+            </intent-filter>
+        </service>
+
+        <!-- ==================== Internal receivers ==================== -->
+
+        <receiver
+            android:name=".sms.SmsStatusReceiver"
+            android:exported="false" />
+
+        <receiver
+            android:name=".feature.schedule.ScheduleAlarmReceiver"
+            android:exported="false" />
+
+        <receiver
+            android:name=".notify.NotificationActionReceiver"
+            android:exported="false" />
+
+        <receiver
+            android:name=".system.BootReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+            </intent-filter>
+        </receiver>
+
+        <!-- Optional: screen incoming calls against the same block list -->
+        <service
+            android:name=".feature.block.HmCallScreeningService"
+            android:exported="true"
+            android:permission="android.permission.BIND_SCREENING_SERVICE">
+            <intent-filter>
+                <action android:name="android.telecom.CallScreeningService" />
+            </intent-filter>
+        </service>
+
+        <provider
+            android:name="androidx.startup.InitializationProvider"
+            android:authorities="${applicationId}.androidx-startup"
+            android:exported="false"
+            tools:node="merge">
+            <meta-data
+                android:name="androidx.work.WorkManagerInitializer"
+                android:value="androidx.startup"
+                tools:node="remove" />
+        </provider>
+    </application>
+</manifest>
