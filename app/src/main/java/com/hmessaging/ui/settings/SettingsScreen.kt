@@ -45,6 +45,8 @@ import com.hmessaging.ui.components.HyperRowDivider
 import com.hmessaging.ui.components.HyperScreen
 import com.hmessaging.ui.components.HyperSwitchRow
 import com.hmessaging.ui.rememberIsDefaultSmsApp
+import com.hmessaging.di.AppGraph
+import com.hmessaging.feature.update.UpdateStatus
 import com.hmessaging.util.AppRoles
 
 @Composable
@@ -56,6 +58,8 @@ fun SettingsScreen(
     val status by viewModel.statusMessage.collectAsStateWithLifecycle()
     val importProgress by viewModel.importProgress.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val graph = remember(context) { AppGraph.from(context) }
+    val updateStatus by graph.updates.status.collectAsStateWithLifecycle()
     val snackbarHost = remember { SnackbarHostState() }
     val isDefaultSmsApp = rememberIsDefaultSmsApp()
 
@@ -282,6 +286,52 @@ fun SettingsScreen(
                                 Text(stringResource(R.string.open))
                             }
                         }
+                    }
+                }
+            }
+
+            item("update-title") { HyperGroupTitle(stringResource(R.string.update_check)) }
+            item("update") {
+                HyperCard {
+                    val status = updateStatus
+                    HyperRow(
+                        title = stringResource(R.string.update_check),
+                        subtitle = when (status) {
+                            is UpdateStatus.Checking -> stringResource(R.string.bank_scanning)
+                            is UpdateStatus.UpToDate -> stringResource(R.string.update_up_to_date)
+                            is UpdateStatus.Failed -> stringResource(R.string.update_failed)
+                            is UpdateStatus.Available ->
+                                stringResource(R.string.update_available, status.info.versionName)
+
+                            is UpdateStatus.Downloading -> stringResource(R.string.update_downloading)
+                            is UpdateStatus.Ready ->
+                                stringResource(R.string.update_ready, status.info.versionName)
+
+                            else -> stringResource(
+                                R.string.update_installed_version,
+                                graph.updates.installedVersion,
+                            )
+                        },
+                        onClick = { graph.updates.check(userAsked = true) },
+                    )
+                    when (status) {
+                        is UpdateStatus.Available -> {
+                            HyperRowDivider()
+                            HyperRow(
+                                title = stringResource(R.string.update_download),
+                                onClick = { graph.updates.download(status.info) },
+                            )
+                        }
+
+                        is UpdateStatus.Ready -> {
+                            HyperRowDivider()
+                            HyperRow(
+                                title = stringResource(R.string.update_install),
+                                onClick = { context.startActivity(graph.updateChecker.installIntent(status.file)) },
+                            )
+                        }
+
+                        else -> Unit
                     }
                 }
             }

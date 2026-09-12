@@ -3,6 +3,7 @@ package com.hmessaging.sms
 import com.hmessaging.data.prefs.AppPrefs
 import com.hmessaging.data.repo.MessageRepository
 import com.hmessaging.feature.autoreply.AutoReplyEngine
+import com.hmessaging.feature.bank.BankLedger
 import com.hmessaging.feature.block.BlockDecision
 import com.hmessaging.feature.block.BlockEngine
 import com.hmessaging.feature.forward.ForwardEngine
@@ -29,6 +30,7 @@ class IncomingMessagePipeline(
     private val forwardEngine: ForwardEngine,
     private val notifications: Notifications,
     private val quickReplyPresenter: QuickReplyPresenter,
+    private val bankLedger: BankLedger,
     private val prefs: AppPrefs,
 ) {
 
@@ -90,7 +92,7 @@ class IncomingMessagePipeline(
         val settings = prefs.settings.first()
         val otpMatch = if (settings.otpDetectionEnabled) OtpDetector.detect(address, body) else null
 
-        val (threadId, _) = repository.insertIncoming(
+        val (threadId, messageId) = repository.insertIncoming(
             rawAddress = address,
             body = body,
             date = receivedAt,
@@ -132,6 +134,11 @@ class IncomingMessagePipeline(
                     }
                 }
             }
+        }
+
+        // A bank notification is filed the moment it lands, so the ledger never waits on a scan.
+        runCatching {
+            repository.messageById(messageId)?.let { bankLedger.record(it) }
         }
 
         // Neither of these may take the message down with them if the radio refuses the send.

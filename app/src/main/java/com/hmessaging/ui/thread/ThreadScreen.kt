@@ -1,6 +1,10 @@
+@file:OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+
 package com.hmessaging.ui.thread
 
-import androidx.compose.foundation.clickable
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,7 +23,11 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Forward
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.SimCard
@@ -61,6 +69,7 @@ import com.hmessaging.ui.components.HyperIconButton
 import com.hmessaging.ui.theme.LocalHyperColors
 import com.hmessaging.util.Clipboards
 import com.hmessaging.util.PhoneNumbers
+import com.hmessaging.util.Sharing
 import com.hmessaging.util.TimeFormat
 import kotlinx.coroutines.launch
 
@@ -69,10 +78,12 @@ private const val BubbleTail = 6
 private const val BubbleMaxWidth = 290
 private const val ComposerMaxLines = 6
 private const val DefaultScheduleOffsetMs = 60L * 60 * 1000
+private const val SelectedTint = 0.16f
 
 @Composable
 fun ThreadScreen(
     onBack: () -> Unit,
+    onForward: (String) -> Unit = {},
     viewModel: ThreadViewModel = viewModel(factory = HmViewModelFactory.Factory),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -85,6 +96,7 @@ fun ThreadScreen(
     var showSchedulePicker by remember { mutableStateOf(false) }
     var showTemplates by remember { mutableStateOf(false) }
     var showSimPicker by remember { mutableStateOf(false) }
+    var detail by remember { mutableStateOf<MessageEntity?>(null) }
 
     val thread = state.thread
     val title = thread?.let { it.contactName ?: PhoneNumbers.format(it.address) }.orEmpty()
@@ -106,72 +118,117 @@ fun ThreadScreen(
         }
     }
 
+    // In selection mode the bar belongs to the selection: back clears it rather than leaving the
+    // conversation, which is what every list with a selection mode does.
+    BackHandler(enabled = state.selecting) { viewModel.clearSelection() }
+
     HyperDetailScreen(
-        title = title,
-        subtitle = subtitle,
+        title = if (state.selecting) {
+            stringResource(R.string.selected_count, state.selected.size)
+        } else {
+            title
+        },
+        subtitle = if (state.selecting) null else subtitle,
         onBack = {
-            viewModel.saveDraft()
-            onBack()
+            if (state.selecting) {
+                viewModel.clearSelection()
+            } else {
+                viewModel.saveDraft()
+                onBack()
+            }
         },
         snackbarHostState = snackbarHost,
         actions = {
-            Box {
-                HyperIconButton(Icons.Filled.MoreVert, null, { menuOpen = true })
-                DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                    DropdownMenuItem(
-                        text = { Text(stringResource(if (thread?.pinned == true) R.string.unpin else R.string.pin)) },
-                        onClick = {
-                            viewModel.setPinned(thread?.pinned != true)
-                            menuOpen = false
-                        },
-                    )
-                    DropdownMenuItem(
-                        text = { Text(stringResource(if (thread?.muted == true) R.string.unmute else R.string.mute)) },
-                        onClick = {
-                            viewModel.setMuted(thread?.muted != true)
-                            menuOpen = false
-                        },
-                    )
-                    DropdownMenuItem(
-                        text = {
-                            Text(
-                                stringResource(
-                                    if (thread?.archived == true) R.string.unarchive else R.string.archive,
-                                ),
-                            )
-                        },
-                        onClick = {
-                            viewModel.setArchived(thread?.archived != true)
-                            menuOpen = false
-                        },
-                    )
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.export_conversation)) },
-                        onClick = {
-                            menuOpen = false
-                            scope.launch {
-                                val text = viewModel.exportText()
-                                Clipboards.copy(context, title, text)
-                                snackbarHost.showSnackbar(context.getString(R.string.otp_copied))
-                            }
-                        },
-                    )
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.block_number)) },
-                        onClick = {
-                            viewModel.blockSender()
-                            menuOpen = false
-                            onBack()
-                        },
-                    )
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.delete_conversation)) },
-                        onClick = {
-                            viewModel.deleteThread()
-                            menuOpen = false
-                            onBack()
-                        },
-                    )
+            if (state.selecting) {
+                HyperIconButton(
+                    icon = Icons.Filled.ContentCopy,
+                    contentDescription = stringResource(R.string.copy),
+                    onClick = {
+                        Clipboards.copy(context, title, viewModel.selectedText())
+                        viewModel.clearSelection()
+                    },
+                )
+                HyperIconButton(
+                    icon = Icons.Filled.Share,
+                    contentDescription = stringResource(R.string.share),
+                    onClick = {
+                        Sharing.shareText(context, viewModel.selectedText())
+                        viewModel.clearSelection()
+                    },
+                )
+                HyperIconButton(
+                    icon = Icons.Filled.Forward,
+                    contentDescription = stringResource(R.string.forward),
+                    onClick = {
+                        val text = viewModel.selectedText()
+                        viewModel.clearSelection()
+                        onForward(text)
+                    },
+                )
+                HyperIconButton(
+                    icon = Icons.Filled.Delete,
+                    contentDescription = stringResource(R.string.delete),
+                    onClick = viewModel::deleteSelected,
+                )
+            } else {
+                Box {
+                    HyperIconButton(Icons.Filled.MoreVert, null, { menuOpen = true })
+                    DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(if (thread?.pinned == true) R.string.unpin else R.string.pin)) },
+                            onClick = {
+                                viewModel.setPinned(thread?.pinned != true)
+                                menuOpen = false
+                            },
+                        )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(if (thread?.muted == true) R.string.unmute else R.string.mute)) },
+                            onClick = {
+                                viewModel.setMuted(thread?.muted != true)
+                                menuOpen = false
+                            },
+                        )
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    stringResource(
+                                        if (thread?.archived == true) R.string.unarchive else R.string.archive,
+                                    ),
+                                )
+                            },
+                            onClick = {
+                                viewModel.setArchived(thread?.archived != true)
+                                menuOpen = false
+                            },
+                        )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.export_conversation)) },
+                            onClick = {
+                                menuOpen = false
+                                scope.launch {
+                                    val text = viewModel.exportText()
+                                    Clipboards.copy(context, title, text)
+                                    snackbarHost.showSnackbar(context.getString(R.string.otp_copied))
+                                }
+                            },
+                        )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.block_number)) },
+                            onClick = {
+                                viewModel.blockSender()
+                                menuOpen = false
+                                onBack()
+                            },
+                        )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.delete_conversation)) },
+                            onClick = {
+                                viewModel.deleteThread()
+                                menuOpen = false
+                                onBack()
+                            },
+                        )
+                    }
                 }
             }
         },
@@ -213,13 +270,42 @@ fun ThreadScreen(
                     }
                     MessageBubble(
                         message = message,
-                        onCopy = { Clipboards.copy(context, title, message.body) },
-                        onResend = { viewModel.resend(message) },
-                        onDelete = { viewModel.deleteMessage(message.id) },
+                        selected = message.id in state.selected,
+                        onTap = {
+                            if (state.selecting) {
+                                viewModel.toggleSelected(message.id)
+                            } else {
+                                detail = message
+                            }
+                        },
+                        onLongPress = { viewModel.toggleSelected(message.id) },
                     )
                 }
             }
         }
+    }
+
+    detail?.let { message ->
+        MessageDetailSheet(
+            message = message,
+            onDismiss = { detail = null },
+            onCopy = { text ->
+                Clipboards.copy(context, title, text)
+                detail = null
+            },
+            onShare = { text ->
+                Sharing.shareText(context, text)
+                detail = null
+            },
+            onForward = { text ->
+                detail = null
+                onForward(text)
+            },
+            onDelete = {
+                viewModel.deleteMessage(message.id)
+                detail = null
+            },
+        )
     }
 
     if (showSchedulePicker) {
@@ -282,106 +368,84 @@ private fun DayHeader(date: Long) {
 @Composable
 private fun MessageBubble(
     message: MessageEntity,
-    onCopy: () -> Unit,
-    onResend: () -> Unit,
-    onDelete: () -> Unit,
+    selected: Boolean,
+    onTap: () -> Unit,
+    onLongPress: () -> Unit,
 ) {
     val incoming = message.type.isIncoming
     val hyper = LocalHyperColors.current
-    var menuOpen by remember { mutableStateOf(false) }
 
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            // The tint spans the row, not the bubble, so a selected message reads as a selected
+            // line in a list rather than a differently coloured bubble.
+            .background(
+                if (selected) MaterialTheme.colorScheme.primary.copy(alpha = SelectedTint) else Color.Transparent,
+            )
+            .combinedClickable(onClick = onTap, onLongClick = onLongPress)
+            .padding(vertical = 1.dp),
         horizontalArrangement = if (incoming) Arrangement.Start else Arrangement.End,
     ) {
-        Box {
-            Surface(
-                color = if (incoming) hyper.bubbleIncoming else hyper.bubbleOutgoing,
-                shape = RoundedCornerShape(
-                    topStart = BubbleCorner.dp,
-                    topEnd = BubbleCorner.dp,
-                    bottomStart = if (incoming) BubbleTail.dp else BubbleCorner.dp,
-                    bottomEnd = if (incoming) BubbleCorner.dp else BubbleTail.dp,
-                ),
-                modifier = Modifier
-                    .widthIn(max = BubbleMaxWidth.dp)
-                    .clickable { menuOpen = true },
-            ) {
-                Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 9.dp)) {
-                    Text(
-                        text = message.body,
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = if (incoming) hyper.onBubbleIncoming else hyper.onBubbleOutgoing,
-                    )
-                    Row(
-                        modifier = Modifier
-                            .align(Alignment.End)
-                            .padding(top = 3.dp),
-                        horizontalArrangement = Arrangement.spacedBy(5.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        val metaColor = if (incoming) {
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                        } else {
-                            hyper.onBubbleOutgoing.copy(alpha = 0.75f)
-                        }
-                        if (message.parts > 1) {
-                            Text(
-                                text = "${message.parts}×",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = metaColor,
-                            )
-                        }
+        Surface(
+            color = if (incoming) hyper.bubbleIncoming else hyper.bubbleOutgoing,
+            shape = RoundedCornerShape(
+                topStart = BubbleCorner.dp,
+                topEnd = BubbleCorner.dp,
+                bottomStart = if (incoming) BubbleTail.dp else BubbleCorner.dp,
+                bottomEnd = if (incoming) BubbleCorner.dp else BubbleTail.dp,
+            ),
+            modifier = Modifier.widthIn(max = BubbleMaxWidth.dp),
+        ) {
+            Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 9.dp)) {
+                Text(
+                    text = message.body,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = if (incoming) hyper.onBubbleIncoming else hyper.onBubbleOutgoing,
+                )
+                Row(
+                    modifier = Modifier
+                        .align(Alignment.End)
+                        .padding(top = 3.dp),
+                    horizontalArrangement = Arrangement.spacedBy(5.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    val metaColor = if (incoming) {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    } else {
+                        hyper.onBubbleOutgoing.copy(alpha = 0.75f)
+                    }
+                    if (message.parts > 1) {
                         Text(
-                            text = TimeFormat.clock(message.date),
+                            text = "${message.parts}×",
                             style = MaterialTheme.typography.labelSmall,
                             color = metaColor,
                         )
-                        if (!incoming) {
-                            Text(
-                                text = statusLabel(message),
-                                style = MaterialTheme.typography.labelSmall,
-                                color = if (message.status == DeliveryStatus.FAILED) {
-                                    MaterialTheme.colorScheme.error
-                                } else {
-                                    metaColor
-                                },
-                            )
-                        }
                     }
-                    if (message.status == DeliveryStatus.FAILED && message.errorMessage != null) {
+                    Text(
+                        text = TimeFormat.clock(message.date),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = metaColor,
+                    )
+                    if (!incoming) {
                         Text(
-                            text = message.errorMessage,
+                            text = statusLabel(message),
                             style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.error,
+                            color = if (message.status == DeliveryStatus.FAILED) {
+                                MaterialTheme.colorScheme.error
+                            } else {
+                                metaColor
+                            },
                         )
                     }
                 }
-            }
-            DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                DropdownMenuItem(
-                    text = { Text(stringResource(R.string.copy)) },
-                    onClick = {
-                        onCopy()
-                        menuOpen = false
-                    },
-                )
-                if (message.type == MessageType.FAILED) {
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.send)) },
-                        onClick = {
-                            onResend()
-                            menuOpen = false
-                        },
+                if (message.status == DeliveryStatus.FAILED && message.errorMessage != null) {
+                    Text(
+                        text = message.errorMessage,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.error,
                     )
                 }
-                DropdownMenuItem(
-                    text = { Text(stringResource(R.string.delete)) },
-                    onClick = {
-                        onDelete()
-                        menuOpen = false
-                    },
-                )
             }
         }
     }

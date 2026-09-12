@@ -1,6 +1,7 @@
 package com.hmessaging.ui.nav
 
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.Forum
 import androidx.compose.material.icons.filled.Insights
@@ -24,6 +25,7 @@ object Routes {
     const val FORWARDING = "forwarding"
     const val OTP = "otp"
     const val TEMPLATES = "templates"
+    const val BANK = "bank"
     const val STATS = "stats"
     const val SETTINGS = "settings"
     const val DIAGNOSTICS = "diagnostics"
@@ -46,6 +48,7 @@ val drawerDestinations = listOf(
     DrawerDestination(Routes.FORWARDING, R.string.nav_forwarding, Icons.Filled.Send),
     DrawerDestination(Routes.OTP, R.string.nav_otp, Icons.Filled.Password),
     DrawerDestination(Routes.TEMPLATES, R.string.nav_templates, Icons.Filled.Bookmark),
+    DrawerDestination(Routes.BANK, R.string.nav_bank, Icons.Filled.AccountBalance),
     DrawerDestination(Routes.STATS, R.string.nav_stats, Icons.Filled.Insights),
     DrawerDestination(Routes.DIAGNOSTICS, R.string.nav_diagnostics, Icons.Filled.MonitorHeart),
     DrawerDestination(Routes.SETTINGS, R.string.nav_settings, Icons.Filled.Settings),

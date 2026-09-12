@@ -38,6 +38,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -46,8 +47,11 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.hmessaging.R
 import com.hmessaging.data.db.entity.ThreadEntity
+import com.hmessaging.di.AppGraph
+import com.hmessaging.feature.update.UpdateStatus
 import com.hmessaging.ui.HmViewModelFactory
 import com.hmessaging.ui.components.Avatar
+import com.hmessaging.ui.components.DefaultSmsAppBanner
 import com.hmessaging.ui.components.EmptyState
 import com.hmessaging.ui.components.HyperCard
 import com.hmessaging.ui.components.HyperGroupTitle
@@ -56,7 +60,7 @@ import com.hmessaging.ui.components.HyperIconButton
 import com.hmessaging.ui.components.HyperRowDivider
 import com.hmessaging.ui.components.HyperScreen
 import com.hmessaging.ui.components.HyperSearchField
-import com.hmessaging.ui.components.DefaultSmsAppBanner
+import com.hmessaging.ui.components.UpdateBanner
 import com.hmessaging.ui.rememberIsDefaultSmsApp
 import com.hmessaging.util.PhoneNumbers
 import com.hmessaging.util.TimeFormat
@@ -72,6 +76,9 @@ fun ConversationsScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val isDefaultSmsApp = rememberIsDefaultSmsApp()
+    val context = LocalContext.current
+    val graph = remember(context) { AppGraph.from(context) }
+    val updateStatus by graph.updates.status.collectAsStateWithLifecycle()
     var searchVisible by remember { mutableStateOf(false) }
 
     HyperScreen(
@@ -111,6 +118,19 @@ fun ConversationsScreen(
                 .padding(padding),
             contentPadding = PaddingValues(top = 2.dp, bottom = 96.dp),
         ) {
+            item("update-banner") {
+                UpdateBanner(
+                    status = updateStatus,
+                    onDownload = { (updateStatus as? UpdateStatus.Available)?.let { graph.updates.download(it.info) } },
+                    onInstall = {
+                        (updateStatus as? UpdateStatus.Ready)?.let {
+                            context.startActivity(graph.updateChecker.installIntent(it.file))
+                        }
+                    },
+                    onDismiss = graph.updates::dismiss,
+                )
+            }
+
             if (!isDefaultSmsApp) {
                 item("default-app-banner") {
                     DefaultSmsAppBanner(

@@ -6,11 +6,14 @@ import com.hmessaging.data.db.HmDatabase
 import com.hmessaging.data.prefs.AppPrefs
 import com.hmessaging.data.repo.MessageRepository
 import com.hmessaging.feature.autoreply.AutoReplyEngine
+import com.hmessaging.feature.bank.BankLedger
 import com.hmessaging.feature.block.BlockEngine
 import com.hmessaging.feature.forward.ForwardEngine
 import com.hmessaging.feature.otp.OtpPresenter
 import com.hmessaging.feature.quickreply.QuickReplyPresenter
 import com.hmessaging.feature.schedule.ScheduleManager
+import com.hmessaging.feature.update.UpdateChecker
+import com.hmessaging.feature.update.UpdateCoordinator
 import com.hmessaging.notify.Notifications
 import com.hmessaging.sms.IncomingMessagePipeline
 import com.hmessaging.sms.SimManager
@@ -48,6 +51,7 @@ class AppGraph private constructor(val appContext: Context) {
     val otpDao by lazy { database.otpDao() }
     val templateDao by lazy { database.templateDao() }
     val diagDao by lazy { database.diagDao() }
+    val bankDao by lazy { database.bankDao() }
 
     val diagnostics: Diagnostics by lazy { Diagnostics(appContext, diagDao, messageDao, threadDao, prefs, systemSmsWriter) }
 
@@ -71,6 +75,12 @@ class AppGraph private constructor(val appContext: Context) {
 
     val otpPresenter: OtpPresenter by lazy { OtpPresenter(appContext, otpDao, prefs, notifications) }
 
+    val bankLedger: BankLedger by lazy { BankLedger(bankDao, prefs) }
+
+    val updateChecker: UpdateChecker by lazy { UpdateChecker(appContext) }
+
+    val updates: UpdateCoordinator by lazy { UpdateCoordinator(updateChecker, applicationScope) }
+
     val quickReplyPresenter: QuickReplyPresenter by lazy {
         QuickReplyPresenter(appContext, prefs, foreground)
     }
@@ -93,6 +103,7 @@ class AppGraph private constructor(val appContext: Context) {
             forwardEngine = forwardEngine,
             notifications = notifications,
             quickReplyPresenter = quickReplyPresenter,
+            bankLedger = bankLedger,
             prefs = prefs,
         )
     }

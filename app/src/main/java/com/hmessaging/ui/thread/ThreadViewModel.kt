@@ -33,9 +33,12 @@ data class ThreadUiState(
     val selectedSubscriptionId: Int = AppSettings.SUBSCRIPTION_UNSET,
     val sending: Boolean = false,
     val error: String? = null,
+    /** Ids of the messages picked out for copying, sharing or forwarding together. */
+    val selected: Set<Long> = emptySet(),
 ) {
     val length: SmsLength get() = SmsText.measure(input)
     val canSend: Boolean get() = input.isNotBlank() && !sending
+    val selecting: Boolean get() = selected.isNotEmpty()
 }
 
 class ThreadViewModel(
@@ -50,6 +53,7 @@ class ThreadViewModel(
     private val input = MutableStateFlow("")
     private val selectedSubscription = MutableStateFlow(AppSettings.SUBSCRIPTION_UNSET)
     private val transient = MutableStateFlow(TransientState())
+    private val selected = MutableStateFlow<Set<Long>>(emptySet())
 
     private data class TransientState(val sending: Boolean = false, val error: String? = null)
 
@@ -62,8 +66,10 @@ class ThreadViewModel(
         graph.messageRepository.observeMessages(threadId),
         input,
         templates,
-        combine(selectedSubscription, transient) { subscription, state -> subscription to state },
-    ) { thread, messages, text, templates, (subscription, state) ->
+        combine(selectedSubscription, transient, selected) { subscription, state, picked ->
+            Triple(subscription, state, picked)
+        },
+    ) { thread, messages, text, templates, (subscription, state, picked) ->
         ThreadUiState(
             loaded = true,
             thread = thread,
@@ -74,6 +80,8 @@ class ThreadViewModel(
             selectedSubscriptionId = subscription,
             sending = state.sending,
             error = state.error,
+            // Messages deleted while selected must not leave a selection nothing can act on.
+            selected = picked.intersect(messages.mapTo(mutableSetOf()) { it.id }),
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), ThreadUiState())
 
@@ -142,6 +150,38 @@ class ThreadViewModel(
     fun applyTemplate(template: TemplateEntity) = viewModelScope.launch {
         input.value = if (input.value.isBlank()) template.body else "${input.value}\n${template.body}"
         graph.templateDao.incrementUsage(template.id)
+    }
+
+    fun toggleSelected(messageId: Long) {
+        val current = selected.value
+        selected.value = if (messageId in current) current - messageId else current + messageId
+    }
+
+    fun clearSelection() {
+        selected.value = emptySet()
+    }
+
+    fun selectAll() {
+        selected.value = uiState.value.messages.mapTo(mutableSetOf()) { it.id }
+    }
+
+    /**
+     * The selected messages as text, oldest first and each on its own line.
+     *
+     * Sender and time are left out deliberately: this text goes to the clipboard, to another app,
+     * or into a new message, and in every one of those the quoted body is what was wanted.
+     */
+    fun selectedText(): String {
+        val picked = uiState.value.selected
+        return uiState.value.messages
+            .filter { it.id in picked }
+            .joinToString("\n\n") { it.body }
+    }
+
+    fun deleteSelected() = viewModelScope.launch {
+        val picked = uiState.value.selected
+        selected.value = emptySet()
+        picked.forEach { graph.messageRepository.deleteMessage(it) }
     }
 
     fun deleteMessage(messageId: Long) = viewModelScope.launch {

@@ -9,6 +9,7 @@ import androidx.room.Update
 import androidx.room.Upsert
 import com.hmessaging.data.db.entity.AutoReplyLogEntity
 import com.hmessaging.data.db.entity.AutoReplyRuleEntity
+import com.hmessaging.data.db.entity.BankTxEntity
 import com.hmessaging.data.db.entity.BlockRuleEntity
 import com.hmessaging.data.db.entity.BlockedMessageEntity
 import com.hmessaging.data.db.entity.DiagEventEntity
@@ -445,3 +446,52 @@ interface DiagDao {
     @Query("DELETE FROM diag_events WHERE id NOT IN (SELECT id FROM diag_events ORDER BY at DESC LIMIT :keep)")
     suspend fun trimTo(keep: Int)
 }
+
+/** One row per bank transaction, plus the roll-ups the ledger screen shows. */
+@Dao
+interface BankDao {
+
+    @Query("SELECT * FROM bank_tx WHERE amount > 0 ORDER BY at DESC LIMIT :limit")
+    fun observeRecent(limit: Int = 1000): Flow<List<BankTxEntity>>
+
+    @Query(
+        "SELECT accountKey, accountLabel, address, COUNT(*) AS txCount, MAX(at) AS lastAt " +
+            "FROM bank_tx WHERE amount > 0 GROUP BY accountKey ORDER BY lastAt DESC",
+    )
+    fun observeAccounts(): Flow<List<BankAccountSummary>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insert(row: BankTxEntity): Long
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(rows: List<BankTxEntity>)
+
+    @Query("SELECT COUNT(*) FROM bank_tx WHERE amount > 0")
+    suspend fun count(): Int
+
+    /**
+     * A page of received messages below [beforeId], newest first, for the backfill to walk.
+     *
+     * Walking by id with a cursor rather than asking for messages that have no `bank_tx` row: the
+     * overwhelming majority of a phone's messages are not from a bank, and marking each one as
+     * looked-at would mean a row per message — a hundred thousand of them here — to remember a few
+     * hundred transactions.
+     */
+    @Query("SELECT * FROM messages WHERE type = 'INBOX' AND id < :beforeId ORDER BY id DESC LIMIT :limit")
+    suspend fun inboxBefore(beforeId: Long, limit: Int): List<MessageEntity>
+
+    @Query("DELETE FROM bank_tx WHERE messageId = :messageId")
+    suspend fun deleteForMessage(messageId: Long)
+
+    @Query("DELETE FROM bank_tx")
+    suspend fun clear()
+}
+
+/** A bank account seen in the messages, with how much of it there is to show. */
+data class BankAccountSummary(
+    val accountKey: String,
+    val accountLabel: String?,
+    val address: String,
+    val txCount: Int,
+    val lastAt: Long,
+)

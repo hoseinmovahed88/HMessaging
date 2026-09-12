@@ -8,6 +8,7 @@ import androidx.room.TypeConverters
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.hmessaging.data.db.dao.AutoReplyDao
+import com.hmessaging.data.db.dao.BankDao
 import com.hmessaging.data.db.dao.BlockDao
 import com.hmessaging.data.db.dao.DiagDao
 import com.hmessaging.data.db.dao.ForwardDao
@@ -18,6 +19,7 @@ import com.hmessaging.data.db.dao.TemplateDao
 import com.hmessaging.data.db.dao.ThreadDao
 import com.hmessaging.data.db.entity.AutoReplyLogEntity
 import com.hmessaging.data.db.entity.AutoReplyRuleEntity
+import com.hmessaging.data.db.entity.BankTxEntity
 import com.hmessaging.data.db.entity.BlockRuleEntity
 import com.hmessaging.data.db.entity.BlockedMessageEntity
 import com.hmessaging.data.db.entity.DiagEventEntity
@@ -43,8 +45,9 @@ import com.hmessaging.data.db.entity.ThreadEntity
         OtpEntity::class,
         TemplateEntity::class,
         DiagEventEntity::class,
+        BankTxEntity::class,
     ],
-    version = 3,
+    version = 4,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -59,6 +62,7 @@ abstract class HmDatabase : RoomDatabase() {
     abstract fun otpDao(): OtpDao
     abstract fun templateDao(): TemplateDao
     abstract fun diagDao(): DiagDao
+    abstract fun bankDao(): BankDao
 
     companion object {
         private const val NAME = "hmessaging.db"
@@ -89,9 +93,33 @@ abstract class HmDatabase : RoomDatabase() {
             }
         }
 
+        /** Adds the bank ledger. Filled by parsing messages already stored, so nothing is lost. */
+        private val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `bank_tx` (" +
+                        "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                        "`messageId` INTEGER NOT NULL, " +
+                        "`threadId` INTEGER NOT NULL, " +
+                        "`address` TEXT NOT NULL, " +
+                        "`kind` TEXT NOT NULL, " +
+                        "`amount` INTEGER NOT NULL, " +
+                        "`currency` TEXT NOT NULL, " +
+                        "`accountKey` TEXT NOT NULL, " +
+                        "`accountLabel` TEXT, " +
+                        "`balance` INTEGER, " +
+                        "`at` INTEGER NOT NULL, " +
+                        "`body` TEXT NOT NULL)",
+                )
+                db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_bank_tx_messageId` ON `bank_tx` (`messageId`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_bank_tx_at` ON `bank_tx` (`at`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_bank_tx_accountKey` ON `bank_tx` (`accountKey`)")
+            }
+        }
+
         fun build(context: Context): HmDatabase =
             Room.databaseBuilder(context.applicationContext, HmDatabase::class.java, NAME)
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
                 .build()
     }
 }

@@ -124,6 +124,8 @@ class MessageRepository(
         return merged
     }
 
+    suspend fun messageById(id: Long): MessageEntity? = messageDao.byId(id)
+
     suspend fun insertIncoming(
         rawAddress: String,
         body: String,

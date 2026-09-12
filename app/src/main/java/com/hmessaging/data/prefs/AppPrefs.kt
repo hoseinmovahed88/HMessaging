@@ -11,6 +11,7 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.hmessaging.data.model.ThemeMode
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "hm_settings")
@@ -43,6 +44,11 @@ class AppPrefs(context: Context) {
             missedByBroadcast = it[Keys.MISSED_BY_BROADCAST] ?: 0L,
         )
     }
+
+    /** How far the bank-ledger backfill has walked back through the stored messages. */
+    suspend fun bankScanCursor(): Long = store.data.map { it[Keys.BANK_SCAN_CURSOR] ?: 0L }.first()
+
+    suspend fun setBankScanCursor(value: Long) = put(Keys.BANK_SCAN_CURSOR, value)
 
     /** Called once per message actually stored, from whichever path got there first. */
     suspend fun recordDelivery(viaBroadcast: Boolean) {
@@ -165,6 +171,7 @@ class AppPrefs(context: Context) {
         val ONBOARDING = booleanPreferencesKey("onboarding_done")
         val DELIVERED_BY_BROADCAST = longPreferencesKey("delivered_by_broadcast")
         val MISSED_BY_BROADCAST = longPreferencesKey("missed_by_broadcast")
+        val BANK_SCAN_CURSOR = longPreferencesKey("bank_scan_cursor")
     }
 
     private companion object {

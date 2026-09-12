@@ -181,6 +181,8 @@ class MainActivity : AppCompatActivity() {
                 )
             }
             if (settings.liveSyncEnabled) SmsSyncService.start(this@MainActivity)
+            // Quiet unless it finds something; see UpdateCoordinator.
+            graph.updates.checkIfDue()
         }
     }
 

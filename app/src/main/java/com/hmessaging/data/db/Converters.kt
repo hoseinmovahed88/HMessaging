@@ -1,6 +1,7 @@
 package com.hmessaging.data.db
 
 import androidx.room.TypeConverter
+import com.hmessaging.data.model.BankTxKind
 import com.hmessaging.data.model.DeliveryStatus
 import com.hmessaging.data.model.MatchTarget
 import com.hmessaging.data.model.MatchType
@@ -56,6 +57,13 @@ class Converters {
     @TypeConverter
     fun stringToRepeatMode(value: String): RepeatMode =
         runCatching { RepeatMode.valueOf(value) }.getOrDefault(RepeatMode.NONE)
+
+    @TypeConverter
+    fun bankTxKindToString(value: BankTxKind): String = value.name
+
+    @TypeConverter
+    fun stringToBankTxKind(value: String): BankTxKind =
+        runCatching { BankTxKind.valueOf(value) }.getOrDefault(BankTxKind.WITHDRAWAL)
 
     @TypeConverter
     fun scheduleStatusToString(value: ScheduleStatus): String = value.name

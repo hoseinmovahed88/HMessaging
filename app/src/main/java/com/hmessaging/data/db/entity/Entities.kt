@@ -3,6 +3,7 @@ package com.hmessaging.data.db.entity
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import com.hmessaging.data.model.BankTxKind
 import com.hmessaging.data.model.DeliveryStatus
 import com.hmessaging.data.model.MatchTarget
 import com.hmessaging.data.model.MatchType
@@ -202,4 +203,38 @@ data class DiagEventEntity(
     val at: Long,
     val kind: String,
     val detail: String,
+)
+
+/**
+ * One transaction read out of a bank SMS.
+ *
+ * Kept beside the message rather than derived on demand, so the ledger can be queried and totalled
+ * by the database instead of re-parsing every stored message each time the screen opens. The unique
+ * index on [messageId] is what makes re-parsing idempotent: a backfill that runs twice replaces its
+ * own rows rather than doubling every figure.
+ */
+@Entity(
+    tableName = "bank_tx",
+    indices = [
+        Index(value = ["messageId"], unique = true),
+        Index(value = ["at"]),
+        Index(value = ["accountKey"]),
+    ],
+)
+data class BankTxEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val messageId: Long,
+    val threadId: Long,
+    /** The sender, which is the bank: a short code like `BANKMELLAT` or a number. */
+    val address: String,
+    val kind: BankTxKind,
+    val amount: Long,
+    /** ISO-ish code; IRR for rial, IRT for toman. Totals are per currency, never converted. */
+    val currency: String,
+    /** Digits of [accountLabel], or the empty string when the bank named no account. */
+    val accountKey: String,
+    val accountLabel: String?,
+    val balance: Long?,
+    val at: Long,
+    val body: String,
 )

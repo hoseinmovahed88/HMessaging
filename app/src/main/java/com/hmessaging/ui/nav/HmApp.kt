@@ -19,6 +19,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavType
@@ -28,7 +29,9 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.hmessaging.R
+import com.hmessaging.di.AppGraph
 import com.hmessaging.ui.autoreply.AutoReplyScreen
+import com.hmessaging.ui.bank.BankScreen
 import com.hmessaging.ui.blocked.BlockedScreen
 import com.hmessaging.ui.compose.NewMessageScreen
 import com.hmessaging.ui.conversations.ConversationsScreen
@@ -49,6 +52,7 @@ fun HmApp(
     initialRoute: String? = null,
     onRequestDefaultSmsApp: () -> Unit = {},
 ) {
+    val context = LocalContext.current
     val navController = rememberNavController()
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
@@ -123,7 +127,14 @@ fun HmApp(
                 route = Routes.THREAD,
                 arguments = listOf(navArgument(ThreadViewModel.ARG_THREAD_ID) { type = NavType.StringType }),
             ) {
-                ThreadScreen(onBack = { navController.popBackStack() })
+                ThreadScreen(
+                    onBack = { navController.popBackStack() },
+                    onForward = { body ->
+                        // The compose screen claims this on the way in; see AppGraph.
+                        AppGraph.from(context).pendingShareBody = body
+                        navController.navigate(Routes.NEW_MESSAGE)
+                    },
+                )
             }
             composable(Routes.NEW_MESSAGE) {
                 NewMessageScreen(
@@ -151,6 +162,9 @@ fun HmApp(
             }
             composable(Routes.TEMPLATES) {
                 TemplatesScreen(onOpenDrawer = openDrawer)
+            }
+            composable(Routes.BANK) {
+                BankScreen(onOpenDrawer = openDrawer)
             }
             composable(Routes.STATS) {
                 StatsScreen(onOpenDrawer = openDrawer)

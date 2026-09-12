@@ -64,3 +64,9 @@ enum class ThemeMode {
     LIGHT,
     DARK,
 }
+
+/** Which way the money went in a bank notification SMS. */
+enum class BankTxKind {
+    DEPOSIT,
+    WITHDRAWAL,
+}
