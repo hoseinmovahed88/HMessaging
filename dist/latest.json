@@ -1,8 +1,8 @@
 {
-  "versionCode": 20,
-  "versionName": "1.0.19",
-  "url": "https://github.com/hoseinmovahed88/HMessaging/raw/claude/android-messenger-app-izbr89/dist/HMessaging-1.0.19.apk",
-  "sha256": "19219ac8e4e45e5093eac0728ee77b64d31baed00a2fc7c42c3ebdd0d139eeea",
-  "size": 2513984,
-  "notes": "انتخاب و کپی متن، فوروارد چند پیام، تفکیک شماره کارت و حساب و رمز، صفحه مالی برای پیامک‌های بانکی، و همین به‌روزرسانی درون‌برنامه‌ای"
+  "versionCode": 21,
+  "versionName": "1.0.20",
+  "url": "https://github.com/hoseinmovahed88/HMessaging/raw/claude/android-messenger-app-izbr89/dist/HMessaging-1.0.20.apk",
+  "sha256": "6d592ffce4971a484c3e79a3e4ba7332694d5238b3c7b91dec517d96071ef6f7",
+  "size": 2514388,
+  "notes": "فیلد منبع به‌روزرسانی در تنظیمات"
 }
