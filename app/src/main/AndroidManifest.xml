@@ -91,6 +91,21 @@
             android:taskAffinity=".otp"
             android:theme="@style/Theme.HMessaging.Popup" />
 
+        <!--
+            Quick-reply pop-up: the floating reply window for a message that arrives while the
+            phone is in use. singleTask with its own affinity so a second message reuses this
+            window instead of stacking another, and so it never lands in the main task's back
+            stack. Not shown on the lock screen: it holds a reply box and the message body.
+        -->
+        <activity
+            android:name=".feature.quickreply.QuickReplyPopupActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:launchMode="singleTask"
+            android:taskAffinity=".quickreply"
+            android:windowSoftInputMode="adjustResize"
+            android:theme="@style/Theme.HMessaging.Popup" />
+
         <!-- ==================== Default-SMS-app requirements ==================== -->
 
         <!-- #1 SMS_DELIVER: only the default SMS app receives this -->

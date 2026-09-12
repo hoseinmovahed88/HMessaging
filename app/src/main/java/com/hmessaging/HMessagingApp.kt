@@ -17,6 +17,7 @@ class HMessagingApp : Application(), Configuration.Provider {
         super.onCreate()
         val graph = AppGraph.from(this)
         graph.notifications.ensureChannels()
+        registerActivityLifecycleCallbacks(graph.foreground)
 
         graph.applicationScope.launch {
             // A send whose result broadcast never arrived (process death mid-send) would otherwise

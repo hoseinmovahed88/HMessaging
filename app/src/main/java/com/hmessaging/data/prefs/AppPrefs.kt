@@ -78,6 +78,7 @@ class AppPrefs(context: Context) {
     suspend fun setForwardMaxPerHour(value: Int) = put(Keys.FORWARD_MAX, value.coerceIn(1, MAX_FORWARD_PER_HOUR))
 
     suspend fun setNotificationPreview(value: Boolean) = put(Keys.NOTIF_PREVIEW, value)
+    suspend fun setQuickReplyPopupEnabled(value: Boolean) = put(Keys.QUICK_REPLY_POPUP, value)
     suspend fun setAppLockEnabled(value: Boolean) = put(Keys.APP_LOCK, value)
     suspend fun setLiveSyncEnabled(value: Boolean) = put(Keys.LIVE_SYNC, value)
     suspend fun setSystemSmsImported(value: Boolean) = put(Keys.SMS_IMPORTED, value)
@@ -126,6 +127,7 @@ class AppPrefs(context: Context) {
             forwardingEnabled = this[Keys.FORWARDING] ?: defaults.forwardingEnabled,
             forwardMaxPerHour = this[Keys.FORWARD_MAX] ?: defaults.forwardMaxPerHour,
             notificationPreview = this[Keys.NOTIF_PREVIEW] ?: defaults.notificationPreview,
+            quickReplyPopupEnabled = this[Keys.QUICK_REPLY_POPUP] ?: defaults.quickReplyPopupEnabled,
             appLockEnabled = this[Keys.APP_LOCK] ?: defaults.appLockEnabled,
             liveSyncEnabled = this[Keys.LIVE_SYNC] ?: defaults.liveSyncEnabled,
             systemSmsImported = this[Keys.SMS_IMPORTED] ?: defaults.systemSmsImported,
@@ -156,6 +158,7 @@ class AppPrefs(context: Context) {
         val FORWARDING = booleanPreferencesKey("forwarding_enabled")
         val FORWARD_MAX = intPreferencesKey("forward_max_per_hour")
         val NOTIF_PREVIEW = booleanPreferencesKey("notification_preview")
+        val QUICK_REPLY_POPUP = booleanPreferencesKey("quick_reply_popup")
         val APP_LOCK = booleanPreferencesKey("app_lock")
         val LIVE_SYNC = booleanPreferencesKey("live_sync")
         val SMS_IMPORTED = booleanPreferencesKey("system_sms_imported")

@@ -9,6 +9,7 @@ import com.hmessaging.feature.autoreply.AutoReplyEngine
 import com.hmessaging.feature.block.BlockEngine
 import com.hmessaging.feature.forward.ForwardEngine
 import com.hmessaging.feature.otp.OtpPresenter
+import com.hmessaging.feature.quickreply.QuickReplyPresenter
 import com.hmessaging.feature.schedule.ScheduleManager
 import com.hmessaging.notify.Notifications
 import com.hmessaging.sms.IncomingMessagePipeline
@@ -17,6 +18,7 @@ import com.hmessaging.sms.SmsImporter
 import com.hmessaging.sms.SmsSender
 import com.hmessaging.sms.SystemSmsWriter
 import com.hmessaging.system.Diagnostics
+import com.hmessaging.system.ForegroundTracker
 import com.hmessaging.util.ContactsLookup
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -49,6 +51,9 @@ class AppGraph private constructor(val appContext: Context) {
 
     val diagnostics: Diagnostics by lazy { Diagnostics(appContext, diagDao, messageDao, threadDao, prefs, systemSmsWriter) }
 
+    /** Registered by the Application; see [ForegroundTracker]. */
+    val foreground = ForegroundTracker()
+
     val contacts: ContactsLookup by lazy { ContactsLookup(appContext) }
     val simManager: SimManager by lazy { SimManager(appContext) }
     val systemSmsWriter: SystemSmsWriter by lazy { SystemSmsWriter(appContext) }
@@ -65,6 +70,10 @@ class AppGraph private constructor(val appContext: Context) {
     val blockEngine: BlockEngine by lazy { BlockEngine(blockDao, prefs, contacts) }
 
     val otpPresenter: OtpPresenter by lazy { OtpPresenter(appContext, otpDao, prefs, notifications) }
+
+    val quickReplyPresenter: QuickReplyPresenter by lazy {
+        QuickReplyPresenter(appContext, prefs, foreground)
+    }
 
     val autoReplyEngine: AutoReplyEngine by lazy {
         AutoReplyEngine(autoReplyDao, prefs, smsSender, contacts)
@@ -83,6 +92,7 @@ class AppGraph private constructor(val appContext: Context) {
             autoReplyEngine = autoReplyEngine,
             forwardEngine = forwardEngine,
             notifications = notifications,
+            quickReplyPresenter = quickReplyPresenter,
             prefs = prefs,
         )
     }

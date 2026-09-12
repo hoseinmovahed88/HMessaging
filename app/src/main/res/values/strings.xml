@@ -193,4 +193,7 @@
     <string name="channel_watcher">Background watcher</string>
     <string name="sync_service_why">Android will not wake this app for an incoming message on this phone, so it watches the SMS store itself. Without this, messages arrive only when you open the app. Diagnostics shows whether it is still needed.</string>
     <string name="sync_service_turn_off">Turn off</string>
+    <string name="settings_quick_reply">Floating reply window</string>
+    <string name="settings_quick_reply_desc">When a message arrives while you are using the phone, show it in a window you can reply from without leaving the app you are in. Needs the “display over other apps” permission.</string>
+    <string name="quick_reply_hint">Reply…</string>
 </resources>

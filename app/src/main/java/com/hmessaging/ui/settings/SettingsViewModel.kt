@@ -39,6 +39,9 @@ class SettingsViewModel(private val graph: AppGraph) : ViewModel() {
     fun setSignatureEnabled(value: Boolean) = viewModelScope.launch { graph.prefs.setSignatureEnabled(value) }
     fun setDefaultSubscriptionId(value: Int) = viewModelScope.launch { graph.prefs.setDefaultSubscriptionId(value) }
     fun setNotificationPreview(value: Boolean) = viewModelScope.launch { graph.prefs.setNotificationPreview(value) }
+
+    fun setQuickReplyPopupEnabled(value: Boolean) =
+        viewModelScope.launch { graph.prefs.setQuickReplyPopupEnabled(value) }
     fun setAppLockEnabled(value: Boolean) = viewModelScope.launch { graph.prefs.setAppLockEnabled(value) }
 
     fun setLiveSyncEnabled(value: Boolean) = viewModelScope.launch {

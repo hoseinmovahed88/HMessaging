@@ -181,4 +181,7 @@
     <string name="channel_watcher">پایشگر پس‌زمینه</string>
     <string name="sync_service_why">اندروید روی این گوشی اپ را برای پیام ورودی بیدار نمی‌کند، پس خودش حافظه پیامک را زیر نظر می‌گیرد. بدون این، پیام‌ها فقط هنگام باز کردن اپ می‌رسند. در صفحه عیب‌یابی می‌بینید هنوز لازم هست یا نه.</string>
     <string name="sync_service_turn_off">خاموش کن</string>
+    <string name="settings_quick_reply">پنجره شناور پاسخ</string>
+    <string name="settings_quick_reply_desc">وقتی پیامی می‌رسد و شما مشغول کار با گوشی هستید، آن را در پنجره‌ای نشان می‌دهد که بدون خارج شدن از برنامه‌ی فعلی می‌توانید از همان‌جا جواب بدهید. به اجازه‌ی «نمایش روی برنامه‌های دیگر» نیاز دارد.</string>
+    <string name="quick_reply_hint">پاسخ…</string>
 </resources>

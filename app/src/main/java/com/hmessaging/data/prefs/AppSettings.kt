@@ -34,6 +34,8 @@ data class AppSettings(
     val forwardMaxPerHour: Int = DEFAULT_FORWARD_MAX_PER_HOUR,
     // Notifications
     val notificationPreview: Boolean = true,
+    /** Floating reply window over whatever is on screen, for messages that arrive while in use. */
+    val quickReplyPopupEnabled: Boolean = true,
     // Security
     val appLockEnabled: Boolean = false,
     // Delivery

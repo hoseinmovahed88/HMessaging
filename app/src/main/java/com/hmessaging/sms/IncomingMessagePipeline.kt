@@ -8,6 +8,7 @@ import com.hmessaging.feature.block.BlockEngine
 import com.hmessaging.feature.forward.ForwardEngine
 import com.hmessaging.feature.otp.OtpDetector
 import com.hmessaging.feature.otp.OtpPresenter
+import com.hmessaging.feature.quickreply.QuickReplyPresenter
 import com.hmessaging.notify.Notifications
 import com.hmessaging.system.Diagnostics
 import kotlinx.coroutines.flow.first
@@ -27,6 +28,7 @@ class IncomingMessagePipeline(
     private val autoReplyEngine: AutoReplyEngine,
     private val forwardEngine: ForwardEngine,
     private val notifications: Notifications,
+    private val quickReplyPresenter: QuickReplyPresenter,
     private val prefs: AppPrefs,
 ) {
 
@@ -116,6 +118,19 @@ class IncomingMessagePipeline(
                     receivedAt = receivedAt,
                     showPreview = settings.notificationPreview,
                 )
+                // After the notification, never instead of it: the pop-up only appears when the
+                // screen is in use, and dismissing it must not be how a message goes missing.
+                if (!thread.muted) {
+                    runCatching {
+                        quickReplyPresenter.maybeShow(
+                            threadId = threadId,
+                            address = address,
+                            contactName = thread.contactName,
+                            body = body,
+                            receivedAt = receivedAt,
+                        )
+                    }
+                }
             }
         }
 

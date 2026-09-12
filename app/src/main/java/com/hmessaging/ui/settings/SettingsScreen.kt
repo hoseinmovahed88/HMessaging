@@ -258,6 +258,31 @@ fun SettingsScreen(
                         checked = settings.notificationPreview,
                         onCheckedChange = viewModel::setNotificationPreview,
                     )
+                    HyperRowDivider()
+                    HyperSwitchRow(
+                        title = stringResource(R.string.settings_quick_reply),
+                        subtitle = stringResource(R.string.settings_quick_reply_desc),
+                        checked = settings.quickReplyPopupEnabled,
+                        onCheckedChange = viewModel::setQuickReplyPopupEnabled,
+                    )
+                    // Without the overlay permission the switch is on and nothing ever appears,
+                    // which reads as a broken feature rather than a missing permission.
+                    if (settings.quickReplyPopupEnabled && !AppRoles.canDrawOverlays(context)) {
+                        Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)) {
+                            Text(
+                                text = stringResource(R.string.otp_overlay_needed),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.error,
+                            )
+                            TextButton(
+                                onClick = {
+                                    context.startActivity(AppRoles.overlayPermissionIntent(context))
+                                },
+                            ) {
+                                Text(stringResource(R.string.open))
+                            }
+                        }
+                    }
                 }
             }
 
