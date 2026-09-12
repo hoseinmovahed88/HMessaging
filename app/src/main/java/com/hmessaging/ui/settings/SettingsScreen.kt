@@ -60,6 +60,7 @@ fun SettingsScreen(
     val context = LocalContext.current
     val graph = remember(context) { AppGraph.from(context) }
     val updateStatus by graph.updates.status.collectAsStateWithLifecycle()
+    var updateUrl by remember(settings.updateManifestUrl) { mutableStateOf(settings.updateManifestUrl) }
     val snackbarHost = remember { SnackbarHostState() }
     val isDefaultSmsApp = rememberIsDefaultSmsApp()
 
@@ -333,6 +334,23 @@ fun SettingsScreen(
 
                         else -> Unit
                     }
+                    HyperRowDivider()
+                    OutlinedTextField(
+                        value = updateUrl,
+                        onValueChange = { updateUrl = it },
+                        label = { Text(stringResource(R.string.settings_update_url)) },
+                        supportingText = { Text(stringResource(R.string.settings_update_url_desc)) },
+                        singleLine = true,
+                        shape = RoundedCornerShape(16.dp),
+                        trailingIcon = {
+                            TextButton(onClick = { viewModel.setUpdateManifestUrl(updateUrl) }) {
+                                Text(stringResource(R.string.save))
+                            }
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                    )
                 }
             }
 

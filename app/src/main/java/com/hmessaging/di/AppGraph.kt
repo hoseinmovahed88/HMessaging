@@ -77,7 +77,7 @@ class AppGraph private constructor(val appContext: Context) {
 
     val bankLedger: BankLedger by lazy { BankLedger(bankDao, prefs) }
 
-    val updateChecker: UpdateChecker by lazy { UpdateChecker(appContext) }
+    val updateChecker: UpdateChecker by lazy { UpdateChecker(appContext, prefs) }
 
     val updates: UpdateCoordinator by lazy { UpdateCoordinator(updateChecker, applicationScope) }
 

@@ -36,6 +36,9 @@ data class AppSettings(
     val notificationPreview: Boolean = true,
     /** Floating reply window over whatever is on screen, for messages that arrive while in use. */
     val quickReplyPopupEnabled: Boolean = true,
+    // Updates
+    /** Where to look for a published release. Blank means the address built into the app. */
+    val updateManifestUrl: String = "",
     // Security
     val appLockEnabled: Boolean = false,
     // Delivery

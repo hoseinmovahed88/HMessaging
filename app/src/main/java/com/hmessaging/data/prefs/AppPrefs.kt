@@ -86,6 +86,7 @@ class AppPrefs(context: Context) {
     suspend fun setNotificationPreview(value: Boolean) = put(Keys.NOTIF_PREVIEW, value)
     suspend fun setQuickReplyPopupEnabled(value: Boolean) = put(Keys.QUICK_REPLY_POPUP, value)
     suspend fun setAppLockEnabled(value: Boolean) = put(Keys.APP_LOCK, value)
+    suspend fun setUpdateManifestUrl(value: String) = put(Keys.UPDATE_URL, value.trim())
     suspend fun setLiveSyncEnabled(value: Boolean) = put(Keys.LIVE_SYNC, value)
     suspend fun setSystemSmsImported(value: Boolean) = put(Keys.SMS_IMPORTED, value)
     suspend fun setOnboardingDone(value: Boolean) = put(Keys.ONBOARDING, value)
@@ -135,6 +136,7 @@ class AppPrefs(context: Context) {
             notificationPreview = this[Keys.NOTIF_PREVIEW] ?: defaults.notificationPreview,
             quickReplyPopupEnabled = this[Keys.QUICK_REPLY_POPUP] ?: defaults.quickReplyPopupEnabled,
             appLockEnabled = this[Keys.APP_LOCK] ?: defaults.appLockEnabled,
+            updateManifestUrl = this[Keys.UPDATE_URL] ?: defaults.updateManifestUrl,
             liveSyncEnabled = this[Keys.LIVE_SYNC] ?: defaults.liveSyncEnabled,
             systemSmsImported = this[Keys.SMS_IMPORTED] ?: defaults.systemSmsImported,
             onboardingDone = this[Keys.ONBOARDING] ?: defaults.onboardingDone,
@@ -166,6 +168,7 @@ class AppPrefs(context: Context) {
         val NOTIF_PREVIEW = booleanPreferencesKey("notification_preview")
         val QUICK_REPLY_POPUP = booleanPreferencesKey("quick_reply_popup")
         val APP_LOCK = booleanPreferencesKey("app_lock")
+        val UPDATE_URL = stringPreferencesKey("update_manifest_url")
         val LIVE_SYNC = booleanPreferencesKey("live_sync")
         val SMS_IMPORTED = booleanPreferencesKey("system_sms_imported")
         val ONBOARDING = booleanPreferencesKey("onboarding_done")

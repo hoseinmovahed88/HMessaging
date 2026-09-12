@@ -220,4 +220,6 @@
     <string name="update_up_to_date">آخرین نسخه را دارید</string>
     <string name="update_failed">دسترسی به سرور به‌روزرسانی ممکن نشد</string>
     <string name="update_installed_version">نصب‌شده: %1$s</string>
+    <string name="settings_update_url">منبع به‌روزرسانی</string>
+    <string name="settings_update_url_desc">آدرس فایل مشخصات نسخه. خالی بگذارید تا آدرس پیش‌فرض استفاده شود.</string>
 </resources>

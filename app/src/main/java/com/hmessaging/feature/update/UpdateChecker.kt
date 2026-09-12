@@ -4,7 +4,9 @@ import android.content.Context
 import android.content.Intent
 import androidx.core.content.FileProvider
 import com.hmessaging.BuildConfig
+import com.hmessaging.data.prefs.AppPrefs
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -33,7 +35,10 @@ data class UpdateInfo(
  * the SHA-256 in the manifest must match the bytes that arrived, and Android will refuse the
  * install outright unless the download is signed with the same key as the installed app.
  */
-class UpdateChecker(private val context: Context) {
+class UpdateChecker(
+    private val context: Context,
+    private val prefs: AppPrefs,
+) {
 
     private val json = Json { ignoreUnknownKeys = true }
 
@@ -46,10 +51,18 @@ class UpdateChecker(private val context: Context) {
     /** Fetches the manifest whether or not it describes something newer. */
     suspend fun fetchManifest(): UpdateInfo? = withContext(Dispatchers.IO) {
         runCatching {
-            val text = open(MANIFEST_URL).use { it.inputStream.bufferedReader().readText() }
+            val text = open(manifestUrl()).use { it.inputStream.bufferedReader().readText() }
             json.decodeFromString(UpdateInfo.serializer(), text)
         }.getOrNull()
     }
+
+    /**
+     * Where to look. Settable, because where these releases are published is not something the app
+     * can know for good: it depends on whether the repository they come from is reachable without
+     * an account, and that is the owner's decision to change — not a reason to need a new build.
+     */
+    suspend fun manifestUrl(): String =
+        prefs.settings.first().updateManifestUrl.takeIf { it.startsWith("https://") } ?: MANIFEST_URL
 
     /**
      * Downloads the release and verifies it against the manifest's digest.
@@ -131,9 +144,11 @@ class UpdateChecker(private val context: Context) {
 
     companion object {
         /**
-         * The branch this app is built from. A tag would be steadier, but the releases live on the
-         * branch, and pointing the check at the same place the APK is published from means the two
-         * can never disagree about what the latest version is.
+         * Where releases are published today, built in and overridden by the setting.
+         *
+         * This address only answers to a signed-in browser while the repository is private, which
+         * an app on a phone is not — so the setting above is how the check is pointed at whatever
+         * the owner decides to publish from.
          */
         const val MANIFEST_URL =
             "https://raw.githubusercontent.com/hoseinmovahed88/HMessaging/" +

@@ -232,4 +232,6 @@
     <string name="update_up_to_date">You have the newest version</string>
     <string name="update_failed">Could not reach the update server</string>
     <string name="update_installed_version">Installed: %1$s</string>
+    <string name="settings_update_url">Update source</string>
+    <string name="settings_update_url_desc">Address of the release manifest. Leave empty to use the built-in one.</string>
 </resources>
