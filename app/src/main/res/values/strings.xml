@@ -234,4 +234,16 @@
     <string name="update_installed_version">Installed: %1$s</string>
     <string name="settings_update_url">Update source</string>
     <string name="settings_update_url_desc">Address of the release manifest. Leave empty to use the built-in one.</string>
+    <string name="bank_teach_title">Teach a bank format</string>
+    <string name="bank_teach_pick">Pick one message from your bank</string>
+    <string name="bank_teach_use">Use this one</string>
+    <string name="bank_teach_none">No messages mentioning an amount were found</string>
+    <string name="bank_teach_which">Tap a field, then tap the number it refers to</string>
+    <string name="bank_teach_amount">Amount</string>
+    <string name="bank_teach_balance">Balance</string>
+    <string name="bank_teach_account">Account</string>
+    <string name="bank_teach_direction">Which way, and in what currency</string>
+    <string name="bank_teach_name_desc">Shown on each transaction this format reads.</string>
+    <string name="bank_rules">Taught formats</string>
+    <string name="bank_no_rules">Nothing is read from your messages until you teach the app one bank format. Pick a real message from your bank and say which number is the amount.</string>
 </resources>

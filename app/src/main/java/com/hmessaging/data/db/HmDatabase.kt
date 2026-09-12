@@ -19,6 +19,7 @@ import com.hmessaging.data.db.dao.TemplateDao
 import com.hmessaging.data.db.dao.ThreadDao
 import com.hmessaging.data.db.entity.AutoReplyLogEntity
 import com.hmessaging.data.db.entity.AutoReplyRuleEntity
+import com.hmessaging.data.db.entity.BankRuleEntity
 import com.hmessaging.data.db.entity.BankTxEntity
 import com.hmessaging.data.db.entity.BlockRuleEntity
 import com.hmessaging.data.db.entity.BlockedMessageEntity
@@ -46,8 +47,9 @@ import com.hmessaging.data.db.entity.ThreadEntity
         TemplateEntity::class,
         DiagEventEntity::class,
         BankTxEntity::class,
+        BankRuleEntity::class,
     ],
-    version = 4,
+    version = 5,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -117,9 +119,41 @@ abstract class HmDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * Adds the taught bank formats, and throws away everything the guessing parser filed.
+         *
+         * Those rows were wrong — a phone bill read as a withdrawal, a phone number read as an
+         * amount — and there is no sorting the few right ones from the rest, so none of them are
+         * kept. The ledger starts empty and fills as formats are taught.
+         */
+        private val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `bank_rules` (" +
+                        "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                        "`senderKey` TEXT NOT NULL, " +
+                        "`senderLabel` TEXT NOT NULL, " +
+                        "`name` TEXT NOT NULL, " +
+                        "`kind` TEXT NOT NULL, " +
+                        "`amountAnchor` TEXT NOT NULL, " +
+                        "`balanceAnchor` TEXT, " +
+                        "`accountAnchor` TEXT, " +
+                        "`accountLiteral` TEXT, " +
+                        "`currency` TEXT NOT NULL, " +
+                        "`enabled` INTEGER NOT NULL, " +
+                        "`hitCount` INTEGER NOT NULL, " +
+                        "`createdAt` INTEGER NOT NULL, " +
+                        "`sampleBody` TEXT NOT NULL)",
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_bank_rules_senderKey` ON `bank_rules` (`senderKey`)")
+                db.execSQL("ALTER TABLE `bank_tx` ADD COLUMN `ruleId` INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("DELETE FROM `bank_tx`")
+            }
+        }
+
         fun build(context: Context): HmDatabase =
             Room.databaseBuilder(context.applicationContext, HmDatabase::class.java, NAME)
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
                 .build()
     }
 }

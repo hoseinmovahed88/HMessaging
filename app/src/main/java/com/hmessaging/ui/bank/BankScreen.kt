@@ -5,16 +5,24 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBalance
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -35,7 +43,9 @@ import com.hmessaging.data.model.BankTxKind
 import com.hmessaging.ui.HmViewModelFactory
 import com.hmessaging.ui.components.EmptyState
 import com.hmessaging.ui.components.HyperCard
+import com.hmessaging.ui.components.HyperGroupTitle
 import com.hmessaging.ui.components.HyperGroupedRow
+import com.hmessaging.ui.components.HyperRow
 import com.hmessaging.ui.components.HyperIconButton
 import com.hmessaging.ui.components.HyperScreen
 import com.hmessaging.ui.theme.LocalHyperColors
@@ -52,6 +62,7 @@ import com.hmessaging.util.TimeFormat
 @Composable
 fun BankScreen(
     onOpenDrawer: () -> Unit,
+    onTeachRule: () -> Unit,
     viewModel: BankViewModel = viewModel(factory = HmViewModelFactory.Factory),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -76,15 +87,69 @@ fun BankScreen(
                 onClick = viewModel::rescanAll,
             )
         },
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = onTeachRule,
+                shape = RoundedCornerShape(20.dp),
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary,
+            ) {
+                Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.bank_teach_title))
+            }
+        },
     ) { padding ->
-        LazyColumn(modifier = Modifier.fillMaxSize().padding(padding)) {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize().padding(padding),
+            contentPadding = PaddingValues(bottom = 96.dp),
+        ) {
+            // Nothing is read until a format is taught, so say that rather than showing an empty
+            // ledger that looks broken.
+            if (state.rules.isEmpty()) {
+                item("no-rules") {
+                    HyperCard {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Text(
+                                text = stringResource(R.string.bank_no_rules),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurface,
+                            )
+                            Button(
+                                onClick = onTeachRule,
+                                shape = RoundedCornerShape(14.dp),
+                                modifier = Modifier.padding(top = 12.dp),
+                            ) {
+                                Text(stringResource(R.string.bank_teach_title))
+                            }
+                        }
+                    }
+                }
+            }
+
             item("totals") { TotalsCard(state) }
             item("filters") { Filters(state, viewModel) }
             if (state.accounts.size > 1) {
                 item("accounts") { Accounts(state, viewModel) }
             }
 
-            if (state.transactions.isEmpty()) {
+            if (state.rules.isNotEmpty()) {
+                item("rules-title") { HyperGroupTitle(stringResource(R.string.bank_rules)) }
+                items(state.rules, key = { "rule-" + it.id }) { rule ->
+                    HyperRow(
+                        title = rule.name,
+                        subtitle = rule.senderLabel + " · " + rule.amountAnchor,
+                        trailing = {
+                            HyperIconButton(
+                                icon = Icons.Filled.Delete,
+                                contentDescription = stringResource(R.string.delete),
+                                onClick = { viewModel.deleteRule(rule.id) },
+                            )
+                        },
+                    )
+                }
+                item("tx-title") { HyperGroupTitle(stringResource(R.string.nav_bank)) }
+            }
+
+            if (state.transactions.isEmpty() && state.rules.isNotEmpty()) {
                 item("empty") {
                     EmptyState(
                         text = stringResource(

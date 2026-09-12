@@ -32,6 +32,7 @@ import com.hmessaging.R
 import com.hmessaging.di.AppGraph
 import com.hmessaging.ui.autoreply.AutoReplyScreen
 import com.hmessaging.ui.bank.BankScreen
+import com.hmessaging.ui.bank.TeachRuleScreen
 import com.hmessaging.ui.blocked.BlockedScreen
 import com.hmessaging.ui.compose.NewMessageScreen
 import com.hmessaging.ui.conversations.ConversationsScreen
@@ -164,7 +165,13 @@ fun HmApp(
                 TemplatesScreen(onOpenDrawer = openDrawer)
             }
             composable(Routes.BANK) {
-                BankScreen(onOpenDrawer = openDrawer)
+                BankScreen(
+                    onOpenDrawer = openDrawer,
+                    onTeachRule = { navController.navigate(Routes.BANK_TEACH) },
+                )
+            }
+            composable(Routes.BANK_TEACH) {
+                TeachRuleScreen(onDone = { navController.popBackStack() })
             }
             composable(Routes.STATS) {
                 StatsScreen(onOpenDrawer = openDrawer)

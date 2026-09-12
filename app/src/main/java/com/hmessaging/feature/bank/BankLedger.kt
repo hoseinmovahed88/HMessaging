@@ -1,6 +1,7 @@
 package com.hmessaging.feature.bank
 
 import com.hmessaging.data.db.dao.BankDao
+import com.hmessaging.data.db.entity.BankRuleEntity
 import com.hmessaging.data.db.entity.BankTxEntity
 import com.hmessaging.data.db.entity.MessageEntity
 import com.hmessaging.data.prefs.AppPrefs
@@ -12,33 +13,39 @@ import kotlinx.coroutines.withContext
 data class BackfillResult(val scanned: Int, val filed: Int, val finished: Boolean)
 
 /**
- * Keeps the bank ledger in step with the messages.
+ * Files bank messages into the ledger, using only the formats the user has taught.
  *
- * Two ways in: [record] for a message as it arrives, and [backfill] for everything already stored.
- * Both go through the same parser and the same unique index on the message id, so re-running the
- * backfill after improving the parser corrects old rows instead of duplicating them.
+ * No rules means no transactions, deliberately. The version of this that guessed at formats filed
+ * six thousand rows from a phone with a few hundred real transactions in it — phone bills, advert
+ * texts, a personal message whose "912" became an amount — and a ledger that wrong is worse than no
+ * ledger at all, because its totals look like answers.
  */
 class BankLedger(
     private val bankDao: BankDao,
     private val prefs: AppPrefs,
 ) {
 
-    /** Parses one stored message; returns whether it turned out to be a transaction. */
+    /** Parses one stored message; returns whether a rule claimed it. */
     suspend fun record(message: MessageEntity): Boolean {
-        val row = toRow(message) ?: return false
+        val rules = bankDao.rulesForSender(PhoneNumbers.threadKey(message.address))
+        if (rules.isEmpty()) return false
+        val row = firstMatch(rules, message) ?: return false
         bankDao.insert(row)
         return true
     }
 
     /**
-     * Walks stored messages that the parser has not reached and files whichever are bank
-     * notifications.
+     * Re-reads stored messages with the current rules.
      *
-     * Progress is a single message id kept in preferences, walking from newest to oldest, so a pass
-     * that is interrupted — or a phone with a hundred thousand messages that needs several — picks
-     * up where the last one stopped rather than starting again.
+     * Only the senders that have rules are walked, which is what makes this quick: a phone with a
+     * hundred thousand messages usually has a handful of banks among them, and every other sender
+     * is skipped by the database rather than by the parser.
      */
     suspend fun backfill(limit: Int = BACKFILL_LIMIT): BackfillResult = withContext(Dispatchers.IO) {
+        val rules = bankDao.activeRules()
+        if (rules.isEmpty()) return@withContext BackfillResult(0, 0, finished = true)
+
+        val bySender = rules.groupBy { it.senderKey }
         var cursor = prefs.bankScanCursor().takeIf { it > 0 } ?: Long.MAX_VALUE
         var filed = 0
         var scanned = 0
@@ -50,7 +57,9 @@ class BankLedger(
                 finished = true
                 break
             }
-            val rows = batch.mapNotNull { toRow(it) }
+            val rows = batch.mapNotNull { message ->
+                bySender[PhoneNumbers.threadKey(message.address)]?.let { firstMatch(it, message) }
+            }
             if (rows.isNotEmpty()) {
                 bankDao.insertAll(rows)
                 filed += rows.size
@@ -63,25 +72,41 @@ class BankLedger(
         BackfillResult(scanned = scanned, filed = filed, finished = finished)
     }
 
-    /** Starts the walk again from the newest message, for after the parser changes. */
+    /** Starts the walk again from the newest message, for after a rule is added or changed. */
     suspend fun resetScan() = prefs.setBankScanCursor(0)
 
-    private fun toRow(message: MessageEntity): BankTxEntity? {
-        val tx = BankSmsParser.parse(message.body) ?: return null
-        val label = tx.accountLabel
-        return BankTxEntity(
-            messageId = message.id,
-            threadId = message.threadId,
-            address = message.address,
-            kind = tx.kind,
-            amount = tx.amount,
-            currency = tx.currency,
-            accountKey = accountKeyOf(label, message.address),
-            accountLabel = label,
-            balance = tx.balance,
-            at = message.date,
-            body = message.body,
-        )
+    /** Removes a rule and everything it filed, so a mistaught format can be taken back. */
+    suspend fun deleteRule(ruleId: Long) {
+        bankDao.deleteTxForRule(ruleId)
+        bankDao.deleteRule(ruleId)
+    }
+
+    /**
+     * The first rule that reads this message wins.
+     *
+     * Order is not arbitrary: a sender's rules are distinguished by the label in front of the
+     * amount, so at most one of them matches any given message. Where two would, taking the first
+     * is at least stable.
+     */
+    private fun firstMatch(rules: List<BankRuleEntity>, message: MessageEntity): BankTxEntity? {
+        for (rule in rules) {
+            val tx = BankRules.apply(rule, message.body) ?: continue
+            return BankTxEntity(
+                messageId = message.id,
+                threadId = message.threadId,
+                address = message.address,
+                kind = tx.kind,
+                amount = tx.amount,
+                currency = tx.currency,
+                accountKey = accountKeyOf(tx.accountLabel, message.address),
+                accountLabel = tx.accountLabel,
+                balance = tx.balance,
+                at = message.date,
+                body = message.body,
+                ruleId = rule.id,
+            )
+        }
+        return null
     }
 
     /**

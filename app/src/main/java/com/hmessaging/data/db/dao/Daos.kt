@@ -9,6 +9,7 @@ import androidx.room.Update
 import androidx.room.Upsert
 import com.hmessaging.data.db.entity.AutoReplyLogEntity
 import com.hmessaging.data.db.entity.AutoReplyRuleEntity
+import com.hmessaging.data.db.entity.BankRuleEntity
 import com.hmessaging.data.db.entity.BankTxEntity
 import com.hmessaging.data.db.entity.BlockRuleEntity
 import com.hmessaging.data.db.entity.BlockedMessageEntity
@@ -485,6 +486,43 @@ interface BankDao {
 
     @Query("DELETE FROM bank_tx")
     suspend fun clear()
+
+    // ---- the taught formats -------------------------------------------------
+
+    @Query("SELECT * FROM bank_rules ORDER BY createdAt DESC")
+    fun observeRules(): Flow<List<BankRuleEntity>>
+
+    @Query("SELECT * FROM bank_rules WHERE enabled = 1")
+    suspend fun activeRules(): List<BankRuleEntity>
+
+    @Query("SELECT * FROM bank_rules WHERE senderKey = :senderKey AND enabled = 1")
+    suspend fun rulesForSender(senderKey: String): List<BankRuleEntity>
+
+    @Query("SELECT COUNT(*) FROM bank_rules")
+    suspend fun ruleCount(): Int
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertRule(rule: BankRuleEntity): Long
+
+    @Update
+    suspend fun updateRule(rule: BankRuleEntity)
+
+    @Query("DELETE FROM bank_rules WHERE id = :id")
+    suspend fun deleteRule(id: Long)
+
+    /** Transactions a deleted rule had filed, so removing a rule undoes what it did. */
+    @Query("DELETE FROM bank_tx WHERE ruleId = :ruleId")
+    suspend fun deleteTxForRule(ruleId: Long)
+
+    /**
+     * Candidate messages for the teach screen: what the phone has received, newest first, so the
+     * user can find one of their bank's messages and point at it.
+     */
+    @Query(
+        "SELECT * FROM messages WHERE type = 'INBOX' AND body LIKE '%' || :contains || '%' " +
+            "ORDER BY date DESC LIMIT :limit",
+    )
+    suspend fun inboxContaining(contains: String, limit: Int): List<MessageEntity>
 }
 
 /** A bank account seen in the messages, with how much of it there is to show. */

@@ -222,4 +222,16 @@
     <string name="update_installed_version">نصب‌شده: %1$s</string>
     <string name="settings_update_url">منبع به‌روزرسانی</string>
     <string name="settings_update_url_desc">آدرس فایل مشخصات نسخه. خالی بگذارید تا آدرس پیش‌فرض استفاده شود.</string>
+    <string name="bank_teach_title">آموزش قالب بانک</string>
+    <string name="bank_teach_pick">یک پیامک از بانکتان انتخاب کنید</string>
+    <string name="bank_teach_use">همین را استفاده کن</string>
+    <string name="bank_teach_none">پیامکی با مبلغ پیدا نشد</string>
+    <string name="bank_teach_which">روی یک مورد بزنید، بعد روی عددی که به آن اشاره دارد</string>
+    <string name="bank_teach_amount">مبلغ</string>
+    <string name="bank_teach_balance">مانده</string>
+    <string name="bank_teach_account">حساب</string>
+    <string name="bank_teach_direction">کدام جهت، و با چه واحدی</string>
+    <string name="bank_teach_name_desc">روی هر تراکنشی که این قالب می‌خواند نشان داده می‌شود.</string>
+    <string name="bank_rules">قالب‌های آموخته‌شده</string>
+    <string name="bank_no_rules">تا وقتی یک قالب بانکی یاد ندهید هیچ چیزی از پیام‌هایتان خوانده نمی‌شود. یک پیامک واقعی از بانکتان انتخاب کنید و بگویید کدام عدد مبلغ است.</string>
 </resources>

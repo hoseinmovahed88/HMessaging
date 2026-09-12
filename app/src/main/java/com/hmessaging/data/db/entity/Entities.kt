@@ -237,4 +237,44 @@ data class BankTxEntity(
     val balance: Long?,
     val at: Long,
     val body: String,
+    /** The rule that read this message, so deleting a rule takes its rows with it. */
+    val ruleId: Long = 0,
+)
+
+/**
+ * A bank's message format, as the user taught it from one real message.
+ *
+ * Guessing these formats does not work. Every bank writes its own wording, they are not published
+ * anywhere, and a parser built on guesses reads a phone bill as a withdrawal and a phone number as
+ * an amount — which is how the first attempt at this produced a ledger of nonsense. So nothing is
+ * parsed until the user has pointed at one message and said which number is which.
+ *
+ * A rule is anchored on the text immediately before each number rather than on its position, since
+ * the same bank varies how much it writes around them. One rule per direction per sender is the
+ * normal case: banks almost always use different wording for money in and money out, and that
+ * wording is what [amountAnchor] captures.
+ */
+@Entity(
+    tableName = "bank_rules",
+    indices = [Index(value = ["senderKey"])],
+)
+data class BankRuleEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    /** Matched against the sender, so one bank's rules never fire on another's messages. */
+    val senderKey: String,
+    val senderLabel: String,
+    val name: String,
+    val kind: BankTxKind,
+    /** The text right before the amount, e.g. `برداشت:` — this is what identifies the message. */
+    val amountAnchor: String,
+    val balanceAnchor: String? = null,
+    val accountAnchor: String? = null,
+    /** Used when the bank does not name the account in the message but the user knows which it is. */
+    val accountLiteral: String? = null,
+    val currency: String = "IRR",
+    val enabled: Boolean = true,
+    val hitCount: Int = 0,
+    val createdAt: Long = System.currentTimeMillis(),
+    /** The message it was taught from, kept so the rule can be shown and re-checked. */
+    val sampleBody: String = "",
 )

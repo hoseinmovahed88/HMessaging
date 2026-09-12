@@ -3,6 +3,7 @@ package com.hmessaging.ui.bank
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.hmessaging.data.db.dao.BankAccountSummary
+import com.hmessaging.data.db.entity.BankRuleEntity
 import com.hmessaging.data.db.entity.BankTxEntity
 import com.hmessaging.data.model.BankTxKind
 import com.hmessaging.di.AppGraph
@@ -34,6 +35,7 @@ data class BankUiState(
     /** Null means every account. */
     val accountKey: String? = null,
     val totals: List<BankTotals> = emptyList(),
+    val rules: List<BankRuleEntity> = emptyList(),
     val scanning: Boolean = false,
     val message: String? = null,
 )
@@ -49,10 +51,10 @@ class BankViewModel(private val graph: AppGraph) : ViewModel() {
     val uiState: StateFlow<BankUiState> = combine(
         graph.bankDao.observeRecent().onStart { emit(emptyList()) },
         graph.bankDao.observeAccounts().onStart { emit(emptyList()) },
-        filter,
-        accountKey,
+        graph.bankDao.observeRules().onStart { emit(emptyList()) },
+        combine(filter, accountKey) { filter, account -> filter to account },
         transient,
-    ) { rows, accounts, filter, account, state ->
+    ) { rows, accounts, rules, (filter, account), state ->
         val forAccount = rows.filter { account == null || it.accountKey == account }
         BankUiState(
             loaded = true,
@@ -63,16 +65,11 @@ class BankViewModel(private val graph: AppGraph) : ViewModel() {
             filter = filter,
             accountKey = account,
             totals = totalsOf(forAccount),
+            rules = rules,
             scanning = state.scanning,
             message = state.message,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), BankUiState())
-
-    init {
-        // The ledger only knows about messages that arrived since it was added, so the first time
-        // this screen opens it walks the ones already stored.
-        scan()
-    }
 
     fun setFilter(value: BankFilter) {
         filter.value = value
@@ -93,7 +90,12 @@ class BankViewModel(private val graph: AppGraph) : ViewModel() {
         )
     }
 
-    /** Re-reads every message from scratch, for after the parser learns a new bank's wording. */
+    /** Removes a taught format and every transaction it filed. */
+    fun deleteRule(ruleId: Long) = viewModelScope.launch {
+        graph.bankLedger.deleteRule(ruleId)
+    }
+
+    /** Re-reads every message from scratch, for after a format is added or changed. */
     fun rescanAll() = viewModelScope.launch {
         if (transient.value.scanning) return@launch
         transient.value = Transient(scanning = true)

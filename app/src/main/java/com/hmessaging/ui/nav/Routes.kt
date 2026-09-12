@@ -26,6 +26,7 @@ object Routes {
     const val OTP = "otp"
     const val TEMPLATES = "templates"
     const val BANK = "bank"
+    const val BANK_TEACH = "bank/teach"
     const val STATS = "stats"
     const val SETTINGS = "settings"
     const val DIAGNOSTICS = "diagnostics"

@@ -8,6 +8,7 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.hmessaging.di.AppGraph
 import com.hmessaging.ui.autoreply.AutoReplyViewModel
 import com.hmessaging.ui.bank.BankViewModel
+import com.hmessaging.ui.bank.TeachRuleViewModel
 import com.hmessaging.ui.blocked.BlockedViewModel
 import com.hmessaging.ui.compose.NewMessageViewModel
 import com.hmessaging.ui.conversations.ConversationsViewModel
@@ -39,6 +40,7 @@ object HmViewModelFactory {
         initializer { OtpViewModel(graph()) }
         initializer { TemplatesViewModel(graph()) }
         initializer { BankViewModel(graph()) }
+        initializer { TeachRuleViewModel(graph()) }
         initializer { StatsViewModel(graph()) }
         initializer { SettingsViewModel(graph()) }
         initializer { DiagnosticsViewModel(graph()) }
