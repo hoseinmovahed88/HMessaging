@@ -101,7 +101,13 @@ fun TemplatesScreen(
         var body by remember(template.id) { mutableStateOf(template.body) }
         AlertDialog(
             onDismissRequest = { editing = null },
-            title = { Text(stringResource(R.string.nav_templates)) },
+            title = {
+                Text(
+                    stringResource(
+                        if (template.id == 0L) R.string.template_new else R.string.template_edit,
+                    ),
+                )
+            },
             confirmButton = {
                 TextButton(
                     enabled = body.isNotBlank(),
@@ -124,7 +130,7 @@ fun TemplatesScreen(
                     OutlinedTextField(
                         value = title,
                         onValueChange = { title = it },
-                        label = { Text(stringResource(R.string.edit)) },
+                        label = { Text(stringResource(R.string.field_name)) },
                         modifier = Modifier.fillMaxWidth(),
                     )
                     OutlinedTextField(

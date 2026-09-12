@@ -195,7 +195,9 @@ private fun ForwardRuleDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.nav_forwarding)) },
+        title = {
+            Text(stringResource(if (initial.id == 0L) R.string.rule_new else R.string.rule_edit))
+        },
         confirmButton = {
             TextButton(
                 enabled = PhoneNumbers.splitRecipients(targets).isNotEmpty(),
@@ -223,7 +225,7 @@ private fun ForwardRuleDialog(
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { Text(stringResource(R.string.edit)) },
+                    label = { Text(stringResource(R.string.field_name)) },
                     modifier = Modifier.fillMaxWidth(),
                 )
                 OutlinedTextField(
@@ -237,7 +239,7 @@ private fun ForwardRuleDialog(
                     OutlinedTextField(
                         value = pattern,
                         onValueChange = { pattern = it },
-                        label = { Text(stringResource(R.string.search)) },
+                        label = { Text(stringResource(R.string.field_pattern)) },
                         modifier = Modifier.fillMaxWidth(),
                     )
                 }

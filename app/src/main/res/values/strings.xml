@@ -196,4 +196,11 @@
     <string name="settings_quick_reply">Floating reply window</string>
     <string name="settings_quick_reply_desc">When a message arrives while you are using the phone, show it in a window you can reply from without leaving the app you are in. Needs the “display over other apps” permission.</string>
     <string name="quick_reply_hint">Reply…</string>
+    <string name="field_name">Name</string>
+    <string name="field_note">Note (optional)</string>
+    <string name="field_pattern">Text to match</string>
+    <string name="template_new">New template</string>
+    <string name="template_edit">Edit template</string>
+    <string name="rule_new">New rule</string>
+    <string name="rule_edit">Edit rule</string>
 </resources>

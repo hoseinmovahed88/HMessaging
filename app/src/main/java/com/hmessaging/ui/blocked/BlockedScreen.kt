@@ -246,7 +246,9 @@ private fun BlockRuleDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.block_rules)) },
+        title = {
+            Text(stringResource(if (initial.id == 0L) R.string.rule_new else R.string.rule_edit))
+        },
         confirmButton = {
             TextButton(
                 enabled = pattern.isNotBlank(),
@@ -300,7 +302,7 @@ private fun BlockRuleDialog(
                 OutlinedTextField(
                     value = note,
                     onValueChange = { note = it },
-                    label = { Text(stringResource(R.string.edit)) },
+                    label = { Text(stringResource(R.string.field_note)) },
                     modifier = Modifier.fillMaxWidth(),
                 )
             }

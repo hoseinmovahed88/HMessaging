@@ -184,4 +184,11 @@
     <string name="settings_quick_reply">پنجره شناور پاسخ</string>
     <string name="settings_quick_reply_desc">وقتی پیامی می‌رسد و شما مشغول کار با گوشی هستید، آن را در پنجره‌ای نشان می‌دهد که بدون خارج شدن از برنامه‌ی فعلی می‌توانید از همان‌جا جواب بدهید. به اجازه‌ی «نمایش روی برنامه‌های دیگر» نیاز دارد.</string>
     <string name="quick_reply_hint">پاسخ…</string>
+    <string name="field_name">نام</string>
+    <string name="field_note">یادداشت (اختیاری)</string>
+    <string name="field_pattern">متنی که باید تطبیق کند</string>
+    <string name="template_new">قالب جدید</string>
+    <string name="template_edit">ویرایش قالب</string>
+    <string name="rule_new">قانون جدید</string>
+    <string name="rule_edit">ویرایش قانون</string>
 </resources>
