@@ -6,10 +6,13 @@ import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -17,35 +20,40 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TextField
-import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
@@ -57,15 +65,20 @@ import com.hmessaging.ui.theme.HmTheme
 import com.hmessaging.util.PhoneNumbers
 import com.hmessaging.util.TimeFormat
 import kotlinx.coroutines.launch
+import kotlin.math.abs
+import kotlin.math.roundToInt
 
 /**
  * The floating reply window for a message that lands while the phone is in use.
  *
  * Shaped like a heads-up banner and pinned to the top so it covers as little of whatever the reader
  * was doing as possible, but unlike a banner it stays until dismissed and carries a real text
- * field — the whole point is answering without leaving the app you were in. Tapping outside closes
- * it; the message is already stored and its notification is already posted, so closing loses
- * nothing.
+ * field — the whole point is answering without leaving the app you were in.
+ *
+ * It behaves like the notification it stands in for, rather than carrying buttons of its own:
+ * tapping it opens the conversation, swiping it aside dismisses it, and tapping outside dismisses
+ * it too. Dismissing loses nothing — the message is already stored and its notification already
+ * posted.
  */
 class QuickReplyPopupActivity : ComponentActivity() {
 
@@ -202,6 +215,14 @@ private fun QuickReplyPopup(
     // for the first.
     var reply by remember(message.threadId, message.receivedAt) { mutableStateOf("") }
 
+    // Swiping the card aside is how it is dismissed, the way a notification is. Keyed on the
+    // message so a second one arriving lands back in the middle rather than wherever the first
+    // was pushed to.
+    val offsetX = remember(message.threadId, message.receivedAt) { Animatable(0f) }
+    val scope = rememberCoroutineScope()
+    val dismissThreshold = with(LocalDensity.current) { DISMISS_THRESHOLD.dp.toPx() }
+    val canSend = reply.isNotBlank()
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -223,23 +244,51 @@ private fun QuickReplyPopup(
             shadowElevation = 12.dp,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 10.dp)
-                // Swallows taps on the card so they do not reach the dismiss area behind it.
+                .padding(horizontal = 10.dp, vertical = 8.dp)
+                .offset { IntOffset(offsetX.value.roundToInt(), 0) }
+                // Fades as it goes, so a half-swipe shows what a full one would do.
+                .graphicsLayer {
+                    alpha = 1f - (abs(offsetX.value) / (dismissThreshold * FADE_SPAN)).coerceIn(0f, FADE_DEPTH)
+                }
+                .pointerInput(message.threadId, message.receivedAt) {
+                    detectHorizontalDragGestures(
+                        onDragEnd = {
+                            scope.launch {
+                                if (abs(offsetX.value) > dismissThreshold) {
+                                    // Off the edge it went towards, then gone.
+                                    val exit = size.width.toFloat() * if (offsetX.value > 0) 1f else -1f
+                                    offsetX.animateTo(exit, tween(EXIT_MILLIS))
+                                    onDismiss()
+                                } else {
+                                    offsetX.animateTo(0f, spring())
+                                }
+                            }
+                        },
+                        onDragCancel = { scope.launch { offsetX.animateTo(0f, spring()) } },
+                    ) { change, dragAmount ->
+                        change.consume()
+                        scope.launch { offsetX.snapTo(offsetX.value + dragAmount) }
+                    }
+                }
+                // Tapping the card is how the conversation is opened. It also keeps taps from
+                // reaching the dismiss area behind the card.
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null,
-                    onClick = {},
+                    onClick = onOpen,
                 ),
         ) {
-            Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
+            Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp)) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
                         text = message.title,
-                        style = MaterialTheme.typography.titleMedium,
+                        style = MaterialTheme.typography.titleSmall,
                         color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f),
                     )
                     Text(
@@ -252,10 +301,10 @@ private fun QuickReplyPopup(
                 // A long message scrolls inside the card instead of pushing the reply box off-screen.
                 Text(
                     text = message.body,
-                    style = MaterialTheme.typography.bodyLarge,
+                    style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier
-                        .padding(top = 8.dp)
+                        .padding(top = 4.dp)
                         .heightIn(max = BODY_MAX_HEIGHT.dp)
                         .verticalScroll(rememberScrollState()),
                 )
@@ -263,70 +312,75 @@ private fun QuickReplyPopup(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 12.dp),
-                    verticalAlignment = Alignment.Bottom,
+                        .padding(top = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    TextField(
-                        value = reply,
-                        onValueChange = { reply = it },
-                        placeholder = {
-                            Text(
-                                text = stringResource(R.string.quick_reply_hint),
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    // A plain field in a pill rather than Material's TextField, whose 56dp minimum
+                    // height is most of what made this window taller than the message in it.
+                    Surface(
+                        shape = RoundedCornerShape(INPUT_HEIGHT.dp / 2),
+                        color = MaterialTheme.colorScheme.surfaceVariant,
+                        modifier = Modifier
+                            .weight(1f)
+                            .heightIn(min = INPUT_HEIGHT.dp),
+                    ) {
+                        Box(
+                            contentAlignment = Alignment.CenterStart,
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
+                        ) {
+                            if (reply.isEmpty()) {
+                                Text(
+                                    text = stringResource(R.string.quick_reply_hint),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                            BasicTextField(
+                                value = reply,
+                                onValueChange = { reply = it },
+                                textStyle = MaterialTheme.typography.bodyMedium.copy(
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                ),
+                                maxLines = REPLY_MAX_LINES,
+                                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+                                keyboardActions = KeyboardActions(onSend = { onSend(reply) }),
+                                cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                                // The keyboard is not raised on arrival: most of these are read
+                                // and dismissed, and stealing the keyboard mid-task would be worse
+                                // than the banner this replaces. One tap on the field opens it.
+                                modifier = Modifier.fillMaxWidth(),
                             )
-                        },
-                        maxLines = REPLY_MAX_LINES,
-                        shape = RoundedCornerShape(22.dp),
-                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
-                        keyboardActions = KeyboardActions(
-                            onSend = { onSend(reply) },
-                        ),
-                        colors = TextFieldDefaults.colors(
-                            focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                            focusedIndicatorColor = Color.Transparent,
-                            unfocusedIndicatorColor = Color.Transparent,
-                            disabledIndicatorColor = Color.Transparent,
-                        ),
-                        // The keyboard is not raised on arrival: most of these are read and
-                        // dismissed, and stealing the keyboard mid-task would be worse than the
-                        // banner this replaces. One tap on the field opens it.
-                        modifier = Modifier.weight(1f),
-                    )
+                        }
+                    }
                     Surface(
                         shape = CircleShape,
-                        color = if (reply.isNotBlank()) {
+                        color = if (canSend) {
                             MaterialTheme.colorScheme.primary
                         } else {
                             MaterialTheme.colorScheme.surfaceVariant
                         },
                         modifier = Modifier
-                            .padding(start = 6.dp, bottom = 4.dp)
-                            .size(44.dp),
+                            .padding(start = 6.dp)
+                            .size(SEND_BUTTON.dp),
                     ) {
-                        IconButton(
-                            onClick = { onSend(reply) },
-                            enabled = reply.isNotBlank(),
+                        Box(
+                            contentAlignment = Alignment.Center,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .clickable(enabled = canSend) { onSend(reply) },
                         ) {
                             Icon(
                                 Icons.Filled.Send,
                                 contentDescription = stringResource(R.string.send),
-                                tint = if (reply.isNotBlank()) {
+                                tint = if (canSend) {
                                     MaterialTheme.colorScheme.onPrimary
                                 } else {
                                     MaterialTheme.colorScheme.onSurfaceVariant
                                 },
+                                modifier = Modifier.size(SEND_ICON.dp),
                             )
                         }
                     }
-                }
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End,
-                ) {
-                    TextButton(onClick = onDismiss) { Text(stringResource(R.string.dismiss)) }
-                    TextButton(onClick = onOpen) { Text(stringResource(R.string.open)) }
                 }
             }
         }
@@ -334,6 +388,17 @@ private fun QuickReplyPopup(
 }
 
 private const val SCRIM_ALPHA = 0.35f
-private const val CARD_CORNER = 26
-private const val BODY_MAX_HEIGHT = 200
+private const val CARD_CORNER = 22
+private const val BODY_MAX_HEIGHT = 132
 private const val REPLY_MAX_LINES = 4
+private const val INPUT_HEIGHT = 40
+private const val SEND_BUTTON = 40
+private const val SEND_ICON = 20
+
+/** How far the card must be dragged before letting go dismisses it rather than snapping back. */
+private const val DISMISS_THRESHOLD = 96
+
+/** The fade reaches its deepest at [FADE_SPAN] times the dismiss threshold. */
+private const val FADE_SPAN = 2f
+private const val FADE_DEPTH = 0.75f
+private const val EXIT_MILLIS = 180
