@@ -32,7 +32,11 @@ data class TeachUiState(
     val name: String = "",
     val saved: Boolean = false,
 ) {
-    val canSave: Boolean get() = picked != null && amount != null && name.isNotBlank()
+    val canSave: Boolean
+        get() = picked != null && BankRules.canAnchor(amount) && name.isNotBlank()
+
+    /** True when an amount is chosen but nothing is written in front of it to recognise it by. */
+    val amountNotAnchorable: Boolean get() = amount != null && !BankRules.canAnchor(amount)
 }
 
 /**
@@ -51,30 +55,32 @@ class TeachRuleViewModel(private val graph: AppGraph) : ViewModel() {
 
     init {
         viewModelScope.launch {
-            all = CURRENCY_WORDS
-                .flatMap { graph.bankDao.inboxContaining(it, CANDIDATE_LIMIT) }
-                .distinctBy { it.id }
-                .let(::rank)
+            val latest = graph.bankDao.latestPerSender(CANDIDATE_LIMIT)
+            val volume = graph.bankDao.inboxSenderCounts(CANDIDATE_LIMIT)
+                .associate { PhoneNumbers.threadKey(it.address) to it.total }
+            all = latest.sortedByDescending { score(it, volume) }
             _uiState.value = _uiState.value.copy(loading = false, candidates = all)
         }
     }
 
     /**
-     * Orders senders by how much they behave like a bank, not by how recently they wrote.
+     * How much a sender looks like a bank, used only to decide what to show first.
      *
-     * Recency was the wrong signal: one advert mentioning ریال arrives today and pushes the bank
-     * that has written four hundred times below the fold. Volume is what actually separates them —
-     * a bank sends the same shape over and over, an advertiser sends one — and within a sender the
-     * newest message is the one whose wording is current.
+     * Nothing is filtered out on this. An earlier version showed only messages containing a
+     * currency word and so hid the bank that prompted this whole feature — its messages say
+     * "برداشت" and "مانده" and never once say ریال. A wrong guess about ordering costs a scroll; a
+     * wrong guess about filtering hides the answer entirely.
      */
-    private fun rank(messages: List<MessageEntity>): List<MessageEntity> {
-        val bySender = messages.groupBy { PhoneNumbers.threadKey(it.address) }
-        return bySender.values
-            .sortedWith(
-                compareByDescending<List<MessageEntity>> { it.size }
-                    .thenByDescending { group -> group.maxOf { it.date } },
-            )
-            .mapNotNull { group -> group.maxByOrNull { it.date } }
+    private fun score(message: MessageEntity, volume: Map<String, Int>): Int {
+        val text = PhoneNumbers.canonical(message.body)
+        var score = 0
+        // A written-out sum — grouped in threes — is the clearest sign, and unlike the vocabulary
+        // it does not depend on which words this particular bank happens to use.
+        if (GROUPED_NUMBER.containsMatchIn(text)) score += GROUPED_NUMBER_SCORE
+        if (FINANCIAL_WORDS.any { text.contains(it) }) score += FINANCIAL_WORD_SCORE
+        // A bank writes over and over; an advertiser writes once.
+        score += (volume[PhoneNumbers.threadKey(message.address)] ?: 0).coerceAtMost(VOLUME_CAP)
+        return score
     }
 
     fun search(query: String) {
@@ -159,7 +165,16 @@ class TeachRuleViewModel(private val graph: AppGraph) : ViewModel() {
     }
 
     private companion object {
-        val CURRENCY_WORDS = listOf("ریال", "ريال", "تومان")
-        const val CANDIDATE_LIMIT = 2_000
+        val GROUPED_NUMBER = Regex("[0-9]{1,3}(?:[,،٬][0-9]{3})+")
+
+        val FINANCIAL_WORDS = listOf(
+            "مانده", "برداشت", "واریز", "کارمزد", "پایا", "ساتنا", "موجودی", "تراکنش",
+            "حساب", "کارت", "ریال", "تومان", "شبا", "صورتحساب",
+        )
+
+        const val GROUPED_NUMBER_SCORE = 500
+        const val FINANCIAL_WORD_SCORE = 300
+        const val VOLUME_CAP = 200
+        const val CANDIDATE_LIMIT = 500
     }
 }

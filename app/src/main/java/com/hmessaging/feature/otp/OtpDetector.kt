@@ -51,7 +51,11 @@ object OtpDetector {
     private val VETO_KEYWORDS = listOf(
         "مرسوله", "رهگیری", "پیگیری", "بارکد", "سفارش", "توزیع", "پستی", "پیک",
         "تحویل", "انبار", "فاکتور", "قبض",
+        // A bank's own vocabulary. None of these words appear in a verification message, and a
+        // bank notification carrying a date like 050622 reads as a six-digit code without them.
+        "مانده", "برداشت", "واریز", "کارمزد", "پایا", "ساتنا", "موجودی", "تراکنش", "صورتحساب",
         "tracking", "parcel", "shipment", "delivery", "consignment", "waybill", "invoice",
+        "balance", "withdraw", "deposit",
     )
 
     private val CODE = "([0-9]{$MIN_CODE_LENGTH,$MAX_CODE_LENGTH})"
@@ -70,6 +74,9 @@ object OtpDetector {
     )
 
     private val STANDALONE_CODE = Regex("(?<![0-9])$CODE(?![0-9])")
+
+    /** A comma between two digits is grouping; one anywhere else is punctuation. */
+    private val GROUPING_BETWEEN_DIGITS = Regex("(?<=[0-9])[,،٬](?=[0-9])")
 
     fun detect(sender: String, body: String): OtpMatch? {
         if (body.isBlank()) return null
@@ -90,21 +97,28 @@ object OtpDetector {
                     ?: CODE_THEN_KEYWORD.find(text)?.groupValues?.get(1)
                     ?: STANDALONE_CODE.find(text)?.groupValues?.get(1)
 
-            // No keyword at all: the message has to look like nothing but a code. One candidate,
-            // of a length codes actually use, in a message short enough to be about that code.
-            // Without the length bound this arm claimed every reference number a lettered sender
-            // ever sent, which is how a parcel number reached the pop-up.
-            isSenderId(sender) && text.length <= BARE_MESSAGE_MAX_LENGTH -> STANDALONE_CODE.findAll(text)
-                .map { it.groupValues[1] }
-                .filter { it.length in BARE_CODE_LENGTHS }
-                .toList()
-                .singleOrNull()
+            // No keyword at all: the message has to be about nothing but the code. That means one
+            // number in the whole message, of a length codes actually use.
+            //
+            // Counted with the thousands separators taken out, which is the part that went wrong:
+            // in "برداشت پایا1,730,000,000 مانده38,497,201,191 050622-17:38" the commas split both
+            // sums into three-digit pieces that no longer looked like candidates, leaving the date
+            // as the only number in sight — and it went on screen as a verification code.
+            isSenderId(sender) && text.length <= BARE_MESSAGE_MAX_LENGTH ->
+                numbersIn(text).singleOrNull()?.takeIf { it.length in BARE_CODE_LENGTHS }
 
             else -> null
         } ?: return null
 
         return OtpMatch(code = code, serviceName = guessService(sender, text))
     }
+
+    /**
+     * Every number in the text, with grouping separators removed first so that a written-out sum
+     * counts as the one number it is rather than as three unremarkable short ones.
+     */
+    private fun numbersIn(text: String): List<String> =
+        Regex("[0-9]+").findAll(text.replace(GROUPING_BETWEEN_DIGITS, "")).map { it.value }.toList()
 
     /** Alphanumeric originating addresses are service short codes, never people. */
     private fun isSenderId(sender: String): Boolean =

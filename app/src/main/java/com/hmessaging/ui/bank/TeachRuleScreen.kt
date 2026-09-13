@@ -218,6 +218,17 @@ private fun Labeller(
             }
         }
 
+        if (state.amountNotAnchorable) {
+            item("unanchorable") {
+                Text(
+                    text = stringResource(R.string.bank_teach_needs_label),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                )
+            }
+        }
+
         item("name") {
             OutlinedTextField(
                 value = state.name,

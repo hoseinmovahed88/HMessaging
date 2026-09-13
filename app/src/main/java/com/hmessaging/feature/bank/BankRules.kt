@@ -104,12 +104,26 @@ object BankRules {
         name = name,
         kind = kind,
         amountAnchor = amount.anchor,
-        balanceAnchor = balance?.anchor,
-        accountAnchor = account?.anchor,
-        accountLiteral = accountLiteral?.takeIf { it.isNotBlank() },
+        balanceAnchor = balance?.anchor?.takeIf { it.isNotBlank() },
+        // A number written on a line of its own has nothing in front of it to anchor to — the
+        // account number in this bank's messages is exactly that. An empty anchor would match the
+        // first bare number in any message, so the value itself is kept instead. It is the same
+        // account every time, which is what makes that safe here.
+        accountAnchor = account?.anchor?.takeIf { it.isNotBlank() },
+        accountLiteral = (accountLiteral ?: account?.takeIf { it.anchor.isBlank() }?.text)
+            ?.takeIf { it.isNotBlank() },
         currency = currency,
         sampleBody = body,
     )
+
+    /**
+     * Whether a rule taught from these picks would actually work.
+     *
+     * The amount needs something written in front of it: that label is the whole identity of the
+     * rule, both how the amount is found again and how this message is told apart from the same
+     * bank's other kinds. A number alone on a line gives nothing to match on.
+     */
+    fun canAnchor(amount: NumberSpan?): Boolean = amount != null && amount.anchor.isNotBlank()
 
     /**
      * Reads a message with a rule, or returns null when this is not that kind of message.

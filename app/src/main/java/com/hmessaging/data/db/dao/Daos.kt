@@ -515,14 +515,28 @@ interface BankDao {
     suspend fun deleteTxForRule(ruleId: Long)
 
     /**
-     * Candidate messages for the teach screen: what the phone has received, newest first, so the
-     * user can find one of their bank's messages and point at it.
+     * The most recent message from each sender that has written, busiest sender first.
+     *
+     * This is what the teach screen offers to pick from, and it filters on nothing. The first
+     * version asked for messages containing a currency word, which excluded the bank that prompted
+     * all of this: its messages say "برداشت" and "مانده" and never once say ریال.
      */
     @Query(
-        "SELECT * FROM messages WHERE type = 'INBOX' AND body LIKE '%' || :contains || '%' " +
-            "ORDER BY date DESC LIMIT :limit",
+        """
+        SELECT * FROM messages WHERE id IN (
+            SELECT MAX(id) FROM messages WHERE type = 'INBOX' GROUP BY address
+        )
+        ORDER BY date DESC LIMIT :limit
+        """,
     )
-    suspend fun inboxContaining(contains: String, limit: Int): List<MessageEntity>
+    suspend fun latestPerSender(limit: Int): List<MessageEntity>
+
+    /** How many messages each sender has sent, which is what a bank looks like from a distance. */
+    @Query(
+        "SELECT address, COUNT(*) AS total FROM messages WHERE type = 'INBOX' " +
+            "GROUP BY address ORDER BY total DESC LIMIT :limit",
+    )
+    suspend fun inboxSenderCounts(limit: Int): List<SenderCount>
 }
 
 /** A bank account seen in the messages, with how much of it there is to show. */
@@ -533,3 +547,6 @@ data class BankAccountSummary(
     val txCount: Int,
     val lastAt: Long,
 )
+
+/** One sender and how much it has written. */
+data class SenderCount(val address: String, val total: Int)
