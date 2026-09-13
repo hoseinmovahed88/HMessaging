@@ -12,14 +12,11 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.imePadding
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bookmark
@@ -28,18 +25,14 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Forward
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.SimCard
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
-import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -64,6 +57,7 @@ import com.hmessaging.ui.HmViewModelFactory
 import com.hmessaging.ui.components.DateTimePickerDialog
 import com.hmessaging.ui.components.HyperDetailScreen
 import com.hmessaging.ui.components.HyperIconButton
+import com.hmessaging.ui.components.MessageComposer
 import com.hmessaging.ui.theme.LocalHyperColors
 import com.hmessaging.util.Clipboards
 import com.hmessaging.util.PhoneNumbers
@@ -458,92 +452,34 @@ private fun Composer(
     onTemplates: () -> Unit,
     onSimPicker: () -> Unit,
 ) {
-    Surface(
-        color = MaterialTheme.colorScheme.background,
-        modifier = Modifier
-            .fillMaxWidth()
-            .navigationBarsPadding()
-            .imePadding(),
-    ) {
-        Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
-            if (state.input.isNotEmpty()) {
-                LengthCounter(state)
-            }
-            Row(verticalAlignment = Alignment.Bottom) {
+    // The same composer the new-message screen uses, so writing the first message to someone and
+    // writing the next one are not two different-looking acts.
+    MessageComposer(
+        value = state.input,
+        onValueChange = onInputChange,
+        onSend = onSend,
+        canSend = state.canSend,
+        onSchedule = onSchedule,
+        above = { if (state.input.isNotEmpty()) LengthCounter(state) },
+        leading = {
+            HyperIconButton(
+                icon = Icons.Filled.Bookmark,
+                contentDescription = stringResource(R.string.nav_templates),
+                onClick = onTemplates,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        },
+        trailing = {
+            if (state.simSlots.size > 1) {
                 HyperIconButton(
-                    icon = Icons.Filled.Bookmark,
-                    contentDescription = stringResource(R.string.nav_templates),
-                    onClick = onTemplates,
+                    icon = Icons.Filled.SimCard,
+                    contentDescription = stringResource(R.string.settings_sim),
+                    onClick = onSimPicker,
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                TextField(
-                    value = state.input,
-                    onValueChange = onInputChange,
-                    placeholder = {
-                        Text(
-                            text = stringResource(R.string.type_a_message),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    },
-                    textStyle = LocalTextStyle.current.merge(MaterialTheme.typography.bodyLarge),
-                    maxLines = ComposerMaxLines,
-                    shape = RoundedCornerShape(24.dp),
-                    colors = TextFieldDefaults.colors(
-                        focusedContainerColor = MaterialTheme.colorScheme.surface,
-                        unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                        focusedIndicatorColor = Color.Transparent,
-                        unfocusedIndicatorColor = Color.Transparent,
-                        disabledIndicatorColor = Color.Transparent,
-                    ),
-                    modifier = Modifier.weight(1f),
-                )
-                if (state.simSlots.size > 1) {
-                    HyperIconButton(
-                        icon = Icons.Filled.SimCard,
-                        contentDescription = stringResource(R.string.settings_sim),
-                        onClick = onSimPicker,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                // Scheduling lives on a long press of send rather than a button of its own. It is
-                // used once in a hundred messages and was taking permanent width from the field
-                // that is used in all hundred.
-                Surface(
-                    shape = CircleShape,
-                    color = if (state.canSend) {
-                        MaterialTheme.colorScheme.primary
-                    } else {
-                        MaterialTheme.colorScheme.surfaceVariant
-                    },
-                    modifier = Modifier
-                        .padding(start = 4.dp, bottom = 4.dp)
-                        .size(44.dp),
-                ) {
-                    Box(
-                        contentAlignment = Alignment.Center,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .combinedClickable(
-                                enabled = state.canSend,
-                                onClick = onSend,
-                                onLongClick = onSchedule,
-                                onLongClickLabel = stringResource(R.string.schedule_send),
-                            ),
-                    ) {
-                        Icon(
-                            Icons.Filled.Send,
-                            contentDescription = stringResource(R.string.send),
-                            tint = if (state.canSend) {
-                                MaterialTheme.colorScheme.onPrimary
-                            } else {
-                                MaterialTheme.colorScheme.onSurfaceVariant
-                            },
-                        )
-                    }
-                }
             }
-        }
-    }
+        },
+    )
 }
 
 @Composable

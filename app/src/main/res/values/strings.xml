@@ -255,4 +255,10 @@
     <string name="schedule_this_evening">This evening</string>
     <string name="schedule_tomorrow_morning">Tomorrow morning</string>
     <string name="schedule_next_week">Next week</string>
+    <string name="new_message_find">Search contacts or type a number</string>
+    <string name="new_message_send_to_typed">Send to this number</string>
+    <string name="new_message_no_matches">No contact matched</string>
+    <string name="new_message_no_contacts_permission">Allow contacts access to search by name</string>
+    <string name="new_message_recent">Recent</string>
+    <string name="new_message_results">Contacts</string>
 </resources>

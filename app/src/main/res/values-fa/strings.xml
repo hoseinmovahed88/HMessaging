@@ -243,4 +243,10 @@
     <string name="schedule_this_evening">امشب</string>
     <string name="schedule_tomorrow_morning">فردا صبح</string>
     <string name="schedule_next_week">هفته آینده</string>
+    <string name="new_message_find">جست‌وجوی مخاطب یا نوشتن شماره</string>
+    <string name="new_message_send_to_typed">ارسال به همین شماره</string>
+    <string name="new_message_no_matches">مخاطبی پیدا نشد</string>
+    <string name="new_message_no_contacts_permission">برای جست‌وجو با نام، اجازه دسترسی به مخاطبین را بدهید</string>
+    <string name="new_message_recent">اخیر</string>
+    <string name="new_message_results">مخاطبین</string>
 </resources>
