@@ -1,23 +1,23 @@
 # Prebuilt APK
 
-`HMessaging-1.0.21.apk` is a signed release build, kept here so there is always a stable download
+`HMessaging-1.0.22.apk` is a signed release build, kept here so there is always a stable download
 link. The signing key itself is **not** in this repository and never will be.
 
 | | |
 | --- | --- |
 | Package | `com.hmessaging` |
-| Version | 1.0.21 (versionCode 22) |
+| Version | 1.0.22 (versionCode 23) |
 | Min / target SDK | 24 (Android 7) / 35 (Android 15) |
-| Size | 2,532,828 bytes |
-| SHA-256 | `270f96c4e896123d6be77a2cfb6bad871a8db2fa8e7b0e52a049f4e5192c6b88` |
+| Size | 2,533,960 bytes |
+| SHA-256 | `73a0360e5ffe40699a45bc3ae98bebe8816e8356e9fd634e9b3377bd9c596193` |
 | Signature | APK Signature Scheme v2 |
 | Certificate SHA-256 | `40:E7:3A:FE:EA:8C:91:F8:71:2F:BB:83:2C:06:B9:01:52:FB:88:AB:0E:A8:92:B6:A5:D5:30:C7:37:DD:D4:87` |
 
 Verify what you downloaded before installing:
 
 ```bash
-sha256sum HMessaging-1.0.21.apk
-# expect 270f96c4e896123d6be77a2cfb6bad871a8db2fa8e7b0e52a049f4e5192c6b88
+sha256sum HMessaging-1.0.22.apk
+# expect 73a0360e5ffe40699a45bc3ae98bebe8816e8356e9fd634e9b3377bd9c596193
 ```
 
 Signed with v2 only, not v1. The build-tools were unavailable on the machine that signed it, so

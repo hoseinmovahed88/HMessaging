@@ -1,8 +1,8 @@
 {
-  "versionCode": 22,
-  "versionName": "1.0.21",
-  "url": "https://github.com/hoseinmovahed88/HMessaging/raw/claude/android-messenger-app-izbr89/dist/HMessaging-1.0.21.apk",
-  "sha256": "270f96c4e896123d6be77a2cfb6bad871a8db2fa8e7b0e52a049f4e5192c6b88",
-  "size": 2532828,
-  "notes": "صفحه مالی حالا قالب بانک را از یک پیامک واقعی یاد می‌گیرد"
+  "versionCode": 23,
+  "versionName": "1.0.22",
+  "url": "https://github.com/hoseinmovahed88/HMessaging/raw/claude/android-messenger-app-izbr89/dist/HMessaging-1.0.22.apk",
+  "sha256": "73a0360e5ffe40699a45bc3ae98bebe8816e8356e9fd634e9b3377bd9c596193",
+  "size": 2533960,
+  "notes": "رفع OTP اشتباه، اشتراک‌گذاری، راست‌چین پاپ‌آپ، و زمان‌بندی ساده‌تر"
 }
