@@ -33,6 +33,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.sp
@@ -65,6 +66,7 @@ class OtpPopupActivity : ComponentActivity() {
         val code = intent.getStringExtra(EXTRA_CODE).orEmpty()
         val sender = intent.getStringExtra(EXTRA_SENDER).orEmpty()
         val service = intent.getStringExtra(EXTRA_SERVICE)
+        val body = intent.getStringExtra(EXTRA_BODY).orEmpty()
 
         if (code.isBlank()) {
             finish()
@@ -89,9 +91,14 @@ class OtpPopupActivity : ComponentActivity() {
                 OtpPopup(
                     code = code,
                     from = service ?: PhoneNumbers.format(sender),
+                    body = body,
                     autoDismissSeconds = settings.otpPopupSeconds,
                     onCopy = {
                         copyCode(otpId, code)
+                        finish()
+                    },
+                    onMarkRead = {
+                        markRead(sender)
                         finish()
                     },
                     onOpen = {
@@ -104,6 +111,19 @@ class OtpPopupActivity : ComponentActivity() {
                     onDismiss = ::finish,
                 )
             }
+        }
+    }
+
+    /**
+     * Clears the message without opening it, which is what a code that has been read and copied
+     * needs: the notification goes, the conversation stops counting as unread.
+     */
+    private fun markRead(sender: String) {
+        val graph = AppGraph.from(this)
+        graph.applicationScope.launch {
+            val threadId = graph.messageRepository.threadIdFor(sender)
+            graph.messageRepository.markThreadRead(threadId)
+            graph.notifications.cancelThread(threadId)
         }
     }
 
@@ -133,6 +153,7 @@ class OtpPopupActivity : ComponentActivity() {
         private const val EXTRA_CODE = "code"
         private const val EXTRA_SENDER = "sender"
         private const val EXTRA_SERVICE = "service"
+        private const val EXTRA_BODY = "body"
 
         fun intent(
             context: Context,
@@ -140,11 +161,13 @@ class OtpPopupActivity : ComponentActivity() {
             code: String,
             sender: String,
             serviceName: String?,
+            body: String,
         ): Intent = Intent(context, OtpPopupActivity::class.java).apply {
             putExtra(EXTRA_OTP_ID, otpId)
             putExtra(EXTRA_CODE, code)
             putExtra(EXTRA_SENDER, sender)
             putExtra(EXTRA_SERVICE, serviceName)
+            putExtra(EXTRA_BODY, body)
         }
     }
 }
@@ -153,8 +176,10 @@ class OtpPopupActivity : ComponentActivity() {
 private fun OtpPopup(
     code: String,
     from: String,
+    body: String,
     autoDismissSeconds: Int,
     onCopy: () -> Unit,
+    onMarkRead: () -> Unit,
     onOpen: () -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -200,6 +225,22 @@ private fun OtpPopup(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
                 )
+                // The message itself, laid out in its own language's direction. Persian centred as
+                // if it were Latin reads as broken, and the text around a code is often the only
+                // way to tell which of two codes that arrived together this one is.
+                if (body.isNotBlank()) {
+                    Text(
+                        text = body,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Start,
+                        maxLines = BODY_MAX_LINES,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 10.dp),
+                    )
+                }
                 Text(
                     text = code,
                     fontSize = CODE_FONT_SIZE.sp,
@@ -220,8 +261,8 @@ private fun OtpPopup(
                         .padding(top = 8.dp),
                     horizontalArrangement = Arrangement.End,
                 ) {
-                    TextButton(onClick = onDismiss) {
-                        Text(stringResource(R.string.dismiss))
+                    TextButton(onClick = onMarkRead) {
+                        Text(stringResource(R.string.mark_read))
                     }
                     TextButton(onClick = onOpen) {
                         Text(stringResource(R.string.open))
@@ -235,6 +276,7 @@ private fun OtpPopup(
     }
 }
 
+private const val BODY_MAX_LINES = 4
 private const val SCRIM_ALPHA = 0.55f
 private const val CODE_FONT_SIZE = 40
 private const val CODE_LETTER_SPACING = 6

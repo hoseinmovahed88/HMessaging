@@ -18,8 +18,9 @@ enum class TeachField { AMOUNT, BALANCE, ACCOUNT }
 
 data class TeachUiState(
     val loading: Boolean = true,
-    /** Messages to choose from, one per sender, newest first. */
+    /** Messages to choose from, one per sender, the most bank-like senders first. */
     val candidates: List<MessageEntity> = emptyList(),
+    val query: String = "",
     val picked: MessageEntity? = null,
     val numbers: List<NumberSpan> = emptyList(),
     val amount: NumberSpan? = null,
@@ -46,17 +47,46 @@ class TeachRuleViewModel(private val graph: AppGraph) : ViewModel() {
     private val _uiState = MutableStateFlow(TeachUiState())
     val uiState: StateFlow<TeachUiState> = _uiState.asStateFlow()
 
+    private var all: List<MessageEntity> = emptyList()
+
     init {
         viewModelScope.launch {
-            val found = CURRENCY_WORDS
+            all = CURRENCY_WORDS
                 .flatMap { graph.bankDao.inboxContaining(it, CANDIDATE_LIMIT) }
-                .sortedByDescending { it.date }
-                // One per sender: a bank sends the same shape over and over, and a list of fifty
-                // near-identical messages from one bank hides the other banks entirely.
-                .distinctBy { PhoneNumbers.threadKey(it.address) }
-                .take(CANDIDATE_SHOWN)
-            _uiState.value = _uiState.value.copy(loading = false, candidates = found)
+                .distinctBy { it.id }
+                .let(::rank)
+            _uiState.value = _uiState.value.copy(loading = false, candidates = all)
         }
+    }
+
+    /**
+     * Orders senders by how much they behave like a bank, not by how recently they wrote.
+     *
+     * Recency was the wrong signal: one advert mentioning ریال arrives today and pushes the bank
+     * that has written four hundred times below the fold. Volume is what actually separates them —
+     * a bank sends the same shape over and over, an advertiser sends one — and within a sender the
+     * newest message is the one whose wording is current.
+     */
+    private fun rank(messages: List<MessageEntity>): List<MessageEntity> {
+        val bySender = messages.groupBy { PhoneNumbers.threadKey(it.address) }
+        return bySender.values
+            .sortedWith(
+                compareByDescending<List<MessageEntity>> { it.size }
+                    .thenByDescending { group -> group.maxOf { it.date } },
+            )
+            .mapNotNull { group -> group.maxByOrNull { it.date } }
+    }
+
+    fun search(query: String) {
+        val trimmed = query.trim()
+        _uiState.value = _uiState.value.copy(
+            query = query,
+            candidates = if (trimmed.isEmpty()) {
+                all
+            } else {
+                all.filter { it.address.contains(trimmed, true) || it.body.contains(trimmed, true) }
+            },
+        )
     }
 
     fun pick(message: MessageEntity) {
@@ -130,7 +160,6 @@ class TeachRuleViewModel(private val graph: AppGraph) : ViewModel() {
 
     private companion object {
         val CURRENCY_WORDS = listOf("ریال", "ريال", "تومان")
-        const val CANDIDATE_LIMIT = 400
-        const val CANDIDATE_SHOWN = 40
+        const val CANDIDATE_LIMIT = 2_000
     }
 }

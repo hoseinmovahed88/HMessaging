@@ -28,13 +28,11 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Forward
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.SimCard
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHostState
@@ -507,16 +505,9 @@ private fun Composer(
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                IconButton(
-                    onClick = onSchedule,
-                    enabled = state.input.isNotBlank(),
-                ) {
-                    Icon(
-                        Icons.Filled.Schedule,
-                        contentDescription = stringResource(R.string.schedule_send),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
+                // Scheduling lives on a long press of send rather than a button of its own. It is
+                // used once in a hundred messages and was taking permanent width from the field
+                // that is used in all hundred.
                 Surface(
                     shape = CircleShape,
                     color = if (state.canSend) {
@@ -528,7 +519,17 @@ private fun Composer(
                         .padding(start = 4.dp, bottom = 4.dp)
                         .size(44.dp),
                 ) {
-                    IconButton(onClick = onSend, enabled = state.canSend) {
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .combinedClickable(
+                                enabled = state.canSend,
+                                onClick = onSend,
+                                onLongClick = onSchedule,
+                                onLongClickLabel = stringResource(R.string.schedule_send),
+                            ),
+                    ) {
                         Icon(
                             Icons.Filled.Send,
                             contentDescription = stringResource(R.string.send),

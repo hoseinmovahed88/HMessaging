@@ -22,6 +22,30 @@ object PhoneNumbers {
     )
 
     /** Converts ۰۱۲… and ٠١٢… to 012…, leaving everything else untouched. */
+    /**
+     * Arabic letters that Persian text is routinely written with, mapped to their Persian forms.
+     *
+     * Iranian senders mix them freely — the same word arrives as "توزیع" and "توزيع" from the same
+     * service — and a keyword list written one way silently fails to match the other. One character
+     * maps to one character, so offsets into the result still index the original.
+     */
+    fun normalizeLetters(input: String): String = buildString(input.length) {
+        for (ch in input) {
+            append(
+                when (ch) {
+                    'ي' -> 'ی'
+                    'ك' -> 'ک'
+                    'ة' -> 'ه'
+                    'ۀ' -> 'ه'
+                    else -> ch
+                },
+            )
+        }
+    }
+
+    /** Digits and letters both put in the one form the rest of the app matches against. */
+    fun canonical(input: String): String = normalizeLetters(toAsciiDigits(input))
+
     fun toAsciiDigits(input: String): String = buildString(input.length) {
         for (ch in input) {
             when (ch) {

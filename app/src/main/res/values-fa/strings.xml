@@ -234,4 +234,13 @@
     <string name="bank_teach_name_desc">روی هر تراکنشی که این قالب می‌خواند نشان داده می‌شود.</string>
     <string name="bank_rules">قالب‌های آموخته‌شده</string>
     <string name="bank_no_rules">تا وقتی یک قالب بانکی یاد ندهید هیچ چیزی از پیام‌هایتان خوانده نمی‌شود. یک پیامک واقعی از بانکتان انتخاب کنید و بگویید کدام عدد مبلغ است.</string>
+    <string name="next">بعدی</string>
+    <string name="back">بازگشت</string>
+    <string name="schedule_pick_exact">انتخاب تاریخ…</string>
+    <string name="schedule_preset_hint">هر وقت خواستید، دکمه ارسال را نگه دارید تا زمان‌بندی باز شود.</string>
+    <string name="schedule_in_1_hour">۱ ساعت دیگر</string>
+    <string name="schedule_in_3_hours">۳ ساعت دیگر</string>
+    <string name="schedule_this_evening">امشب</string>
+    <string name="schedule_tomorrow_morning">فردا صبح</string>
+    <string name="schedule_next_week">هفته آینده</string>
 </resources>

@@ -96,7 +96,7 @@ class Notifications(private val context: Context) {
         post(messageNotificationId(thread.id), builder.build())
     }
 
-    fun showOtp(otpId: Long, code: String, sender: String, serviceName: String?) {
+    fun showOtp(otpId: Long, code: String, sender: String, serviceName: String?, body: String) {
         val title = context.getString(R.string.otp_title)
         val from = serviceName ?: PhoneNumbers.format(sender)
         val builder = NotificationCompat.Builder(context, CHANNEL_OTP)
@@ -107,12 +107,12 @@ class Notifications(private val context: Context) {
             .setOnlyAlertOnce(true)
             .setCategory(NotificationCompat.CATEGORY_MESSAGE)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setContentIntent(otpPopupIntent(otpId, code, sender, serviceName))
+            .setContentIntent(otpPopupIntent(otpId, code, sender, serviceName, body))
             .addAction(
                 NotificationCompat.Action.Builder(
                     R.drawable.ic_notification,
                     context.getString(R.string.copy),
-                    otpPopupIntent(otpId, code, sender, serviceName),
+                    otpPopupIntent(otpId, code, sender, serviceName, body),
                 ).build(),
             )
         builder.setTimeoutAfter(OTP_NOTIFICATION_TIMEOUT_MS)
@@ -158,8 +158,14 @@ class Notifications(private val context: Context) {
         return PendingIntent.getActivity(context, SCHEDULE_REQUEST_CODE, intent, immutableFlags())
     }
 
-    private fun otpPopupIntent(otpId: Long, code: String, sender: String, serviceName: String?): PendingIntent {
-        val intent = OtpPopupActivity.intent(context, otpId, code, sender, serviceName)
+    private fun otpPopupIntent(
+        otpId: Long,
+        code: String,
+        sender: String,
+        serviceName: String?,
+        body: String,
+    ): PendingIntent {
+        val intent = OtpPopupActivity.intent(context, otpId, code, sender, serviceName, body)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
         return PendingIntent.getActivity(context, otpNotificationId(otpId), intent, immutableFlags())
     }

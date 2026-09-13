@@ -71,6 +71,17 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
+            <!--
+                Plain shared text, which is what puts the app in Android's share sheet. The filter
+                below cannot do it: every one of its data elements names an sms/smsto/mms scheme,
+                and text shared from another app carries a MIME type and no scheme at all.
+            -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+
             <!-- Requirement #3 for being a default SMS app: handle SENDTO -->
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />

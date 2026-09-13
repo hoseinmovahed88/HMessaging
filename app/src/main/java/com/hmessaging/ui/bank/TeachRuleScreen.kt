@@ -36,6 +36,7 @@ import com.hmessaging.ui.components.EmptyState
 import com.hmessaging.ui.components.HyperCard
 import com.hmessaging.ui.components.HyperDetailScreen
 import com.hmessaging.ui.components.HyperGroupTitle
+import com.hmessaging.ui.components.HyperSearchField
 import com.hmessaging.util.PhoneNumbers
 import com.hmessaging.util.TimeFormat
 
@@ -81,6 +82,13 @@ private fun CandidateList(
     }
     LazyColumn(modifier = modifier.fillMaxSize()) {
         item("hint") { HyperGroupTitle(stringResource(R.string.bank_teach_pick)) }
+        item("search") {
+            HyperSearchField(
+                value = state.query,
+                onValueChange = viewModel::search,
+                placeholder = stringResource(R.string.search),
+            )
+        }
         items(state.candidates, key = { it.id }) { message ->
             HyperCard {
                 Column(

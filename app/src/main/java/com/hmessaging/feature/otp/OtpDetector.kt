@@ -29,10 +29,29 @@ object OtpDetector {
         "یکبار مصرف", "یک بار مصرف", "پویا", "احراز", "ورود", "اعتبارسنجی",
     )
 
-    /** Words that mark a number as money or a reference, never a code. */
+    /**
+     * Words that mark a number as money, a reference or a consignment — never a code.
+     *
+     * The delivery words are here because of what they cost: a parcel notice carrying one long
+     * tracking number from a lettered sender looks exactly like a code to the rule below, and one
+     * of them put an eight-digit consignment number on screen as a verification code.
+     */
     private val NEGATIVE_KEYWORDS = listOf(
-        "ریال", "تومان", "مبلغ", "موجودی", "بدهی", "قبض", "شماره پیگیری", "کارت",
-        "balance", "amount", "invoice", "account no", "order no", "tracking",
+        "ریال", "تومان", "مبلغ", "موجودی", "بدهی", "قبض", "کارت",
+        "balance", "amount", "invoice", "account no", "order no",
+    )
+
+    /**
+     * Words that settle it on their own, whatever else the message says.
+     *
+     * These win over the code words rather than yielding to them, because the messages that carry
+     * both are exactly the ones that went wrong: "مرسوله شما با کد ۷۷۱۳۴۰۱۸ توزیع شد" contains
+     * "کد", and that was enough to put a consignment number on screen as a verification code.
+     */
+    private val VETO_KEYWORDS = listOf(
+        "مرسوله", "رهگیری", "پیگیری", "بارکد", "سفارش", "توزیع", "پستی", "پیک",
+        "تحویل", "انبار", "فاکتور", "قبض",
+        "tracking", "parcel", "shipment", "delivery", "consignment", "waybill", "invoice",
     )
 
     private val CODE = "([0-9]{$MIN_CODE_LENGTH,$MAX_CODE_LENGTH})"
@@ -54,9 +73,12 @@ object OtpDetector {
 
     fun detect(sender: String, body: String): OtpMatch? {
         if (body.isBlank()) return null
-        val text = PhoneNumbers.toAsciiDigits(body)
+        // Letters are normalised too: the same service writes "توزیع" and "توزيع" on different
+        // days, and a list written one way never matches the other.
+        val text = PhoneNumbers.canonical(body)
         val lower = text.lowercase()
 
+        if (VETO_KEYWORDS.any { lower.contains(it) }) return null
         if (NEGATIVE_KEYWORDS.any { lower.contains(it) } && KEYWORDS.none { lower.contains(it) }) {
             return null
         }
@@ -68,9 +90,13 @@ object OtpDetector {
                     ?: CODE_THEN_KEYWORD.find(text)?.groupValues?.get(1)
                     ?: STANDALONE_CODE.find(text)?.groupValues?.get(1)
 
-            // No keyword: only trust a short code sender that sent exactly one candidate.
-            isSenderId(sender) -> STANDALONE_CODE.findAll(text)
+            // No keyword at all: the message has to look like nothing but a code. One candidate,
+            // of a length codes actually use, in a message short enough to be about that code.
+            // Without the length bound this arm claimed every reference number a lettered sender
+            // ever sent, which is how a parcel number reached the pop-up.
+            isSenderId(sender) && text.length <= BARE_MESSAGE_MAX_LENGTH -> STANDALONE_CODE.findAll(text)
                 .map { it.groupValues[1] }
+                .filter { it.length in BARE_CODE_LENGTHS }
                 .toList()
                 .singleOrNull()
 
@@ -93,6 +119,10 @@ object OtpDetector {
     }
 
     private const val SHORT_CODE_MAX_DIGITS = 6
+
+    /** Lengths a verification code actually uses when nothing in the text says it is one. */
+    private val BARE_CODE_LENGTHS = 4..6
+    private const val BARE_MESSAGE_MAX_LENGTH = 160
     private const val BRAND_MIN_LENGTH = 3
     private const val BRAND_MAX_LENGTH = 20
 }
