@@ -170,5 +170,33 @@ private fun presets(): List<Preset> {
     )
 }
 
+/** Time-of-day only, used for the active-hours window of an auto-reply rule. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun TimeOfDayPickerDialog(
+    initialMinuteOfDay: Int,
+    onDismiss: () -> Unit,
+    onConfirm: (Int) -> Unit,
+) {
+    val state = rememberTimePickerState(
+        initialHour = initialMinuteOfDay / MINUTES_PER_HOUR,
+        initialMinute = initialMinuteOfDay % MINUTES_PER_HOUR,
+        is24Hour = true,
+    )
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            TextButton(onClick = { onConfirm(state.hour * MINUTES_PER_HOUR + state.minute) }) {
+                Text(stringResource(R.string.save))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
+        },
+        text = { TimePicker(state = state) },
+    )
+}
+
 private const val EVENING_HOUR = 20
 private const val MORNING_HOUR = 9
+private const val MINUTES_PER_HOUR = 60
