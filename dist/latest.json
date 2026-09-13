@@ -1,8 +1,8 @@
 {
-  "versionCode": 26,
-  "versionName": "1.0.25",
-  "url": "https://github.com/hoseinmovahed88/HMessaging/raw/claude/android-messenger-app-izbr89/dist/HMessaging-1.0.25.apk",
-  "sha256": "2d238e66d4547b92563d717e2f4273ef6f1ad1e182a408e481ccf1c187ff05f0",
-  "size": 2551360,
-  "notes": "پیدا کردن مخاطب وقتی شماره با کد کشور ذخیره شده"
+  "versionCode": 27,
+  "versionName": "1.0.26",
+  "url": "https://github.com/hoseinmovahed88/HMessaging/raw/claude/android-messenger-app-izbr89/dist/HMessaging-1.0.26.apk",
+  "sha256": "cf3cd7080029241ba60a2b3fa9e3d7d37649c63631141308cabaf1d3cca0aeae",
+  "size": 2551732,
+  "notes": "پیامک بانکی دیگر کد تایید شناخته نمی‌شود و در لیست آموزش می‌آید"
 }
