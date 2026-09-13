@@ -1,8 +1,8 @@
 {
-  "versionCode": 24,
-  "versionName": "1.0.23",
-  "url": "https://github.com/hoseinmovahed88/HMessaging/raw/claude/android-messenger-app-izbr89/dist/HMessaging-1.0.23.apk",
-  "sha256": "be4ca70a8fb821db4f0512a465d4b07bd506e6eb5d42c08b24850fc06b203f7f",
-  "size": 2551228,
-  "notes": "صفحه پیام جدید با جست‌وجوی مخاطب و مخاطبین اخیر"
+  "versionCode": 25,
+  "versionName": "1.0.24",
+  "url": "https://github.com/hoseinmovahed88/HMessaging/raw/claude/android-messenger-app-izbr89/dist/HMessaging-1.0.24.apk",
+  "sha256": "d24e2121a5b2ea01af6929cbde6fdd4f0428592c1b19da8791ee9f07178fb6ea",
+  "size": 2551360,
+  "notes": "تاریخ شمسی در همه صفحه‌ها"
 }
