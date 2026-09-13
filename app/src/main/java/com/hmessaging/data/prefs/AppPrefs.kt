@@ -58,6 +58,7 @@ class AppPrefs(context: Context) {
 
     suspend fun setThemeMode(value: ThemeMode) = put(Keys.THEME, value.name)
     suspend fun setDynamicColor(value: Boolean) = put(Keys.DYNAMIC_COLOR, value)
+    suspend fun setPersianCalendar(value: Boolean) = put(Keys.PERSIAN_CALENDAR, value)
 
     suspend fun setDeliveryReports(value: Boolean) = put(Keys.DELIVERY_REPORTS, value)
     suspend fun setNumberLongMessages(value: Boolean) = put(Keys.NUMBER_LONG, value)
@@ -114,6 +115,7 @@ class AppPrefs(context: Context) {
                 runCatching { ThemeMode.valueOf(name) }.getOrNull()
             } ?: defaults.themeMode,
             dynamicColor = this[Keys.DYNAMIC_COLOR] ?: defaults.dynamicColor,
+            persianCalendar = this[Keys.PERSIAN_CALENDAR] ?: defaults.persianCalendar,
             deliveryReports = this[Keys.DELIVERY_REPORTS] ?: defaults.deliveryReports,
             numberLongMessages = this[Keys.NUMBER_LONG] ?: defaults.numberLongMessages,
             chunkChars = this[Keys.CHUNK_CHARS] ?: defaults.chunkChars,
@@ -146,6 +148,7 @@ class AppPrefs(context: Context) {
     private object Keys {
         val THEME = stringPreferencesKey("theme_mode")
         val DYNAMIC_COLOR = booleanPreferencesKey("dynamic_color")
+        val PERSIAN_CALENDAR = booleanPreferencesKey("persian_calendar")
         val DELIVERY_REPORTS = booleanPreferencesKey("delivery_reports")
         val NUMBER_LONG = booleanPreferencesKey("number_long_messages")
         val CHUNK_CHARS = intPreferencesKey("chunk_chars")

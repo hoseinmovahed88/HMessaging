@@ -13,6 +13,16 @@ object TimeFormat {
     private val zone: ZoneId get() = ZoneId.systemDefault()
 
     /**
+     * Whether dates are written in the Solar Hijri calendar.
+     *
+     * A plain flag rather than something read from preferences at each call site, because dates are
+     * formatted from list rows, notifications and background workers alike — most of which have no
+     * business awaiting a preference. The Application sets it at startup and whenever it changes.
+     */
+    @Volatile
+    var persianCalendar: Boolean = false
+
+    /**
      * Localized formatters are expensive to build — each one resolves a locale and parses a
      * pattern — and every row of every list asks for one. They are built once per locale and
      * rebuilt only if the device locale changes under us.
@@ -55,7 +65,13 @@ object TimeFormat {
         return when {
             local.toLocalDate() == today -> timeOnly.format(local)
             local.toLocalDate().isAfter(today.minusDays(DAYS_IN_WEEK)) ->
-                local.dayOfWeek.getDisplayName(java.time.format.TextStyle.SHORT, Locale.getDefault())
+                if (persianCalendar) {
+                    PersianCalendar.weekdayName(local.toLocalDate())
+                } else {
+                    local.dayOfWeek.getDisplayName(java.time.format.TextStyle.SHORT, Locale.getDefault())
+                }
+
+            persianCalendar -> persianNumeric(local.toLocalDate())
             else -> dateOnly.format(local)
         }
     }
@@ -76,9 +92,29 @@ object TimeFormat {
 
     fun clock(epochMillis: Long): String = timeOnly.format(toLocal(epochMillis))
 
-    fun full(epochMillis: Long): String = dateAndTime.format(toLocal(epochMillis))
+    fun full(epochMillis: Long): String {
+        val local = toLocal(epochMillis)
+        if (!persianCalendar) return dateAndTime.format(local)
+        return persianDate(local.toLocalDate()) + "، " + timeOnly.format(local)
+    }
 
-    fun dayHeader(epochMillis: Long): String = dateOnly.format(toLocal(epochMillis))
+    fun dayHeader(epochMillis: Long): String {
+        val local = toLocal(epochMillis)
+        if (!persianCalendar) return dateOnly.format(local)
+        return PersianCalendar.weekdayName(local.toLocalDate()) + " " + persianDate(local.toLocalDate())
+    }
+
+    /** `۲۲ شهریور ۱۴۰۵` — the form a date is spoken in, not a slash-separated one. */
+    fun persianDate(date: LocalDate): String {
+        val persian = PersianCalendar.toPersian(date)
+        return "${persian.day} ${persian.monthName} ${persian.year}"
+    }
+
+    /** `۱۴۰۵/۰۶/۲۲`, for the places a date has to line up in a column. */
+    fun persianNumeric(date: LocalDate): String {
+        val persian = PersianCalendar.toPersian(date)
+        return String.format(Locale.getDefault(), "%04d/%02d/%02d", persian.year, persian.month, persian.day)
+    }
 
     fun minuteOfDay(epochMillis: Long): Int {
         val local = toLocal(epochMillis)

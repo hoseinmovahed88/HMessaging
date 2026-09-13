@@ -48,6 +48,7 @@ import com.hmessaging.ui.rememberIsDefaultSmsApp
 import com.hmessaging.di.AppGraph
 import com.hmessaging.feature.update.UpdateStatus
 import com.hmessaging.util.AppRoles
+import com.hmessaging.util.TimeFormat
 
 @Composable
 fun SettingsScreen(
@@ -133,6 +134,13 @@ fun SettingsScreen(
                         title = stringResource(R.string.settings_dynamic_color),
                         checked = settings.dynamicColor,
                         onCheckedChange = viewModel::setDynamicColor,
+                    )
+                    HyperRowDivider()
+                    HyperSwitchRow(
+                        title = stringResource(R.string.settings_persian_calendar),
+                        subtitle = TimeFormat.full(System.currentTimeMillis()),
+                        checked = settings.persianCalendar,
+                        onCheckedChange = viewModel::setPersianCalendar,
                     )
                 }
             }

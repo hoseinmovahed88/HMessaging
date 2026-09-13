@@ -82,6 +82,14 @@ fun DateTimePickerDialog(
                             )
                         }
                     }
+                    // Today, in whichever calendar is in use — so a preset is picked against a
+                    // date the reader recognises rather than against nothing.
+                    Text(
+                        text = TimeFormat.full(System.currentTimeMillis()),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 10.dp),
+                    )
                     Text(
                         text = stringResource(R.string.schedule_preset_hint),
                         style = MaterialTheme.typography.bodySmall,
@@ -118,9 +126,27 @@ fun DateTimePickerDialog(
             dismissButton = {
                 TextButton(onClick = { customising = false }) { Text(stringResource(R.string.back)) }
             },
-            // The Material date picker works in UTC millis while the rest of the app works in
-            // local time, so the chosen day comes back through LocalDate rather than arithmetic.
-            text = { DatePicker(state = dateState) },
+            text = {
+                Column {
+                    // The Material date picker works in UTC millis while the rest of the app works
+                    // in local time, so the chosen day comes back through LocalDate rather than
+                    // arithmetic.
+                    DatePicker(state = dateState, modifier = Modifier.weight(1f, fill = false))
+                    // It is also Gregorian and cannot be told otherwise, so the day it is pointing
+                    // at is written underneath in the calendar the reader counts in.
+                    val chosen = dateState.selectedDateMillis
+                    if (chosen != null && TimeFormat.persianCalendar) {
+                        Text(
+                            text = TimeFormat.persianDate(
+                                Instant.ofEpochMilli(chosen).atZone(ZoneOffset.UTC).toLocalDate(),
+                            ),
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
+                        )
+                    }
+                }
+            },
         )
     } else {
         val timeState = rememberTimePickerState(

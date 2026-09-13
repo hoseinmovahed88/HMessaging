@@ -6,6 +6,8 @@ import com.hmessaging.data.model.ThemeMode
 data class AppSettings(
     // Appearance
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
+    /** Write dates in the Solar Hijri calendar. On by default; this app is read in Iran. */
+    val persianCalendar: Boolean = true,
     // Off by default so the app's own HyperOS-style palette is what ships.
     val dynamicColor: Boolean = false,
     // Sending

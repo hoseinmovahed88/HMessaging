@@ -249,4 +249,5 @@
     <string name="new_message_no_contacts_permission">برای جست‌وجو با نام، اجازه دسترسی به مخاطبین را بدهید</string>
     <string name="new_message_recent">اخیر</string>
     <string name="new_message_results">مخاطبین</string>
+    <string name="settings_persian_calendar">تقویم شمسی</string>
 </resources>

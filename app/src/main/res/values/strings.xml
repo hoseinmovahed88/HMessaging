@@ -261,4 +261,5 @@
     <string name="new_message_no_contacts_permission">Allow contacts access to search by name</string>
     <string name="new_message_recent">Recent</string>
     <string name="new_message_results">Contacts</string>
+    <string name="settings_persian_calendar">Solar Hijri calendar</string>
 </resources>

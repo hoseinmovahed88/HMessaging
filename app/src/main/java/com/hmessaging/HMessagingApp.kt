@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.work.Configuration
 import com.hmessaging.di.AppGraph
 import com.hmessaging.feature.schedule.ScheduleSweepWorker
+import com.hmessaging.util.TimeFormat
 import kotlinx.coroutines.launch
 
 class HMessagingApp : Application(), Configuration.Provider {
@@ -18,6 +19,12 @@ class HMessagingApp : Application(), Configuration.Provider {
         val graph = AppGraph.from(this)
         graph.notifications.ensureChannels()
         registerActivityLifecycleCallbacks(graph.foreground)
+
+        // Dates are written from list rows, notifications and workers alike, none of which can
+        // await a preference, so the choice is mirrored into the formatter as it changes.
+        graph.applicationScope.launch {
+            graph.prefs.settings.collect { TimeFormat.persianCalendar = it.persianCalendar }
+        }
 
         graph.applicationScope.launch {
             // A send whose result broadcast never arrived (process death mid-send) would otherwise

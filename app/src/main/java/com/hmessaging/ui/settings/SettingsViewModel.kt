@@ -40,6 +40,9 @@ class SettingsViewModel(private val graph: AppGraph) : ViewModel() {
     fun setDefaultSubscriptionId(value: Int) = viewModelScope.launch { graph.prefs.setDefaultSubscriptionId(value) }
     fun setNotificationPreview(value: Boolean) = viewModelScope.launch { graph.prefs.setNotificationPreview(value) }
 
+    fun setPersianCalendar(value: Boolean) =
+        viewModelScope.launch { graph.prefs.setPersianCalendar(value) }
+
     fun setUpdateManifestUrl(value: String) =
         viewModelScope.launch { graph.prefs.setUpdateManifestUrl(value) }
 
