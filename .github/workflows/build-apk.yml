@@ -64,24 +64,28 @@ jobs:
       # Actions log downloads are served from a storage host some networks cannot reach, which
       # leaves a failed build with no readable reason. The errors are pushed to a branch instead,
       # for the same reason the APK is: a branch is fetchable over plain git.
-      - name: Publish the build log on failure
-        if: failure()
+      #
+      # Nothing in here may fail the job or mask the real error, so every command is guarded and
+      # the step reports success regardless of what it managed to collect.
+      - name: Publish the build log
+        if: always()
+        continue-on-error: true
         run: |
-          set -eu
-          staging=$(mktemp -d)
-          grep -E "^e: |^w: |FAILURE:|What went wrong|Caused by:|error:" "$RUNNER_TEMP/build.log" \
-            > "$staging/errors.txt" || true
-          tail -400 "$RUNNER_TEMP/build.log" > "$staging/tail.txt"
-          cd "$staging"
-          git init -q
-          git checkout -q -b build-log
+          staging=$(mktemp -d) || exit 0
+          cp "$RUNNER_TEMP/build.log" "$staging/full.log" 2>/dev/null || echo "no build.log" > "$staging/full.log"
+          grep -E "^e: |FAILURE:|What went wrong|Caused by:|error:|Execution failed" "$staging/full.log" > "$staging/errors.txt" 2>/dev/null || true
+          [ -s "$staging/errors.txt" ] || echo "no matching lines" > "$staging/errors.txt"
+          tail -c 400000 "$staging/full.log" > "$staging/tail.log" 2>/dev/null || true
+          rm -f "$staging/full.log"
+          echo "${{ github.sha }} ${{ job.status }}" > "$staging/about.txt"
+          cd "$staging" || exit 0
+          git init -q . || exit 0
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add .
-          git commit -q -m "Build log for ${{ github.sha }}"
-          git push -q --force \
-            "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" \
-            build-log
+          git checkout -q -B build-log
+          git add -A
+          git commit -q -m "Build log for ${{ github.sha }}" || exit 0
+          git push -q --force "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" build-log || echo "push failed"
 
       - name: Report what was built
         run: ls -lh app/build/outputs/apk/release/
