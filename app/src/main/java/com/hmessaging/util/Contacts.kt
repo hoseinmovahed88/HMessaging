@@ -14,12 +14,27 @@ data class ContactMatch(val name: String, val number: String)
 /**
  * Resolves phone numbers to contact names. Results are memoised because the incoming-message
  * pipeline and the conversation list both hit this for every row.
+ *
+ * The address book is also read once in full and kept in memory. That is there because the
+ * provider's own matching could not be relied on: a message from `+989127464018` stayed nameless
+ * next to a contact saved as `09127464018`, and neither `PhoneLookup.CONTENT_FILTER_URI` nor
+ * `Phone.CONTENT_FILTER_URI` would join the two — the latter matches numbers from their beginning,
+ * so filtering on a tail finds nothing. Holding the numbers ourselves means the comparison is the
+ * app's own [PhoneNumbers.threadKey], the same rule that already decides two spellings are one
+ * conversation, instead of whatever the device's provider happens to implement.
  */
 class ContactsLookup(private val context: Context) {
 
     private val cache = ConcurrentHashMap<String, Optional>()
 
     private class Optional(val name: String?)
+
+    /** Every stored number, and the same list keyed by significant digits. Built once, on demand. */
+    private class Directory(val entries: List<ContactMatch>, val byKey: Map<String, String>)
+
+    @Volatile
+    private var directory: Directory? = null
+    private val directoryLock = Any()
 
     fun hasPermission(): Boolean =
         ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CONTACTS) ==
@@ -31,27 +46,24 @@ class ContactsLookup(private val context: Context) {
         // A lookup made without the permission answers "no name" for every number. Caching that
         // would freeze the answer for the life of the process, long after the user grants it.
         if (!hasPermission()) return null
-        val resolved = query(address) ?: bySignificantDigits(address)
+        // PhoneLookup first because it is a single indexed row and answers most numbers; the full
+        // address book is only read when it does not, which is the case this whole class exists for.
+        val resolved = query(address)?.takeIf { it.isNotBlank() } ?: bySignificantDigits(address)
         cache[address] = Optional(resolved)
         return resolved
     }
 
     /**
-     * Second attempt, for when the platform's own lookup will not match across number forms.
+     * Matches on the last nine digits, against the address book read in full.
      *
-     * `PhoneLookup` is documented to compare numbers loosely, and mostly does — but a message from
-     * `+989127464018` was arriving nameless beside a contact saved as `09127464018`, so on this
-     * device it does not. The app already knows how to decide that two spellings are one person:
-     * the significant-digits key that stops the same contact opening two conversations. The same
-     * key answers it here, against whatever the contacts provider returns for those digits.
+     * This is the answer for numbers written with a country code on one side and a national zero
+     * on the other. It deliberately does not ask the provider to do the matching, because asking
+     * it is what failed.
      */
     private fun bySignificantDigits(address: String): String? {
         val key = PhoneNumbers.threadKey(address)
         if (key.length < MIN_MATCHABLE_DIGITS) return null
-        return search(key, limit = TAIL_MATCH_LIMIT)
-            .firstOrNull { PhoneNumbers.threadKey(it.number) == key }
-            ?.name
-            ?.takeIf { it.isNotBlank() }
+        return directory()?.byKey?.get(key)
     }
 
     fun isKnownContact(address: String): Boolean = nameFor(address) != null
@@ -59,50 +71,94 @@ class ContactsLookup(private val context: Context) {
     /**
      * Contacts whose name or number matches [query], for picking someone to write to.
      *
-     * Deliberately not cached: this answers a different question from [nameFor] — many rows for one
-     * query rather than one name for one number — and the phone's own contacts provider is already
-     * indexed for exactly this filter.
+     * Answered from the in-memory address book rather than a filter query, for the same reason as
+     * [bySignificantDigits] and with a bonus: typing the tail of a number now finds it, which a
+     * prefix-matching provider filter never did.
      */
     fun search(query: String, limit: Int = SEARCH_LIMIT): List<ContactMatch> {
-        if (query.isBlank() || !hasPermission()) return emptyList()
-        val uri: Uri = Uri.withAppendedPath(
-            ContactsContract.CommonDataKinds.Phone.CONTENT_FILTER_URI,
-            Uri.encode(query.trim()),
-        )
-        return runCatching {
-            context.contentResolver.query(
-                uri,
-                arrayOf(
-                    ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
-                    ContactsContract.CommonDataKinds.Phone.NUMBER,
-                ),
-                null,
-                null,
-                null,
-            )?.use { cursor ->
-                buildList {
-                    while (cursor.moveToNext() && size < limit) {
-                        val name = cursor.getString(0).orEmpty()
-                        val number = cursor.getString(1).orEmpty()
-                        if (number.isNotBlank()) add(ContactMatch(name, number))
-                    }
+        val trimmed = query.trim()
+        if (trimmed.isEmpty() || !hasPermission()) return emptyList()
+        val entries = directory()?.entries ?: return emptyList()
+
+        val needle = PhoneNumbers.canonical(trimmed).lowercase()
+        val digits = needle.filter(Char::isDigit)
+        // "0912" typed into the box is a number, not a name; a name is matched on its text.
+        val matchDigits = digits.isNotEmpty() && needle.none { it.isLetter() }
+
+        // What was typed, and the same thing with the prefixes that differ between how a number is
+        // written and how it is saved — so "+98912…" finds "0912…" rather than nothing.
+        val digitForms = if (matchDigits) {
+            setOf(digits, digits.removePrefix("0"), digits.removePrefix("98"), digits.removePrefix("098"))
+                .filter { it.isNotEmpty() }
+        } else {
+            emptyList()
+        }
+
+        return entries.asSequence()
+            .filter { entry ->
+                if (matchDigits) {
+                    val stored = entry.number.filter(Char::isDigit)
+                    digitForms.any { stored.contains(it) }
+                } else {
+                    PhoneNumbers.canonical(entry.name).lowercase().contains(needle)
                 }
-                    // One person with a mobile and a landline is two rows; the same number listed
-                    // twice is not two people.
-                    .distinctBy { PhoneNumbers.threadKey(it.number) }
             }
-        }.getOrNull().orEmpty()
+            // One person with a mobile and a landline is two rows; the same number listed twice is
+            // not two people.
+            .distinctBy { PhoneNumbers.threadKey(it.number) }
+            .take(limit)
+            .toList()
     }
 
-    fun invalidate() = cache.clear()
-
-    private companion object {
-        const val SEARCH_LIMIT = 30
-        const val TAIL_MATCH_LIMIT = 10
-
-        /** Below this, a "match" on the tail would be matching almost anything. */
-        const val MIN_MATCHABLE_DIGITS = 7
+    fun invalidate() {
+        cache.clear()
+        directory = null
     }
+
+    /**
+     * The address book, read on first use and kept until [invalidate].
+     *
+     * Reading it whole costs one cursor pass over a few hundred rows, once per process — cheaper
+     * than the per-number provider query it replaces, which the conversation list made for every
+     * unresolved row anyway.
+     */
+    private fun directory(): Directory? {
+        directory?.let { return it }
+        if (!hasPermission()) return null
+        synchronized(directoryLock) {
+            directory?.let { return it }
+            val loaded = load() ?: return null
+            directory = loaded
+            return loaded
+        }
+    }
+
+    private fun load(): Directory? = runCatching {
+        context.contentResolver.query(
+            ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
+            arrayOf(
+                ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
+                ContactsContract.CommonDataKinds.Phone.NUMBER,
+            ),
+            null,
+            null,
+            ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
+        )?.use { cursor ->
+            val entries = ArrayList<ContactMatch>(cursor.count.coerceAtMost(DIRECTORY_LIMIT))
+            val byKey = HashMap<String, String>(cursor.count.coerceAtMost(DIRECTORY_LIMIT))
+            while (cursor.moveToNext() && entries.size < DIRECTORY_LIMIT) {
+                val name = cursor.getString(0).orEmpty().trim()
+                val number = cursor.getString(1).orEmpty().trim()
+                if (number.isEmpty() || name.isEmpty()) continue
+                entries += ContactMatch(name, number)
+                val key = PhoneNumbers.threadKey(number)
+                // First writer wins, so the alphabetically first name is the one shown when two
+                // contacts share a number — stable between runs, which a last-writer rule is not.
+                if (key.length >= MIN_MATCHABLE_DIGITS) byKey.putIfAbsent(key, name)
+            }
+            Directory(entries, byKey)
+        }
+    }.getOrNull()
 
     private fun query(address: String): String? {
         val uri: Uri = Uri.withAppendedPath(
@@ -120,5 +176,15 @@ class ContactsLookup(private val context: Context) {
                 if (cursor.moveToFirst()) cursor.getString(0) else null
             }
         }.getOrNull()
+    }
+
+    private companion object {
+        const val SEARCH_LIMIT = 30
+
+        /** Below this, a "match" on the tail would be matching almost anything. */
+        const val MIN_MATCHABLE_DIGITS = 7
+
+        /** A guard against an address book synced from somewhere unreasonable, not a real limit. */
+        const val DIRECTORY_LIMIT = 20_000
     }
 }
