@@ -57,8 +57,31 @@ jobs:
           HM_KEY_ALIAS: ${{ secrets.HM_KEY_ALIAS }}
           HM_KEY_PASSWORD: ${{ secrets.HM_KEY_PASSWORD }}
         run: |
+          set -o pipefail
           chmod +x gradlew
-          ./gradlew :app:assembleRelease --no-daemon --stacktrace
+          ./gradlew :app:assembleRelease --no-daemon --stacktrace 2>&1 | tee "$RUNNER_TEMP/build.log"
+
+      # Actions log downloads are served from a storage host some networks cannot reach, which
+      # leaves a failed build with no readable reason. The errors are pushed to a branch instead,
+      # for the same reason the APK is: a branch is fetchable over plain git.
+      - name: Publish the build log on failure
+        if: failure()
+        run: |
+          set -eu
+          staging=$(mktemp -d)
+          grep -E "^e: |^w: |FAILURE:|What went wrong|Caused by:|error:" "$RUNNER_TEMP/build.log" \
+            > "$staging/errors.txt" || true
+          tail -400 "$RUNNER_TEMP/build.log" > "$staging/tail.txt"
+          cd "$staging"
+          git init -q
+          git checkout -q -b build-log
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .
+          git commit -q -m "Build log for ${{ github.sha }}"
+          git push -q --force \
+            "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" \
+            build-log
 
       - name: Report what was built
         run: ls -lh app/build/outputs/apk/release/
