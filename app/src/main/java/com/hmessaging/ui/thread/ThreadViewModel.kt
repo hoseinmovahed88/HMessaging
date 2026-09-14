@@ -113,10 +113,17 @@ class ThreadViewModel(
 
     fun send() = viewModelScope.launch {
         val text = input.value
-        val thread = graph.messageRepository.threadById(threadId) ?: return@launch
-        if (text.isBlank()) return@launch
-
+        if (text.isBlank() || transient.value.sending) return@launch
+        // Claimed before the first suspension point, not after it: the send button is disabled by
+        // this flag, and a second tap that lands while the thread is being read would otherwise
+        // pass the same check and send the message twice.
         transient.value = TransientState(sending = true)
+
+        val thread = graph.messageRepository.threadById(threadId)
+        if (thread == null) {
+            transient.value = TransientState(sending = false)
+            return@launch
+        }
         val outcome = graph.smsSender.send(
             recipients = listOf(thread.address),
             body = text,

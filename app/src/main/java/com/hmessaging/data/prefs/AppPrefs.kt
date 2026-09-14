@@ -90,6 +90,7 @@ class AppPrefs(context: Context) {
     suspend fun setUpdateManifestUrl(value: String) = put(Keys.UPDATE_URL, value.trim())
     suspend fun setLiveSyncEnabled(value: Boolean) = put(Keys.LIVE_SYNC, value)
     suspend fun setSystemSmsImported(value: Boolean) = put(Keys.SMS_IMPORTED, value)
+    suspend fun setDuplicatesCleaned(value: Boolean) = put(Keys.DUPLICATES_CLEANED, value)
     suspend fun setOnboardingDone(value: Boolean) = put(Keys.ONBOARDING, value)
 
     private suspend fun put(key: Preferences.Key<Boolean>, value: Boolean) {
@@ -141,6 +142,7 @@ class AppPrefs(context: Context) {
             updateManifestUrl = this[Keys.UPDATE_URL] ?: defaults.updateManifestUrl,
             liveSyncEnabled = this[Keys.LIVE_SYNC] ?: defaults.liveSyncEnabled,
             systemSmsImported = this[Keys.SMS_IMPORTED] ?: defaults.systemSmsImported,
+            duplicatesCleaned = this[Keys.DUPLICATES_CLEANED] ?: defaults.duplicatesCleaned,
             onboardingDone = this[Keys.ONBOARDING] ?: defaults.onboardingDone,
         )
     }
@@ -174,6 +176,7 @@ class AppPrefs(context: Context) {
         val UPDATE_URL = stringPreferencesKey("update_manifest_url")
         val LIVE_SYNC = booleanPreferencesKey("live_sync")
         val SMS_IMPORTED = booleanPreferencesKey("system_sms_imported")
+        val DUPLICATES_CLEANED = booleanPreferencesKey("duplicate_sent_cleaned")
         val ONBOARDING = booleanPreferencesKey("onboarding_done")
         val DELIVERED_BY_BROADCAST = longPreferencesKey("delivered_by_broadcast")
         val MISSED_BY_BROADCAST = longPreferencesKey("missed_by_broadcast")

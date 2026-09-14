@@ -173,6 +173,18 @@ class MainActivity : AppCompatActivity() {
                 graph.diagnostics.record(Diagnostics.KIND_SYNC, "on open — picked up ${progress.imported}")
             }
             graph.messageRepository.refreshContactNames(onlyMissing = true)
+            // Once only, and never again: the import guard stops new duplicates, so a sweep that
+            // ran on every open would eventually start eating messages deliberately sent twice.
+            if (!settings.duplicatesCleaned) {
+                val removed = graph.messageRepository.removeDuplicateOutgoing()
+                graph.prefs.setDuplicatesCleaned(true)
+                if (removed > 0) {
+                    graph.diagnostics.record(
+                        Diagnostics.KIND_SYNC,
+                        "removed $removed duplicated sent message(s)",
+                    )
+                }
+            }
             val merged = graph.messageRepository.mergeDuplicateThreads()
             if (merged > 0) {
                 graph.diagnostics.record(

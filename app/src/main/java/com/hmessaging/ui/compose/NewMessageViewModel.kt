@@ -178,7 +178,7 @@ class NewMessageViewModel(private val graph: AppGraph) : ViewModel() {
     fun send(onSent: (Long?) -> Unit) = viewModelScope.launch {
         val state = form.value
         val recipients = state.recipients.map { it.address }
-        if (recipients.isEmpty() || state.body.isBlank()) return@launch
+        if (recipients.isEmpty() || state.body.isBlank() || state.sending) return@launch
 
         form.value = state.copy(sending = true, error = null)
         val outcome = graph.smsSender.send(

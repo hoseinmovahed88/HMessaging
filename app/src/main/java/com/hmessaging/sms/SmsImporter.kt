@@ -68,6 +68,9 @@ class SmsImporter(
         }
 
         val known = HashSet(messageDao.fingerprints())
+        // Rows this app wrote into the platform store itself, whose timestamps the provider may
+        // have replaced — the fingerprint above would not recognise them.
+        val knownSystemIds = HashSet(messageDao.knownSystemIds())
 
         var imported = 0
         var skipped = 0
@@ -133,6 +136,10 @@ class SmsImporter(
                     skipped++
                     continue
                 }
+                if (!knownSystemIds.add(cursor.getLong(idColumn))) {
+                    skipped++
+                    continue
+                }
 
                 val type = toMessageType(cursor.getInt(typeColumn))
                 // Thread ids are resolved once per distinct address rather than once per row:
@@ -164,6 +171,35 @@ class SmsImporter(
 
         if (imported > 0) threadDao.rebuildSummaries()
         return Progress(imported, skipped)
+    }
+
+    /**
+     * Whether this platform-store row is a message the app already has.
+     *
+     * The (address, date, body) test above is not enough for messages this app sent itself. It
+     * mirrors each one into the platform store, and a provider that stamps its own timestamp on
+     * that insert leaves a row whose date matches nothing here — so every scan reads it as a new
+     * message and the conversation shows the same text twice. Long messages made it obvious,
+     * being slow enough that the mirrored row lands after a scan rather than during one.
+     *
+     * Two answers, in order of certainty: the row id may already be stored against a message, and
+     * failing that, this app may have sent exactly these words to exactly this number moments ago.
+     */
+    private suspend fun isAlreadyHeld(
+        systemId: Long,
+        type: MessageType,
+        address: String,
+        body: String,
+        date: Long,
+    ): Boolean {
+        if (messageDao.existsBySystemId(systemId)) return true
+        if (type.isIncoming) return false
+        return messageDao.existsOutgoingNear(
+            address = address,
+            body = body,
+            from = date - MIRROR_WINDOW_MS,
+            to = date + MIRROR_WINDOW_MS,
+        )
     }
 
     private fun toMessageType(providerType: Int): MessageType = when (providerType) {
@@ -247,6 +283,12 @@ class SmsImporter(
 
                 val type = toMessageType(rows.getInt(typeColumn))
                 val subscriptionId = if (subColumn >= 0) rows.getInt(subColumn) else -1
+                val systemId = rows.getLong(idColumn)
+
+                if (isAlreadyHeld(systemId, type, address, body, date)) {
+                    skipped++
+                    continue
+                }
 
                 if (deliverThroughPipeline && type.isIncoming && date >= cutoff) {
                     pipeline().handle(
@@ -271,7 +313,7 @@ class SmsImporter(
                             read = rows.getInt(readColumn) != 0 || !type.isIncoming,
                             status = if (type == MessageType.SENT) DeliveryStatus.SENT else DeliveryStatus.NONE,
                             subscriptionId = subscriptionId,
-                            systemId = rows.getLong(idColumn),
+                            systemId = systemId,
                         ),
                     )
                 }
@@ -294,5 +336,8 @@ class SmsImporter(
 
         /** Only messages this fresh are replayed through auto-reply and forwarding. */
         private const val LIVE_WINDOW_MS = 15L * 60 * 1000
+
+        /** How far a mirrored row's timestamp may drift from the message it was written from. */
+        private const val MIRROR_WINDOW_MS = 5L * 60 * 1000
     }
 }

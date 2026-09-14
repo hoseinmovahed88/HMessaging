@@ -50,7 +50,7 @@ import com.hmessaging.data.db.entity.ThreadEntity
 import com.hmessaging.di.AppGraph
 import com.hmessaging.feature.update.UpdateStatus
 import com.hmessaging.ui.HmViewModelFactory
-import com.hmessaging.ui.components.Avatar
+import com.hmessaging.ui.components.ContactAvatar
 import com.hmessaging.ui.components.DefaultSmsAppBanner
 import com.hmessaging.ui.components.EmptyState
 import com.hmessaging.ui.components.HyperCard
@@ -112,89 +112,93 @@ fun ConversationsScreen(
             }
         },
     ) { padding ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding),
-            contentPadding = PaddingValues(top = 2.dp, bottom = 96.dp),
-        ) {
-            item("update-banner") {
-                UpdateBanner(
-                    status = updateStatus,
-                    onDownload = { (updateStatus as? UpdateStatus.Available)?.let { graph.updates.download(it.info) } },
-                    onInstall = {
-                        (updateStatus as? UpdateStatus.Ready)?.let {
-                            context.startActivity(graph.updateChecker.installIntent(it.file))
-                        }
-                    },
-                    onDismiss = graph.updates::dismiss,
+        Column(modifier = Modifier.fillMaxSize().padding(padding)) {
+            // Outside the list on purpose. As a list item it scrolled away with the conversations,
+            // so searching from anywhere but the top meant scrolling back up first — and while
+            // results were showing, the box you were typing in could leave the screen.
+            AnimatedVisibility(visible = searchVisible) {
+                HyperSearchField(
+                    value = state.query,
+                    onValueChange = viewModel::onQueryChange,
+                    placeholder = stringResource(R.string.search_name_or_message),
                 )
             }
-
-            if (!isDefaultSmsApp) {
-                item("default-app-banner") {
-                    DefaultSmsAppBanner(
-                        onRequest = onRequestDefaultSmsApp,
-                        onOpenDiagnostics = onOpenDiagnostics,
+            LazyColumn(
+                // weight, not fillMaxSize: inside a Column the list has to take what is left
+                // after the search box rather than the whole screen.
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth(),
+                contentPadding = PaddingValues(top = 2.dp, bottom = 96.dp),
+            ) {
+                item("update-banner") {
+                    UpdateBanner(
+                        status = updateStatus,
+                        onDownload = { (updateStatus as? UpdateStatus.Available)?.let { graph.updates.download(it.info) } },
+                        onInstall = {
+                            (updateStatus as? UpdateStatus.Ready)?.let {
+                                context.startActivity(graph.updateChecker.installIntent(it.file))
+                            }
+                        },
+                        onDismiss = graph.updates::dismiss,
                     )
                 }
-            }
 
-            item("search") {
-                AnimatedVisibility(visible = searchVisible) {
-                    HyperSearchField(
-                        value = state.query,
-                        onValueChange = viewModel::onQueryChange,
-                        placeholder = stringResource(R.string.search),
-                    )
-                }
-            }
-
-            when {
-                state.isSearching -> searchResults(state, onOpenThread)
-
-                // Deliberately renders nothing while loading: a blank moment goes unnoticed,
-                // "no conversations yet" for two seconds reads as data loss.
-                !state.loaded -> Unit
-
-                state.threads.isEmpty() && (!state.showArchived || state.archived.isEmpty()) ->
-                    item("empty") {
-                        EmptyState(
-                            text = stringResource(R.string.no_conversations),
-                            icon = Icons.Filled.Forum,
-                            modifier = Modifier.padding(top = 96.dp),
+                if (!isDefaultSmsApp) {
+                    item("default-app-banner") {
+                        DefaultSmsAppBanner(
+                            onRequest = onRequestDefaultSmsApp,
+                            onOpenDiagnostics = onOpenDiagnostics,
                         )
                     }
+                }
 
-                else -> {
-                    // One lazy item per row: a single item holding the whole list would compose
-                    // every conversation up front, however many there are.
-                    itemsIndexed(
-                        items = state.threads,
-                        key = { _, thread -> thread.id },
-                    ) { index, thread ->
-                        HyperGroupedRow(
-                            isFirst = index == 0,
-                            isLast = index == state.threads.lastIndex,
-                            dividerInset = 72,
-                        ) {
-                            ThreadRow(thread, viewModel, onOpenThread)
+                when {
+                    state.isSearching -> searchResults(state, onOpenThread)
+
+                    // Deliberately renders nothing while loading: a blank moment goes unnoticed,
+                    // "no conversations yet" for two seconds reads as data loss.
+                    !state.loaded -> Unit
+
+                    state.threads.isEmpty() && (!state.showArchived || state.archived.isEmpty()) ->
+                        item("empty") {
+                            EmptyState(
+                                text = stringResource(R.string.no_conversations),
+                                icon = Icons.Filled.Forum,
+                                modifier = Modifier.padding(top = 96.dp),
+                            )
                         }
-                    }
-                    if (state.showArchived && state.archived.isNotEmpty()) {
-                        item("archived-title") {
-                            HyperGroupTitle(stringResource(R.string.nav_archived))
-                        }
+
+                    else -> {
+                        // One lazy item per row: a single item holding the whole list would compose
+                        // every conversation up front, however many there are.
                         itemsIndexed(
-                            items = state.archived,
-                            key = { _, thread -> "archived-${thread.id}" },
+                            items = state.threads,
+                            key = { _, thread -> thread.id },
                         ) { index, thread ->
                             HyperGroupedRow(
                                 isFirst = index == 0,
-                                isLast = index == state.archived.lastIndex,
+                                isLast = index == state.threads.lastIndex,
                                 dividerInset = 72,
                             ) {
                                 ThreadRow(thread, viewModel, onOpenThread)
+                            }
+                        }
+                        if (state.showArchived && state.archived.isNotEmpty()) {
+                            item("archived-title") {
+                                HyperGroupTitle(stringResource(R.string.nav_archived))
+                            }
+                            itemsIndexed(
+                                items = state.archived,
+                                key = { _, thread -> "archived-${thread.id}" },
+                            ) { index, thread ->
+                                HyperGroupedRow(
+                                    isFirst = index == 0,
+                                    isLast = index == state.archived.lastIndex,
+                                    dividerInset = 72,
+                                ) {
+                                    ThreadRow(thread, viewModel, onOpenThread)
+                                }
                             }
                         }
                     }
@@ -204,11 +208,18 @@ fun ConversationsScreen(
     }
 }
 
+/**
+ * Search results: the people first, then the messages.
+ *
+ * Both, because they answer different questions asked through the same box — "open my
+ * conversation with Sara" and "find the message with the tracking number in it" — and until now
+ * only the second was answered, so typing a contact's name found nothing at all.
+ */
 private fun androidx.compose.foundation.lazy.LazyListScope.searchResults(
     state: ConversationsUiState,
     onOpenThread: (Long) -> Unit,
 ) {
-    if (state.searchResults.isEmpty()) {
+    if (state.searchResults.isEmpty() && state.matchingThreads.isEmpty()) {
         item("no-results") {
             EmptyState(
                 text = stringResource(R.string.no_conversations),
@@ -217,6 +228,51 @@ private fun androidx.compose.foundation.lazy.LazyListScope.searchResults(
         }
         return
     }
+
+    if (state.matchingThreads.isNotEmpty()) {
+        item("contacts-title") { HyperGroupTitle(stringResource(R.string.search_contacts)) }
+        itemsIndexed(
+            items = state.matchingThreads,
+            key = { _, thread -> "match-${thread.id}" },
+        ) { index, thread ->
+            HyperGroupedRow(
+                isFirst = index == 0,
+                isLast = index == state.matchingThreads.lastIndex,
+                dividerInset = 72,
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onOpenThread(thread.id) }
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    val title = thread.contactName ?: PhoneNumbers.format(thread.address)
+                    ContactAvatar(name = title, address = thread.address, size = 48)
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = title,
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        Text(
+                            text = PhoneNumbers.format(thread.address),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    if (state.searchResults.isEmpty()) return
+    item("messages-title") { HyperGroupTitle(stringResource(R.string.search_messages)) }
     items(state.searchResults, key = { it.id }) { message ->
         HyperCard {
             Column(
@@ -266,7 +322,7 @@ private fun ThreadRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Avatar(name = title, size = 48)
+        ContactAvatar(name = title, address = thread.address, size = 48)
 
         Column(modifier = Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically) {

@@ -44,6 +44,9 @@
     <string name="add">افزودن</string>
     <string name="send">ارسال</string>
     <string name="search">جست‌وجو</string>
+    <string name="search_name_or_message">جست‌وجوی نام، شماره یا متن پیام</string>
+    <string name="search_contacts">گفت‌وگوها</string>
+    <string name="search_messages">پیام‌ها</string>
     <string name="enabled">فعال</string>
     <string name="disabled">غیرفعال</string>
     <string name="copy">کپی</string>

@@ -46,6 +46,61 @@ object PhoneNumbers {
     /** Digits and letters both put in the one form the rest of the app matches against. */
     fun canonical(input: String): String = normalizeLetters(toAsciiDigits(input))
 
+    /** The Arabic spellings of the letters [normalizeLetters] folds, for matching the other way. */
+    private fun toArabicLetters(input: String): String = buildString(input.length) {
+        for (ch in input) {
+            append(
+                when (ch) {
+                    'ی' -> 'ي'
+                    'ک' -> 'ك'
+                    else -> ch
+                },
+            )
+        }
+    }
+
+    fun toPersianDigits(input: String): String = buildString(input.length) {
+        for (ch in input) {
+            append(if (ch in '0'..'9') '۰' + (ch - '0') else ch)
+        }
+    }
+
+    /**
+     * Every spelling a typed query should be looked for in, most canonical first.
+     *
+     * Stored messages are kept exactly as they arrived, so the same word sits in the database as
+     * "توزیع" from one sender and "توزيع" from another, and a number as both "1234" and "۱۲۳۴".
+     * A search that compares one spelling finds one of them. Nothing can be normalised in place
+     * without rewriting the messages, so the query is widened instead.
+     */
+    fun spellingVariants(input: String): List<String> {
+        val trimmed = input.trim()
+        if (trimmed.isEmpty()) return emptyList()
+        val canonical = canonical(trimmed)
+        return listOf(trimmed, canonical, toPersianDigits(toArabicLetters(canonical)))
+            .distinct()
+            .filter { it.isNotBlank() }
+    }
+
+    /**
+     * The digit spellings a typed number should be matched against.
+     *
+     * A number is written one way and saved another: `+989121234567` against `09121234567`, or a
+     * contact typed as `+98912…` hunting for a number stored with a leading zero. Each prefix that
+     * differs between those forms is stripped, so a containment test finds the number either way.
+     */
+    fun digitVariants(input: String): List<String> {
+        val digits = toAsciiDigits(input).filter(Char::isDigit)
+        if (digits.isEmpty()) return emptyList()
+        return listOf(
+            digits,
+            digits.removePrefix("0"),
+            digits.removePrefix("98"),
+            digits.removePrefix("098"),
+            digits.removePrefix("0098"),
+        ).distinct().filter { it.isNotEmpty() }
+    }
+
     fun toAsciiDigits(input: String): String = buildString(input.length) {
         for (ch in input) {
             when (ch) {

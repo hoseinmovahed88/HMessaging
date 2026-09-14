@@ -46,6 +46,9 @@
     <string name="add">Add</string>
     <string name="send">Send</string>
     <string name="search">Search</string>
+    <string name="search_name_or_message">Search a name, a number or a message</string>
+    <string name="search_contacts">Conversations</string>
+    <string name="search_messages">Messages</string>
     <string name="enabled">Enabled</string>
     <string name="disabled">Disabled</string>
     <string name="copy">Copy</string>

@@ -35,7 +35,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.hmessaging.R
 import com.hmessaging.data.model.RepeatMode
 import com.hmessaging.ui.HmViewModelFactory
-import com.hmessaging.ui.components.Avatar
+import com.hmessaging.ui.components.ContactAvatar
 import com.hmessaging.ui.components.DateTimePickerDialog
 import com.hmessaging.ui.components.EmptyState
 import com.hmessaging.ui.components.HyperDetailScreen
@@ -213,7 +213,7 @@ private fun SuggestionList(
                 HyperRow(
                     title = suggestion.label,
                     subtitle = suggestion.name?.let { PhoneNumbers.format(suggestion.address) },
-                    leading = { Avatar(name = suggestion.label) },
+                    leading = { ContactAvatar(name = suggestion.label, address = suggestion.address) },
                     onClick = { viewModel.addRecipient(suggestion) },
                 )
             }

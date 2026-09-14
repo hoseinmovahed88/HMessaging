@@ -9,7 +9,7 @@ import androidx.core.content.ContextCompat
 import java.util.concurrent.ConcurrentHashMap
 
 /** A contact that matched a search: what to show, and what to send to. */
-data class ContactMatch(val name: String, val number: String)
+data class ContactMatch(val name: String, val number: String, val photoUri: String? = null)
 
 /**
  * Resolves phone numbers to contact names. Results are memoised because the incoming-message
@@ -30,7 +30,7 @@ class ContactsLookup(private val context: Context) {
     private class Optional(val name: String?)
 
     /** Every stored number, and the same list keyed by significant digits. Built once, on demand. */
-    private class Directory(val entries: List<ContactMatch>, val byKey: Map<String, String>)
+    private class Directory(val entries: List<ContactMatch>, val byKey: Map<String, ContactMatch>)
 
     @Volatile
     private var directory: Directory? = null
@@ -63,7 +63,21 @@ class ContactsLookup(private val context: Context) {
     private fun bySignificantDigits(address: String): String? {
         val key = PhoneNumbers.threadKey(address)
         if (key.length < MIN_MATCHABLE_DIGITS) return null
-        return directory()?.byKey?.get(key)
+        return directory()?.byKey?.get(key)?.name
+    }
+
+    /**
+     * The contact's photo, as a URI to open, or null when they have none.
+     *
+     * Resolved from the same in-memory address book as the name, so showing a picture costs no
+     * extra provider query — only the decode of the thumbnail itself, which the caller caches.
+     */
+    fun photoFor(address: String): String? {
+        if (address.isBlank() || address == PhoneNumbers.UNKNOWN_ADDRESS) return null
+        if (!hasPermission()) return null
+        val key = PhoneNumbers.threadKey(address)
+        if (key.length < MIN_MATCHABLE_DIGITS) return null
+        return directory()?.byKey?.get(key)?.photoUri
     }
 
     fun isKnownContact(address: String): Boolean = nameFor(address) != null
@@ -80,31 +94,8 @@ class ContactsLookup(private val context: Context) {
         if (trimmed.isEmpty() || !hasPermission()) return emptyList()
         val entries = directory()?.entries ?: return emptyList()
 
-        val needle = PhoneNumbers.canonical(trimmed).lowercase()
-        val digits = needle.filter(Char::isDigit)
-        // "0912" typed into the box is a number, not a name; a name is matched on its text.
-        val matchDigits = digits.isNotEmpty() && needle.none { it.isLetter() }
-
-        // What was typed, and the same thing with the prefixes that differ between how a number is
-        // written and how it is saved — so "+98912…" finds "0912…" rather than nothing.
-        val digitForms = if (matchDigits) {
-            setOf(digits, digits.removePrefix("0"), digits.removePrefix("98"), digits.removePrefix("098"))
-                .filter { it.isNotEmpty() }
-        } else {
-            emptyList()
-        }
-
         return entries.asSequence()
-            .filter { entry ->
-                if (matchDigits) {
-                    val stored = entry.number.filter(Char::isDigit)
-                    digitForms.any { stored.contains(it) }
-                } else {
-                    PhoneNumbers.canonical(entry.name).lowercase().contains(needle)
-                }
-            }
-            // One person with a mobile and a landline is two rows; the same number listed twice is
-            // not two people.
+            .filter { SearchMatch.matches(trimmed, it.name, it.number) }
             .distinctBy { PhoneNumbers.threadKey(it.number) }
             .take(limit)
             .toList()
@@ -139,22 +130,24 @@ class ContactsLookup(private val context: Context) {
             arrayOf(
                 ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
                 ContactsContract.CommonDataKinds.Phone.NUMBER,
+                ContactsContract.CommonDataKinds.Phone.PHOTO_THUMBNAIL_URI,
             ),
             null,
             null,
             ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
         )?.use { cursor ->
             val entries = ArrayList<ContactMatch>(cursor.count.coerceAtMost(DIRECTORY_LIMIT))
-            val byKey = HashMap<String, String>(cursor.count.coerceAtMost(DIRECTORY_LIMIT))
+            val byKey = HashMap<String, ContactMatch>(cursor.count.coerceAtMost(DIRECTORY_LIMIT))
             while (cursor.moveToNext() && entries.size < DIRECTORY_LIMIT) {
                 val name = cursor.getString(0).orEmpty().trim()
                 val number = cursor.getString(1).orEmpty().trim()
                 if (number.isEmpty() || name.isEmpty()) continue
-                entries += ContactMatch(name, number)
+                val match = ContactMatch(name, number, cursor.getString(2)?.takeIf { it.isNotBlank() })
+                entries += match
                 val key = PhoneNumbers.threadKey(number)
                 // First writer wins, so the alphabetically first name is the one shown when two
                 // contacts share a number — stable between runs, which a last-writer rule is not.
-                if (key.length >= MIN_MATCHABLE_DIGITS) byKey.putIfAbsent(key, name)
+                if (key.length >= MIN_MATCHABLE_DIGITS) byKey.putIfAbsent(key, match)
             }
             Directory(entries, byKey)
         }

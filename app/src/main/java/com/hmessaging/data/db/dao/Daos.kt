@@ -140,15 +140,30 @@ interface MessageDao {
     @Query("SELECT * FROM messages WHERE id = :id")
     suspend fun byId(id: Long): MessageEntity?
 
+    /**
+     * Message-body search, asked in every spelling the query might be stored in.
+     *
+     * Each pattern is guarded by its own emptiness test: an unused one bound to `''` would become
+     * `body LIKE '%%'` and match every message ever received.
+     */
     @Query(
         """
         SELECT * FROM messages
-         WHERE body LIKE '%' || :query || '%' OR address LIKE '%' || :query || '%'
+         WHERE (:query     <> '' AND body    LIKE '%' || :query     || '%')
+            OR (:alternate <> '' AND body    LIKE '%' || :alternate || '%')
+            OR (:localized <> '' AND body    LIKE '%' || :localized || '%')
+            OR (:digits    <> '' AND address LIKE '%' || :digits    || '%')
          ORDER BY date DESC
          LIMIT :limit
         """,
     )
-    fun search(query: String, limit: Int = 200): Flow<List<MessageEntity>>
+    fun search(
+        query: String,
+        alternate: String,
+        localized: String,
+        digits: String,
+        limit: Int = 200,
+    ): Flow<List<MessageEntity>>
 
     @Insert
     suspend fun insert(message: MessageEntity): Long
@@ -223,6 +238,55 @@ interface MessageDao {
         """,
     )
     suspend fun exists(address: String, date: Long, body: String): Boolean
+
+    /** True when this exact platform-store row is already held, whatever it looks like. */
+    @Query("SELECT EXISTS(SELECT 1 FROM messages WHERE systemId = :systemId)")
+    suspend fun existsBySystemId(systemId: Long): Boolean
+
+    @Query("SELECT systemId FROM messages WHERE systemId IS NOT NULL")
+    suspend fun knownSystemIds(): List<Long>
+
+    /**
+     * True when this app already sent this exact text to this number a moment ago.
+     *
+     * The timestamp is deliberately not compared exactly: the row this guards against is the one
+     * this app itself put in the platform store, and a provider that stamps its own `date` on
+     * insert makes that row look new forever.
+     */
+    @Query(
+        """
+        SELECT EXISTS(
+            SELECT 1 FROM messages
+             WHERE address = :address
+               AND body = :body
+               AND type IN ('SENT', 'OUTBOX', 'FAILED')
+               AND date BETWEEN :from AND :to
+        )
+        """,
+    )
+    suspend fun existsOutgoingNear(address: String, body: String, from: Long, to: Long): Boolean
+
+    /**
+     * Outgoing rows that repeat one this app already holds, newest copy first.
+     *
+     * Keeps the lowest id of each (address, body) group — the row this app wrote when it sent the
+     * message, which carries its delivery status — and reports the later copies.
+     */
+    @Query(
+        """
+        SELECT later.id FROM messages AS later
+         WHERE later.type IN ('SENT', 'OUTBOX', 'FAILED')
+           AND EXISTS(
+               SELECT 1 FROM messages AS earlier
+                WHERE earlier.type IN ('SENT', 'OUTBOX', 'FAILED')
+                  AND earlier.address = later.address
+                  AND earlier.body = later.body
+                  AND earlier.id < later.id
+                  AND ABS(earlier.date - later.date) <= :withinMillis
+           )
+        """,
+    )
+    suspend fun duplicateOutgoingIds(withinMillis: Long): List<Long>
 
     @Query(
         """

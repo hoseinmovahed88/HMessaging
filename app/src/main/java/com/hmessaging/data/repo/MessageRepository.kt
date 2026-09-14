@@ -33,7 +33,39 @@ class MessageRepository(
 
     fun observeTotalUnread(): Flow<Int> = threadDao.observeTotalUnread()
 
-    fun search(query: String): Flow<List<MessageEntity>> = messageDao.search(query)
+    /**
+     * Message search, asked in each spelling the text might be stored in and each form the number
+     * might be written in. Unused slots are passed as empty and the query ignores them.
+     */
+    fun search(query: String): Flow<List<MessageEntity>> {
+        val spellings = PhoneNumbers.spellingVariants(query)
+        // The longest digit form, so "0912…" narrows rather than matching every number containing
+        // a nine. The tail forms are what contact lookup needs; a body search wants the opposite.
+        val digits = PhoneNumbers.digitVariants(query).maxByOrNull { it.length }.orEmpty()
+        return messageDao.search(
+            query = spellings.getOrElse(0) { "" },
+            alternate = spellings.getOrElse(1) { "" },
+            localized = spellings.getOrElse(2) { "" },
+            digits = digits,
+        )
+    }
+
+    /**
+     * Removes outgoing messages that are a second copy of one this app already sent.
+     *
+     * They come from the platform store: this app mirrors what it sends into it, and a provider
+     * that stamps its own timestamp on that row makes it look like a message this app has never
+     * seen the next time the store is scanned. Long messages showed it most, being slow enough to
+     * land after a scan rather than during one. The import guard stops new ones; this clears the
+     * ones already stored, keeping the original of each pair — the row that carries the delivery
+     * status — and the copy's platform row is left alone, since it is the real one.
+     */
+    suspend fun removeDuplicateOutgoing(): Int {
+        val ids = messageDao.duplicateOutgoingIds(DUPLICATE_WINDOW_MS)
+        ids.forEach { messageDao.deleteById(it) }
+        if (ids.isNotEmpty()) threadDao.rebuildSummaries()
+        return ids.size
+    }
 
     suspend fun threadById(threadId: Long): ThreadEntity? = threadDao.byId(threadId)
 
@@ -278,5 +310,13 @@ class MessageRepository(
         const val STALE_OUTBOX_ERROR = "No send result was received"
         const val OUTGOING_LABEL = "Me"
         const val MIN_RULE_LENGTH = 8
+
+        /**
+         * How far apart two identical outgoing messages may be and still be one message.
+         *
+         * Wide enough to cover a long multipart send and the store scan that follows it, narrow
+         * enough that deliberately writing the same words twice keeps both.
+         */
+        const val DUPLICATE_WINDOW_MS = 5L * 60 * 1000
     }
 }

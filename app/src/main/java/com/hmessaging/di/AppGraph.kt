@@ -22,6 +22,7 @@ import com.hmessaging.sms.SmsSender
 import com.hmessaging.sms.SystemSmsWriter
 import com.hmessaging.system.Diagnostics
 import com.hmessaging.system.ForegroundTracker
+import com.hmessaging.util.ContactPhotos
 import com.hmessaging.util.ContactsLookup
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -136,6 +137,7 @@ class AppGraph private constructor(val appContext: Context) {
     /** Drops memoised contact names and compiled rule patterns after the data behind them changes. */
     fun invalidateCaches() {
         contacts.invalidate()
+        ContactPhotos.clear()
         simManager.invalidate()
         blockEngine.invalidateCaches()
         autoReplyEngine.invalidateCaches()

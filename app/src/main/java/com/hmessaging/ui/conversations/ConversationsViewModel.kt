@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.hmessaging.data.db.entity.MessageEntity
 import com.hmessaging.data.db.entity.ThreadEntity
 import com.hmessaging.di.AppGraph
+import com.hmessaging.util.SearchMatch
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -27,6 +28,8 @@ data class ConversationsUiState(
     val loaded: Boolean = false,
     val threads: List<ThreadEntity> = emptyList(),
     val archived: List<ThreadEntity> = emptyList(),
+    /** Conversations whose contact name or number matches the query. */
+    val matchingThreads: List<ThreadEntity> = emptyList(),
     val searchResults: List<MessageEntity> = emptyList(),
     val query: String = "",
     val showArchived: Boolean = false,
@@ -61,6 +64,13 @@ class ConversationsViewModel(private val graph: AppGraph) : ViewModel() {
             loaded = true,
             threads = threads,
             archived = archived,
+            // Matched here rather than in SQL because both sides need normalising first: the
+            // name may be spelled with Arabic letters, the number saved with a country code.
+            matchingThreads = if (text.isBlank()) {
+                emptyList()
+            } else {
+                (threads + archived).filter { SearchMatch.matches(text, it.contactName, it.address) }
+            },
             searchResults = results,
             query = text,
             showArchived = archivedVisible,

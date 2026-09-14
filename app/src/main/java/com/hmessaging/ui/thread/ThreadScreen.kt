@@ -55,6 +55,7 @@ import com.hmessaging.data.model.MessageType
 import com.hmessaging.data.model.RepeatMode
 import com.hmessaging.ui.HmViewModelFactory
 import com.hmessaging.ui.components.DateTimePickerDialog
+import com.hmessaging.ui.components.ContactAvatar
 import com.hmessaging.ui.components.HyperDetailScreen
 import com.hmessaging.ui.components.HyperIconButton
 import com.hmessaging.ui.components.MessageComposer
@@ -121,6 +122,11 @@ fun ThreadScreen(
             title
         },
         subtitle = if (state.selecting) null else subtitle,
+        titleLeading = if (state.selecting) {
+            null
+        } else {
+            { ContactAvatar(name = title, address = thread?.address, size = 34) }
+        },
         onBack = {
             if (state.selecting) {
                 viewModel.clearSelection()
