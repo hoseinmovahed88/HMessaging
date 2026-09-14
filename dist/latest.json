@@ -1,8 +1,8 @@
 {
-  "versionCode": 29,
-  "versionName": "1.0.28",
-  "url": "https://github.com/hoseinmovahed88/HMessaging/raw/claude/android-messenger-app-izbr89/dist/HMessaging-1.0.28.apk",
-  "sha256": "e87644a76c390ace5ebd255f52f4cbac6d3a8df12499714517ee974d4b66ba72",
+  "versionCode": 30,
+  "versionName": "1.0.29",
+  "url": "https://github.com/hoseinmovahed88/HMessaging/raw/claude/android-messenger-app-izbr89/dist/HMessaging-1.0.29.apk",
+  "sha256": "77da9faa37511ad860c434427648d437dac92f244fb199d6a7e5ca973c341c6e",
   "size": 2552092,
-  "notes": "عکس مخاطب، اصلاح جستجو، و رفع نمایش دوباره‌ی پیام‌های بلند"
+  "notes": "اصلاح ماندنِ صفحه در حالت جستجو"
 }
