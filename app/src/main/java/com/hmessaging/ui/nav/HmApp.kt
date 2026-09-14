@@ -130,6 +130,14 @@ fun HmApp(
             ) {
                 ThreadScreen(
                     onBack = { navController.popBackStack() },
+                    // Replaces this conversation rather than stacking on it. Walking a morning's
+                    // messages would otherwise build a back stack a dozen deep, and back would
+                    // retrace every one of them instead of returning to the list.
+                    onOpenThread = { next ->
+                        navController.navigate(Routes.thread(next)) {
+                            popUpTo(Routes.THREAD) { inclusive = true }
+                        }
+                    },
                     onForward = { body ->
                         // The compose screen claims this on the way in; see AppGraph.
                         AppGraph.from(context).pendingShareBody = body

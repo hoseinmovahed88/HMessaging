@@ -49,6 +49,8 @@
     <string name="search_name_or_message">Search a name, a number or a message</string>
     <string name="search_contacts">Conversations</string>
     <string name="search_messages">Messages</string>
+    <string name="next_thread_pull">Keep pulling for %1$s</string>
+    <string name="next_thread_release">Release to open %1$s</string>
     <string name="enabled">Enabled</string>
     <string name="disabled">Disabled</string>
     <string name="copy">Copy</string>

@@ -11,6 +11,7 @@ import com.hmessaging.data.model.RepeatMode
 import com.hmessaging.data.prefs.AppSettings
 import com.hmessaging.di.AppGraph
 import com.hmessaging.sms.SimSlot
+import com.hmessaging.util.PhoneNumbers
 import com.hmessaging.util.SmsLength
 import com.hmessaging.util.SmsText
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -18,6 +19,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -35,6 +37,9 @@ data class ThreadUiState(
     val error: String? = null,
     /** Ids of the messages picked out for copying, sharing or forwarding together. */
     val selected: Set<Long> = emptySet(),
+    /** The conversation below this one in the list, reachable by pulling past the newest message. */
+    val nextThreadId: Long? = null,
+    val nextThreadTitle: String? = null,
 ) {
     val length: SmsLength get() = SmsText.measure(input)
     val canSend: Boolean get() = input.isNotBlank() && !sending
@@ -57,19 +62,42 @@ class ThreadViewModel(
 
     private data class TransientState(val sending: Boolean = false, val error: String? = null)
 
+    /** Four small sources folded into one, because combine takes at most five. */
+    private data class Extras(
+        val subscription: Int,
+        val transient: TransientState,
+        val selected: Set<Long>,
+        val next: ThreadEntity?,
+    )
+
     // Templates are only needed once the user opens the picker, so they start empty rather than
     // holding the whole conversation behind a second table's query.
     private val templates = graph.templateDao.observeAll().onStart { emit(emptyList()) }
+
+    /**
+     * The conversation immediately after this one in the list, or null at the end of it.
+     *
+     * Positional rather than "the next unread": the gesture exists to walk the list in the order
+     * it is shown without leaving it, and a jump that skips the conversation directly underneath
+     * would not be the list any more.
+     */
+    private val nextThread = graph.messageRepository.observeThreads()
+        .map { threads ->
+            val index = threads.indexOfFirst { it.id == threadId }
+            if (index < 0) null else threads.getOrNull(index + 1)
+        }
+        .onStart { emit(null) }
 
     val uiState: StateFlow<ThreadUiState> = combine(
         graph.messageRepository.observeThread(threadId),
         graph.messageRepository.observeMessages(threadId),
         input,
         templates,
-        combine(selectedSubscription, transient, selected) { subscription, state, picked ->
-            Triple(subscription, state, picked)
+        combine(selectedSubscription, transient, selected, nextThread) { subscription, state, picked, next ->
+            Extras(subscription, state, picked, next)
         },
-    ) { thread, messages, text, templates, (subscription, state, picked) ->
+    ) { thread, messages, text, templates, extras ->
+        val (subscription, state, picked, next) = extras
         ThreadUiState(
             loaded = true,
             thread = thread,
@@ -82,6 +110,8 @@ class ThreadViewModel(
             error = state.error,
             // Messages deleted while selected must not leave a selection nothing can act on.
             selected = picked.intersect(messages.mapTo(mutableSetOf()) { it.id }),
+            nextThreadId = next?.id,
+            nextThreadTitle = next?.let { it.contactName ?: PhoneNumbers.format(it.address) },
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), ThreadUiState())
 

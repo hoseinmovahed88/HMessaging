@@ -23,6 +23,7 @@ import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Forward
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.SimCard
@@ -36,15 +37,24 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -73,10 +83,21 @@ private const val ComposerMaxLines = 6
 private const val DefaultScheduleOffsetMs = 60L * 60 * 1000
 private const val SelectedTint = 0.16f
 
+/** How far past the newest message the list must be pulled to move on. */
+private const val NextThreadPullDp = 96
+
+/** Only part of the drag counts, so the pull has weight rather than snapping open. */
+private const val NextThreadPullResistance = 0.55f
+
+private const val HintMinimumAlpha = 0.35f
+private const val HintRiseDp = 20
+private const val HintMaxWidthDp = 220
+
 @Composable
 fun ThreadScreen(
     onBack: () -> Unit,
     onForward: (String) -> Unit = {},
+    onOpenThread: (Long) -> Unit = {},
     viewModel: ThreadViewModel = viewModel(factory = HmViewModelFactory.Factory),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -94,6 +115,45 @@ fun ThreadScreen(
     val thread = state.thread
     val title = thread?.let { it.contactName ?: PhoneNumbers.format(it.address) }.orEmpty()
     val subtitle = thread?.address?.takeIf { it != title }
+
+    // Pulling past the newest message moves to the conversation below this one in the list, so a
+    // morning's worth of new messages can be read straight through without coming back out to the
+    // list between each one.
+    val nextThreadId = state.nextThreadId
+    val pullThreshold = with(LocalDensity.current) { NextThreadPullDp.dp.toPx() }
+    var pull by remember { mutableFloatStateOf(0f) }
+    LaunchedEffect(nextThreadId) { pull = 0f }
+
+    val nextThreadPull = remember(nextThreadId, state.selecting, pullThreshold) {
+        object : NestedScrollConnection {
+            override fun onPostScroll(
+                consumed: Offset,
+                available: Offset,
+                source: NestedScrollSource,
+            ): Offset {
+                // Only a finger counts. A fling that runs out of list at speed is someone
+                // travelling through this conversation, not someone asking for the next one.
+                if (nextThreadId == null || state.selecting || source != NestedScrollSource.Drag) {
+                    return Offset.Zero
+                }
+                if (available.y >= 0f) {
+                    // Reaching back towards older messages abandons a pull in progress.
+                    pull = 0f
+                    return Offset.Zero
+                }
+                pull = (pull - available.y * NextThreadPullResistance)
+                    .coerceAtMost(pullThreshold * 2)
+                return Offset(0f, available.y)
+            }
+
+            override suspend fun onPreFling(available: Velocity): Velocity {
+                val reached = pull >= pullThreshold
+                pull = 0f
+                if (reached && nextThreadId != null) onOpenThread(nextThreadId)
+                return Velocity.Zero
+            }
+        }
+    }
 
     // The list is reversed, so index 0 is the newest message and "at the bottom" is index 0. A new
     // message pushes the one the user is looking at to index 1, so treat that as still at the
@@ -241,44 +301,58 @@ fun ThreadScreen(
             )
         },
     ) { padding ->
-        // Reversed: the list is anchored at the bottom, so a conversation opens on its newest
-        // message with no scrolling, and when the keyboard shrinks the viewport the newest
-        // messages stay put instead of sliding underneath it.
-        LazyColumn(
-            state = listState,
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding),
-            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 10.dp),
-            verticalArrangement = Arrangement.spacedBy(3.dp),
-            reverseLayout = true,
         ) {
-            items(
-                count = state.messages.size,
-                key = { index -> state.messages[state.messages.lastIndex - index].id },
-            ) { index ->
-                // One column per item: a reversed list flips the order of an item's own children
-                // too, which would put the day header underneath its messages.
-                val position = state.messages.lastIndex - index
-                val message = state.messages[position]
-                val previous = state.messages.getOrNull(position - 1)
-                Column {
-                    if (previous == null || !isSameDay(previous.date, message.date)) {
-                        DayHeader(message.date)
+            // Reversed: the list is anchored at the bottom, so a conversation opens on its newest
+            // message with no scrolling, and when the keyboard shrinks the viewport the newest
+            // messages stay put instead of sliding underneath it.
+            LazyColumn(
+                state = listState,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .nestedScroll(nextThreadPull),
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 10.dp),
+                verticalArrangement = Arrangement.spacedBy(3.dp),
+                reverseLayout = true,
+            ) {
+                items(
+                    count = state.messages.size,
+                    key = { index -> state.messages[state.messages.lastIndex - index].id },
+                ) { index ->
+                    // One column per item: a reversed list flips the order of an item's own children
+                    // too, which would put the day header underneath its messages.
+                    val position = state.messages.lastIndex - index
+                    val message = state.messages[position]
+                    val previous = state.messages.getOrNull(position - 1)
+                    Column {
+                        if (previous == null || !isSameDay(previous.date, message.date)) {
+                            DayHeader(message.date)
+                        }
+                        MessageBubble(
+                            message = message,
+                            selected = message.id in state.selected,
+                            onTap = {
+                                if (state.selecting) {
+                                    viewModel.toggleSelected(message.id)
+                                } else {
+                                    detail = message
+                                }
+                            },
+                            onLongPress = { viewModel.toggleSelected(message.id) },
+                        )
                     }
-                    MessageBubble(
-                        message = message,
-                        selected = message.id in state.selected,
-                        onTap = {
-                            if (state.selecting) {
-                                viewModel.toggleSelected(message.id)
-                            } else {
-                                detail = message
-                            }
-                        },
-                        onLongPress = { viewModel.toggleSelected(message.id) },
-                    )
                 }
+            }
+
+            if (nextThreadId != null && pull > 0f) {
+                NextConversationHint(
+                    title = state.nextThreadTitle.orEmpty(),
+                    progress = (pull / pullThreshold).coerceIn(0f, 1f),
+                    modifier = Modifier.align(Alignment.BottomCenter),
+                )
             }
         }
     }
@@ -338,6 +412,64 @@ fun ThreadScreen(
                 showSimPicker = false
             },
         )
+    }
+}
+
+/**
+ * The badge that rises from the bottom as the conversation is pulled past its newest message.
+ *
+ * It names where the pull leads, because a gesture that silently replaces what is on screen is
+ * one the reader has to try before they can know what it does.
+ */
+@Composable
+private fun NextConversationHint(title: String, progress: Float, modifier: Modifier = Modifier) {
+    val ready = progress >= 1f
+    val background = if (ready) {
+        MaterialTheme.colorScheme.primary
+    } else {
+        MaterialTheme.colorScheme.surfaceVariant
+    }
+    val foreground = if (ready) {
+        MaterialTheme.colorScheme.onPrimary
+    } else {
+        MaterialTheme.colorScheme.onSurfaceVariant
+    }
+    Surface(
+        shape = RoundedCornerShape(20.dp),
+        color = background,
+        shadowElevation = 3.dp,
+        modifier = modifier
+            .padding(bottom = 14.dp)
+            .graphicsLayer {
+                // Fades and climbs with the pull, so how far is left to go is visible rather
+                // than guessed at.
+                alpha = HintMinimumAlpha + (1f - HintMinimumAlpha) * progress
+                translationY = (1f - progress) * HintRiseDp.dp.toPx()
+            },
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+        ) {
+            Icon(
+                Icons.Filled.KeyboardArrowUp,
+                contentDescription = null,
+                tint = foreground,
+                modifier = Modifier.size(18.dp),
+            )
+            Text(
+                text = stringResource(
+                    if (ready) R.string.next_thread_release else R.string.next_thread_pull,
+                    title,
+                ),
+                style = MaterialTheme.typography.labelLarge,
+                color = foreground,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.widthIn(max = HintMaxWidthDp.dp),
+            )
+        }
     }
 }
 
