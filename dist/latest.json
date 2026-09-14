@@ -1,8 +1,8 @@
 {
-  "versionCode": 30,
-  "versionName": "1.0.29",
-  "url": "https://github.com/hoseinmovahed88/HMessaging/raw/claude/android-messenger-app-izbr89/dist/HMessaging-1.0.29.apk",
-  "sha256": "77da9faa37511ad860c434427648d437dac92f244fb199d6a7e5ca973c341c6e",
-  "size": 2552092,
-  "notes": "اصلاح ماندنِ صفحه در حالت جستجو"
+  "versionCode": 31,
+  "versionName": "1.0.30",
+  "url": "https://github.com/hoseinmovahed88/HMessaging/raw/claude/android-messenger-app-izbr89/dist/HMessaging-1.0.30.apk",
+  "sha256": "0419cee9d3c893ebd0b42680056a102abcab711885aa8d4b450a92548fab7416",
+  "size": 2568756,
+  "notes": "کشیدن به بالا در انتهای گفتگو برای رفتن به گفتگوی بعدی"
 }
