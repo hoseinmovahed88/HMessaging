@@ -32,14 +32,25 @@ data class ConversationsUiState(
     val matchingThreads: List<ThreadEntity> = emptyList(),
     val searchResults: List<MessageEntity> = emptyList(),
     val query: String = "",
+    /** Whether the search box is open. Held here rather than on the screen; see [ConversationsViewModel]. */
+    val searchOpen: Boolean = false,
     val showArchived: Boolean = false,
 ) {
-    val isSearching: Boolean get() = query.isNotBlank()
+    /**
+     * Results replace the conversation list only while the box that produced them is on screen.
+     *
+     * Both halves of that are one flag now. They used to be two: the query lived here and the
+     * box's visibility lived in the screen, so opening a conversation and coming back destroyed
+     * the second and kept the first — leaving a list of search results, no search box, and no way
+     * to get back to the conversations.
+     */
+    val isSearching: Boolean get() = searchOpen && query.isNotBlank()
 }
 
 class ConversationsViewModel(private val graph: AppGraph) : ViewModel() {
 
     private val query = MutableStateFlow("")
+    private val searchOpen = MutableStateFlow(false)
     private val showArchived = MutableStateFlow(false)
 
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -53,13 +64,16 @@ class ConversationsViewModel(private val graph: AppGraph) : ViewModel() {
     private val archived = graph.messageRepository.observeArchivedThreads()
         .onStart { emit(emptyList()) }
 
+    /** Query and box visibility travel together, so neither can outlive the other. */
+    private val search = combine(query, searchOpen) { text, open -> text to open }
+
     val uiState: StateFlow<ConversationsUiState> = combine(
         graph.messageRepository.observeThreads(),
         archived,
         searchResults,
-        query,
+        search,
         showArchived,
-    ) { threads, archived, results, text, archivedVisible ->
+    ) { threads, archived, results, (text, open), archivedVisible ->
         ConversationsUiState(
             loaded = true,
             threads = threads,
@@ -73,6 +87,7 @@ class ConversationsViewModel(private val graph: AppGraph) : ViewModel() {
             },
             searchResults = results,
             query = text,
+            searchOpen = open,
             showArchived = archivedVisible,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), ConversationsUiState())
@@ -81,6 +96,13 @@ class ConversationsViewModel(private val graph: AppGraph) : ViewModel() {
 
     fun onQueryChange(value: String) {
         query.value = value
+    }
+
+    /** Closing the search clears what was typed: a hidden query would still filter the list. */
+    fun toggleSearch() {
+        val open = !searchOpen.value
+        searchOpen.value = open
+        if (!open) query.value = ""
     }
 
     fun toggleArchivedVisible() {

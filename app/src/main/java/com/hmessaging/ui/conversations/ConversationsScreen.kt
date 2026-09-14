@@ -1,5 +1,6 @@
 package com.hmessaging.ui.conversations
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -79,7 +80,10 @@ fun ConversationsScreen(
     val context = LocalContext.current
     val graph = remember(context) { AppGraph.from(context) }
     val updateStatus by graph.updates.status.collectAsStateWithLifecycle()
-    var searchVisible by remember { mutableStateOf(false) }
+
+    // Back closes the search rather than the screen, the same way it closes a selection in a
+    // conversation: the search is the thing on top, so it is the thing back should undo.
+    BackHandler(enabled = state.searchOpen) { viewModel.toggleSearch() }
 
     HyperScreen(
         title = stringResource(R.string.nav_conversations),
@@ -90,10 +94,7 @@ fun ConversationsScreen(
             HyperIconButton(
                 icon = Icons.Filled.Search,
                 contentDescription = stringResource(R.string.search),
-                onClick = {
-                    searchVisible = !searchVisible
-                    if (!searchVisible) viewModel.onQueryChange("")
-                },
+                onClick = viewModel::toggleSearch,
             )
             HyperIconButton(
                 icon = Icons.Filled.Archive,
@@ -116,7 +117,7 @@ fun ConversationsScreen(
             // Outside the list on purpose. As a list item it scrolled away with the conversations,
             // so searching from anywhere but the top meant scrolling back up first — and while
             // results were showing, the box you were typing in could leave the screen.
-            AnimatedVisibility(visible = searchVisible) {
+            AnimatedVisibility(visible = state.searchOpen) {
                 HyperSearchField(
                     value = state.query,
                     onValueChange = viewModel::onQueryChange,
