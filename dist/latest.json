@@ -1,8 +1,8 @@
 {
-  "versionCode": 28,
-  "versionName": "1.0.27",
-  "url": "https://github.com/hoseinmovahed88/HMessaging/raw/claude/android-messenger-app-izbr89/dist/HMessaging-1.0.27.apk",
-  "sha256": "4877d6ed353ab6e9343a6988c2dede65cef646b4236659b374668a343e8c7d7c",
-  "size": 2551732,
-  "notes": "پیدا کردن نام مخاطب برای شماره‌هایی که با کد کشور ذخیره یا دریافت شده‌اند"
+  "versionCode": 29,
+  "versionName": "1.0.28",
+  "url": "https://github.com/hoseinmovahed88/HMessaging/raw/claude/android-messenger-app-izbr89/dist/HMessaging-1.0.28.apk",
+  "sha256": "e87644a76c390ace5ebd255f52f4cbac6d3a8df12499714517ee974d4b66ba72",
+  "size": 2552092,
+  "notes": "عکس مخاطب، اصلاح جستجو، و رفع نمایش دوباره‌ی پیام‌های بلند"
 }
