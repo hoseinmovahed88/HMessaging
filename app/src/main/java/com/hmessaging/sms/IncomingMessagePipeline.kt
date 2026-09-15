@@ -9,6 +9,7 @@ import com.hmessaging.feature.block.BlockEngine
 import com.hmessaging.feature.forward.ForwardEngine
 import com.hmessaging.feature.otp.OtpDetector
 import com.hmessaging.feature.otp.OtpPresenter
+import com.hmessaging.feature.otp.OtpVetoes
 import com.hmessaging.feature.quickreply.QuickReplyPresenter
 import com.hmessaging.notify.Notifications
 import com.hmessaging.system.Diagnostics
@@ -26,6 +27,7 @@ class IncomingMessagePipeline(
     private val diagnostics: Diagnostics,
     private val blockEngine: BlockEngine,
     private val otpPresenter: OtpPresenter,
+    private val otpVetoes: OtpVetoes,
     private val autoReplyEngine: AutoReplyEngine,
     private val forwardEngine: ForwardEngine,
     private val notifications: Notifications,
@@ -90,7 +92,13 @@ class IncomingMessagePipeline(
         }
 
         val settings = prefs.settings.first()
-        val otpMatch = if (settings.otpDetectionEnabled) OtpDetector.detect(address, body) else null
+        // The reader's own corrections outrank the detector. A message they have said is not a
+        // code never becomes one again, however much it looks like one from the outside.
+        val otpMatch = if (settings.otpDetectionEnabled) {
+            OtpDetector.detect(address, body)?.takeUnless { otpVetoes.isVetoed(address, body) }
+        } else {
+            null
+        }
 
         val (threadId, messageId) = repository.insertIncoming(
             rawAddress = address,

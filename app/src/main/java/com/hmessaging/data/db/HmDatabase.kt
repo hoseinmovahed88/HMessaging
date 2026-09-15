@@ -28,6 +28,7 @@ import com.hmessaging.data.db.entity.ForwardLogEntity
 import com.hmessaging.data.db.entity.ForwardRuleEntity
 import com.hmessaging.data.db.entity.MessageEntity
 import com.hmessaging.data.db.entity.OtpEntity
+import com.hmessaging.data.db.entity.OtpVetoEntity
 import com.hmessaging.data.db.entity.ScheduledMessageEntity
 import com.hmessaging.data.db.entity.TemplateEntity
 import com.hmessaging.data.db.entity.ThreadEntity
@@ -44,12 +45,13 @@ import com.hmessaging.data.db.entity.ThreadEntity
         ForwardRuleEntity::class,
         ForwardLogEntity::class,
         OtpEntity::class,
+        OtpVetoEntity::class,
         TemplateEntity::class,
         DiagEventEntity::class,
         BankTxEntity::class,
         BankRuleEntity::class,
     ],
-    version = 5,
+    version = 6,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -151,9 +153,33 @@ abstract class HmDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * Adds the kinds of message the reader has ruled out as verification codes.
+         *
+         * Purely additive: nothing already stored changes, and a phone with no rules behaves
+         * exactly as before until the first one is taught.
+         */
+        private val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `otp_vetoes` (" +
+                        "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                        "`senderKey` TEXT NOT NULL, " +
+                        "`senderLabel` TEXT NOT NULL, " +
+                        "`shape` TEXT NOT NULL, " +
+                        "`sample` TEXT NOT NULL, " +
+                        "`createdAt` INTEGER NOT NULL)",
+                )
+                db.execSQL(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS `index_otp_vetoes_senderKey_shape` " +
+                        "ON `otp_vetoes` (`senderKey`, `shape`)",
+                )
+            }
+        }
+
         fun build(context: Context): HmDatabase =
             Room.databaseBuilder(context.applicationContext, HmDatabase::class.java, NAME)
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
                 .build()
     }
 }

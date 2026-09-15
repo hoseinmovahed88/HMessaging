@@ -51,6 +51,10 @@
     <string name="search_messages">Messages</string>
     <string name="next_thread_pull">Keep pulling for %1$s</string>
     <string name="next_thread_release">Release to open %1$s</string>
+    <string name="undo">Undo</string>
+    <string name="otp_not_a_code">This is not a verification code</string>
+    <string name="otp_vetoes_title">Ruled out</string>
+    <string name="otp_vetoes_desc">Messages written like these are no longer read as verification codes.</string>
     <string name="enabled">Enabled</string>
     <string name="disabled">Disabled</string>
     <string name="copy">Copy</string>

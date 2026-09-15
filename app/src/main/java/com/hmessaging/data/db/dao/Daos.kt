@@ -18,6 +18,7 @@ import com.hmessaging.data.db.entity.ForwardLogEntity
 import com.hmessaging.data.db.entity.ForwardRuleEntity
 import com.hmessaging.data.db.entity.MessageEntity
 import com.hmessaging.data.db.entity.OtpEntity
+import com.hmessaging.data.db.entity.OtpVetoEntity
 import com.hmessaging.data.db.entity.ScheduledMessageEntity
 import com.hmessaging.data.db.entity.TemplateEntity
 import com.hmessaging.data.db.entity.ThreadEntity
@@ -198,6 +199,12 @@ interface MessageDao {
 
     @Query("DELETE FROM messages WHERE isOtp = 1 AND date < :before")
     suspend fun deleteOtpOlderThan(before: Long): Int
+
+    @Query("SELECT * FROM messages WHERE isOtp = 1")
+    suspend fun flaggedAsOtp(): List<MessageEntity>
+
+    @Query("UPDATE messages SET isOtp = 0 WHERE id = :id")
+    suspend fun clearOtpFlag(id: Long)
 
     @Query("SELECT COUNT(*) FROM messages WHERE type = :type")
     fun countByType(type: MessageType): Flow<Int>
@@ -483,6 +490,23 @@ interface OtpDao {
 
     @Query("DELETE FROM otp_codes WHERE receivedAt < :before")
     suspend fun pruneOlderThan(before: Long): Int
+
+    @Query("DELETE FROM otp_codes WHERE sender = :sender AND body = :body")
+    suspend fun deleteBySenderAndBody(sender: String, body: String)
+
+    // --- kinds of message ruled out by the reader -----------------------------------------
+
+    @Query("SELECT * FROM otp_vetoes ORDER BY createdAt DESC")
+    fun observeVetoes(): Flow<List<OtpVetoEntity>>
+
+    @Query("SELECT senderKey || '|' || shape FROM otp_vetoes")
+    suspend fun vetoKeys(): List<String>
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertVeto(veto: OtpVetoEntity): Long
+
+    @Query("DELETE FROM otp_vetoes WHERE id = :id")
+    suspend fun deleteVeto(id: Long)
 }
 
 @Dao

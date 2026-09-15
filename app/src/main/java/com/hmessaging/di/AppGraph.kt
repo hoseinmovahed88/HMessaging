@@ -10,6 +10,7 @@ import com.hmessaging.feature.bank.BankLedger
 import com.hmessaging.feature.block.BlockEngine
 import com.hmessaging.feature.forward.ForwardEngine
 import com.hmessaging.feature.otp.OtpPresenter
+import com.hmessaging.feature.otp.OtpVetoes
 import com.hmessaging.feature.quickreply.QuickReplyPresenter
 import com.hmessaging.feature.schedule.ScheduleManager
 import com.hmessaging.feature.update.UpdateChecker
@@ -76,6 +77,8 @@ class AppGraph private constructor(val appContext: Context) {
 
     val otpPresenter: OtpPresenter by lazy { OtpPresenter(appContext, otpDao, prefs, notifications) }
 
+    val otpVetoes: OtpVetoes by lazy { OtpVetoes(otpDao, messageDao) }
+
     val bankLedger: BankLedger by lazy { BankLedger(bankDao, prefs) }
 
     val updateChecker: UpdateChecker by lazy { UpdateChecker(appContext, prefs) }
@@ -100,6 +103,7 @@ class AppGraph private constructor(val appContext: Context) {
             diagnostics = diagnostics,
             blockEngine = blockEngine,
             otpPresenter = otpPresenter,
+            otpVetoes = otpVetoes,
             autoReplyEngine = autoReplyEngine,
             forwardEngine = forwardEngine,
             notifications = notifications,
@@ -137,6 +141,7 @@ class AppGraph private constructor(val appContext: Context) {
     /** Drops memoised contact names and compiled rule patterns after the data behind them changes. */
     fun invalidateCaches() {
         contacts.invalidate()
+        otpVetoes.invalidate()
         ContactPhotos.clear()
         simManager.invalidate()
         blockEngine.invalidateCaches()

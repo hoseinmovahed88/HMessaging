@@ -101,6 +101,10 @@ class OtpPopupActivity : ComponentActivity() {
                         markRead(sender)
                         finish()
                     },
+                    onNotACode = {
+                        notACode(sender, body)
+                        finish()
+                    },
                     onOpen = {
                         startActivity(
                             Intent(this, MainActivity::class.java)
@@ -112,6 +116,18 @@ class OtpPopupActivity : ComponentActivity() {
                 )
             }
         }
+    }
+
+    /**
+     * Records that this kind of message is not a verification code, and undoes this one.
+     *
+     * The reader is the authority here. The detector works from wording it was taught in advance
+     * and will keep getting some service's format wrong no matter how many words are added to its
+     * lists; one tap settles that service for good.
+     */
+    private fun notACode(sender: String, body: String) {
+        val graph = AppGraph.from(this)
+        graph.applicationScope.launch { graph.otpVetoes.veto(sender, body) }
     }
 
     /**
@@ -180,6 +196,7 @@ private fun OtpPopup(
     autoDismissSeconds: Int,
     onCopy: () -> Unit,
     onMarkRead: () -> Unit,
+    onNotACode: () -> Unit,
     onOpen: () -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -255,10 +272,23 @@ private fun OtpPopup(
                         modifier = Modifier.fillMaxWidth(),
                     )
                 }
-                Row(
+                // On its own line above the rest, because it is the odd one out: the other three
+                // act on a code, this one says there is no code here.
+                TextButton(
+                    onClick = onNotACode,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 8.dp),
+                        .padding(top = 4.dp),
+                ) {
+                    Text(
+                        text = stringResource(R.string.otp_not_a_code),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth(),
                     horizontalArrangement = Arrangement.End,
                 ) {
                     TextButton(onClick = onMarkRead) {

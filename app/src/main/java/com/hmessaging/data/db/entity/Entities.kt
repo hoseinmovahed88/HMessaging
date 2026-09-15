@@ -181,6 +181,28 @@ data class OtpEntity(
     val copied: Boolean = false,
 )
 
+/**
+ * One kind of message the reader has said is never a verification code.
+ *
+ * Keyed by sender and by the message's wording with its numbers taken out, so ruling out a bank's
+ * transaction notice leaves that same bank's verification codes alone — the two are written from
+ * different templates and have different shapes.
+ */
+@Entity(
+    tableName = "otp_vetoes",
+    indices = [Index(value = ["senderKey", "shape"], unique = true)],
+)
+data class OtpVetoEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val senderKey: String,
+    val senderLabel: String,
+    /** The message with its digits removed; see OtpShape. */
+    val shape: String,
+    /** One real message of this kind, so the rule can be recognised and undone. */
+    val sample: String,
+    val createdAt: Long = System.currentTimeMillis(),
+)
+
 @Entity(tableName = "templates")
 data class TemplateEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,

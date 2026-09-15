@@ -49,6 +49,10 @@
     <string name="search_messages">پیام‌ها</string>
     <string name="next_thread_pull">برای رفتن به %1$s بکشید</string>
     <string name="next_thread_release">رها کنید تا %1$s باز شود</string>
+    <string name="undo">برگرداندن</string>
+    <string name="otp_not_a_code">این کد تأیید نیست</string>
+    <string name="otp_vetoes_title">کنار گذاشته‌شده</string>
+    <string name="otp_vetoes_desc">پیام‌هایی که این‌طور نوشته می‌شوند دیگر کد تأیید شمرده نمی‌شوند.</string>
     <string name="enabled">فعال</string>
     <string name="disabled">غیرفعال</string>
     <string name="copy">کپی</string>

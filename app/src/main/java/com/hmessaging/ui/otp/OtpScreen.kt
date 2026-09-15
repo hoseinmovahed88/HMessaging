@@ -27,12 +27,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.hmessaging.R
 import com.hmessaging.ui.HmViewModelFactory
 import com.hmessaging.ui.components.HyperCard
+import com.hmessaging.ui.components.HyperGroupTitle
 import com.hmessaging.ui.components.HyperIconButton
 import com.hmessaging.ui.components.HyperScreen
 import com.hmessaging.ui.components.EmptyState
@@ -163,6 +165,56 @@ fun OtpScreen(
                             ) { Text(stringResource(R.string.copy)) }
                             TextButton(onClick = { viewModel.delete(code.id) }) {
                                 Text(stringResource(R.string.delete))
+                            }
+                        }
+                        // Under the row rather than in it: four buttons across a phone leaves each
+                        // one too narrow to read, and this is the one that changes what happens
+                        // next time rather than what happens to this entry.
+                        TextButton(
+                            onClick = { viewModel.notACode(code) },
+                            modifier = Modifier.padding(start = 8.dp, bottom = 8.dp),
+                        ) {
+                            Text(
+                                text = stringResource(R.string.otp_not_a_code),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                }
+            }
+
+            if (state.vetoes.isNotEmpty()) {
+                HyperGroupTitle(stringResource(R.string.otp_vetoes_title))
+                Text(
+                    text = stringResource(R.string.otp_vetoes_desc),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                )
+                state.vetoes.forEach { veto ->
+                    HyperCard {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = veto.senderLabel,
+                                    style = MaterialTheme.typography.titleSmall,
+                                )
+                                Text(
+                                    text = veto.sample,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 3,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                            }
+                            TextButton(onClick = { viewModel.undoVeto(veto.id) }) {
+                                Text(stringResource(R.string.undo))
                             }
                         }
                     }
