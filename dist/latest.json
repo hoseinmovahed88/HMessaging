@@ -1,8 +1,8 @@
 {
-  "versionCode": 31,
-  "versionName": "1.0.30",
-  "url": "https://github.com/hoseinmovahed88/HMessaging/raw/claude/android-messenger-app-izbr89/dist/HMessaging-1.0.30.apk",
-  "sha256": "0419cee9d3c893ebd0b42680056a102abcab711885aa8d4b450a92548fab7416",
-  "size": 2568756,
-  "notes": "کشیدن به بالا در انتهای گفتگو برای رفتن به گفتگوی بعدی"
+  "versionCode": 33,
+  "versionName": "1.0.32",
+  "url": "https://github.com/hoseinmovahed88/HMessaging/raw/claude/android-messenger-app-izbr89/dist/HMessaging-1.0.32.apk",
+  "sha256": "06c0a792d582861847cdb8a854674729b647ec221fd5a03d3b84eec9e17c82f0",
+  "size": 2569384,
+  "notes": "دکمه «این کد تأیید نیست»، رفع پیام‌های دریافتی تکراری، کشیدن به گفتگوی بعدی"
 }
