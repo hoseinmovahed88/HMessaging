@@ -51,17 +51,21 @@ class MessageRepository(
     }
 
     /**
-     * Removes outgoing messages that are a second copy of one this app already sent.
+     * Removes messages that are a second copy of one already held.
      *
-     * They come from the platform store: this app mirrors what it sends into it, and a provider
-     * that stamps its own timestamp on that row makes it look like a message this app has never
-     * seen the next time the store is scanned. Long messages showed it most, being slow enough to
-     * land after a scan rather than during one. The import guard stops new ones; this clears the
-     * ones already stored, keeping the original of each pair — the row that carries the delivery
-     * status — and the copy's platform row is left alone, since it is the real one.
+     * Both directions come from the same place — the platform SMS store — and from the same
+     * cause: the two copies of one message are stamped with two different clocks. A message that
+     * arrived by broadcast is stored under the time the network centre accepted it, while the
+     * store's row is stamped when the phone received it; a message this app sent is mirrored into
+     * the store, which may replace the timestamp on insert. Either way the next scan reads a row
+     * whose timestamp matches nothing here and files it as new.
+     *
+     * The import guard stops new ones. This clears what is already stored, keeping the original
+     * of each pair — the row carrying the part count and the delivery status — and leaving the
+     * platform's own row alone, since that one is not a copy of anything.
      */
-    suspend fun removeDuplicateOutgoing(): Int {
-        val ids = messageDao.duplicateOutgoingIds(DUPLICATE_WINDOW_MS)
+    suspend fun removeDuplicateMessages(): Int {
+        val ids = messageDao.duplicateIds(DUPLICATE_WINDOW_MS)
         ids.forEach { messageDao.deleteById(it) }
         if (ids.isNotEmpty()) threadDao.rebuildSummaries()
         return ids.size
@@ -95,9 +99,29 @@ class MessageRepository(
         return updated
     }
 
-    /** True when this exact message is already stored, whichever broadcast delivered it. */
-    suspend fun isAlreadyStored(rawAddress: String, body: String, date: Long): Boolean =
-        messageDao.exists(PhoneNumbers.normalize(rawAddress), date, body)
+    /**
+     * True when this message is already stored, whichever route delivered it.
+     *
+     * Not an exact timestamp match. The same message reaches this app under two clocks — the
+     * network centre's when it arrives as a broadcast, the phone's when it is read back out of
+     * the platform store — so comparing them exactly answers "no" for every copy.
+     */
+    suspend fun isAlreadyStored(
+        rawAddress: String,
+        body: String,
+        date: Long,
+        incoming: Boolean = true,
+    ): Boolean {
+        val address = PhoneNumbers.normalize(rawAddress)
+        if (messageDao.exists(address, date, body)) return true
+        return messageDao.existsNear(
+            address = address,
+            body = body,
+            from = date - DUPLICATE_WINDOW_MS,
+            to = date + DUPLICATE_WINDOW_MS,
+            incoming = incoming,
+        )
+    }
 
     /**
      * Finds or creates the thread for [rawAddress], refreshing its contact name on the way.
@@ -312,11 +336,13 @@ class MessageRepository(
         const val MIN_RULE_LENGTH = 8
 
         /**
-         * How far apart two identical outgoing messages may be and still be one message.
+         * How far apart two identical messages may be and still be one message.
          *
-         * Wide enough to cover a long multipart send and the store scan that follows it, narrow
-         * enough that deliberately writing the same words twice keeps both.
+         * Sized by what actually separates the copies: the time a message spends in the network
+         * between being accepted and being delivered, and the gap between sending a long message
+         * and the store scan that follows it. Ten minutes covers a badly delayed message and is
+         * still far short of any interval at which anyone repeats themselves word for word.
          */
-        const val DUPLICATE_WINDOW_MS = 5L * 60 * 1000
+        const val DUPLICATE_WINDOW_MS = 10L * 60 * 1000
     }
 }

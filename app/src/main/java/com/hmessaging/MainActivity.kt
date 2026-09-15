@@ -176,12 +176,12 @@ class MainActivity : AppCompatActivity() {
             // Once only, and never again: the import guard stops new duplicates, so a sweep that
             // ran on every open would eventually start eating messages deliberately sent twice.
             if (!settings.duplicatesCleaned) {
-                val removed = graph.messageRepository.removeDuplicateOutgoing()
+                val removed = graph.messageRepository.removeDuplicateMessages()
                 graph.prefs.setDuplicatesCleaned(true)
                 if (removed > 0) {
                     graph.diagnostics.record(
                         Diagnostics.KIND_SYNC,
-                        "removed $removed duplicated sent message(s)",
+                        "removed $removed duplicated message(s)",
                     )
                 }
             }

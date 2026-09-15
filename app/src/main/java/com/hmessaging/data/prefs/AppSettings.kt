@@ -48,7 +48,7 @@ data class AppSettings(
 
     // One-time flags
     val systemSmsImported: Boolean = false,
-    /** One-shot: whether the sweep for duplicated sent messages has already run. */
+    /** One-shot: whether the sweep for duplicated messages has already run. */
     val duplicatesCleaned: Boolean = false,
     val onboardingDone: Boolean = false,
 ) {

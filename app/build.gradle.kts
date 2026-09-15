@@ -42,8 +42,8 @@ android {
         applicationId = "com.hmessaging"
         minSdk = 24
         targetSdk = 35
-        versionCode = 31
-        versionName = "1.0.30"
+        versionCode = 32
+        versionName = "1.0.31"
         vectorDrawables.useSupportLibrary = true
         resourceConfigurations += listOf("en", "fa")
     }

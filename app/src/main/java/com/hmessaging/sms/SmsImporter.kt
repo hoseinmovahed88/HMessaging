@@ -82,6 +82,7 @@ class SmsImporter(
             Telephony.Sms.ADDRESS,
             Telephony.Sms.BODY,
             Telephony.Sms.DATE,
+            Telephony.Sms.DATE_SENT,
             Telephony.Sms.TYPE,
             Telephony.Sms.READ,
             Telephony.Sms.SUBSCRIPTION_ID,
@@ -114,6 +115,7 @@ class SmsImporter(
             val addressColumn = cursor.getColumnIndexOrThrow(Telephony.Sms.ADDRESS)
             val bodyColumn = cursor.getColumnIndexOrThrow(Telephony.Sms.BODY)
             val dateColumn = cursor.getColumnIndexOrThrow(Telephony.Sms.DATE)
+            val sentColumn = cursor.getColumnIndex(Telephony.Sms.DATE_SENT)
             val typeColumn = cursor.getColumnIndexOrThrow(Telephony.Sms.TYPE)
             val readColumn = cursor.getColumnIndexOrThrow(Telephony.Sms.READ)
             val subColumn = cursor.getColumnIndex(Telephony.Sms.SUBSCRIPTION_ID)
@@ -132,7 +134,14 @@ class SmsImporter(
                     skipped++
                     continue
                 }
-                if (!known.add("$address|$date")) {
+                // Two timestamps, because the same message carries two. A message delivered by
+                // broadcast is stored under the time the network centre accepted it, which the
+                // platform store keeps as `date_sent`, while its own `date` is when the phone
+                // received it. Checking only one of them imports every such message a second time.
+                val dateSent = if (sentColumn >= 0) cursor.getLong(sentColumn) else 0L
+                val known1 = !known.add("$address|$date")
+                val known2 = dateSent > 0 && !known.add("$address|$dateSent")
+                if (known1 || known2) {
                     skipped++
                     continue
                 }
@@ -176,14 +185,17 @@ class SmsImporter(
     /**
      * Whether this platform-store row is a message the app already has.
      *
-     * The (address, date, body) test above is not enough for messages this app sent itself. It
-     * mirrors each one into the platform store, and a provider that stamps its own timestamp on
-     * that insert leaves a row whose date matches nothing here — so every scan reads it as a new
-     * message and the conversation shows the same text twice. Long messages made it obvious,
-     * being slow enough that the mirrored row lands after a scan rather than during one.
+     * The (address, date, body) test above is not enough, because one message carries two
+     * timestamps and the two copies are stored under different ones. A message that arrived by
+     * broadcast is stored under the time the network centre accepted it — what the platform store
+     * calls `date_sent` — while the store's own `date` is when the phone received it, and the gap
+     * between them is however long the message spent in transit. A message this app sent has the
+     * same problem from the other end: it mirrors the message into the store, and a provider that
+     * stamps its own `date` on that insert leaves a row whose timestamp matches nothing here.
      *
-     * Two answers, in order of certainty: the row id may already be stored against a message, and
-     * failing that, this app may have sent exactly these words to exactly this number moments ago.
+     * Three answers, in order of certainty: the row id may already be stored against a message;
+     * the sending timestamp may match one exactly; and failing both, this app may already hold
+     * these exact words to or from this number at about this time.
      */
     private suspend fun isAlreadyHeld(
         systemId: Long,
@@ -191,14 +203,16 @@ class SmsImporter(
         address: String,
         body: String,
         date: Long,
+        dateSent: Long,
     ): Boolean {
         if (messageDao.existsBySystemId(systemId)) return true
-        if (type.isIncoming) return false
-        return messageDao.existsOutgoingNear(
+        if (dateSent > 0 && messageDao.exists(address, dateSent, body)) return true
+        return messageDao.existsNear(
             address = address,
             body = body,
             from = date - MIRROR_WINDOW_MS,
             to = date + MIRROR_WINDOW_MS,
+            incoming = type.isIncoming,
         )
     }
 
@@ -234,6 +248,7 @@ class SmsImporter(
             Telephony.Sms.ADDRESS,
             Telephony.Sms.BODY,
             Telephony.Sms.DATE,
+            Telephony.Sms.DATE_SENT,
             Telephony.Sms.TYPE,
             Telephony.Sms.READ,
             Telephony.Sms.SUBSCRIPTION_ID,
@@ -263,6 +278,7 @@ class SmsImporter(
             val addressColumn = rows.getColumnIndexOrThrow(Telephony.Sms.ADDRESS)
             val bodyColumn = rows.getColumnIndexOrThrow(Telephony.Sms.BODY)
             val dateColumn = rows.getColumnIndexOrThrow(Telephony.Sms.DATE)
+            val sentColumn = rows.getColumnIndex(Telephony.Sms.DATE_SENT)
             val typeColumn = rows.getColumnIndexOrThrow(Telephony.Sms.TYPE)
             val readColumn = rows.getColumnIndexOrThrow(Telephony.Sms.READ)
             val subColumn = rows.getColumnIndex(Telephony.Sms.SUBSCRIPTION_ID)
@@ -276,6 +292,7 @@ class SmsImporter(
                     skipped++
                     continue
                 }
+                val dateSent = if (sentColumn >= 0) rows.getLong(sentColumn) else 0L
                 if (messageDao.exists(address, date, body)) {
                     skipped++
                     continue
@@ -285,7 +302,7 @@ class SmsImporter(
                 val subscriptionId = if (subColumn >= 0) rows.getInt(subColumn) else -1
                 val systemId = rows.getLong(idColumn)
 
-                if (isAlreadyHeld(systemId, type, address, body, date)) {
+                if (isAlreadyHeld(systemId, type, address, body, date, dateSent)) {
                     skipped++
                     continue
                 }
@@ -337,7 +354,13 @@ class SmsImporter(
         /** Only messages this fresh are replayed through auto-reply and forwarding. */
         private const val LIVE_WINDOW_MS = 15L * 60 * 1000
 
-        /** How far a mirrored row's timestamp may drift from the message it was written from. */
-        private const val MIRROR_WINDOW_MS = 5L * 60 * 1000
+        /**
+         * How far one copy of a message may sit from the other before they are two messages.
+         *
+         * Sized by what actually separates them: the time a message spends in the network between
+         * being accepted and being delivered. Ten minutes covers a badly delayed one and is still
+         * far short of any interval at which a sender repeats themselves word for word.
+         */
+        private const val MIRROR_WINDOW_MS = 10L * 60 * 1000
     }
 }

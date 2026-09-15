@@ -176,7 +176,9 @@ class AppPrefs(context: Context) {
         val UPDATE_URL = stringPreferencesKey("update_manifest_url")
         val LIVE_SYNC = booleanPreferencesKey("live_sync")
         val SMS_IMPORTED = booleanPreferencesKey("system_sms_imported")
-        val DUPLICATES_CLEANED = booleanPreferencesKey("duplicate_sent_cleaned")
+        // A second key rather than a reset of the first: the sweep it guards used to cover only
+        // sent messages, and devices that ran it still hold duplicated incoming ones.
+        val DUPLICATES_CLEANED = booleanPreferencesKey("duplicate_messages_cleaned")
         val ONBOARDING = booleanPreferencesKey("onboarding_done")
         val DELIVERED_BY_BROADCAST = longPreferencesKey("delivered_by_broadcast")
         val MISSED_BY_BROADCAST = longPreferencesKey("missed_by_broadcast")

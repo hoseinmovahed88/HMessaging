@@ -247,11 +247,16 @@ interface MessageDao {
     suspend fun knownSystemIds(): List<Long>
 
     /**
-     * True when this app already sent this exact text to this number a moment ago.
+     * True when this app already holds this exact text to or from this number, at about this time.
      *
-     * The timestamp is deliberately not compared exactly: the row this guards against is the one
-     * this app itself put in the platform store, and a provider that stamps its own `date` on
-     * insert makes that row look new forever.
+     * The timestamp is deliberately not compared exactly. Two copies of one message carry two
+     * different clocks: a message arriving by broadcast is stamped with the time the network
+     * centre accepted it, while the same message in the platform store is stamped with the time
+     * the phone received it, and the gap between those is however long it spent in transit. A
+     * message this app sent has the same problem from the other end, because a provider may
+     * replace the timestamp on insert.
+     *
+     * Direction is compared, so a message quoted back to the person who sent it stays a message.
      */
     @Query(
         """
@@ -259,34 +264,44 @@ interface MessageDao {
             SELECT 1 FROM messages
              WHERE address = :address
                AND body = :body
-               AND type IN ('SENT', 'OUTBOX', 'FAILED')
                AND date BETWEEN :from AND :to
+               AND (
+                   (:incoming = 1 AND type = 'INBOX')
+                OR (:incoming = 0 AND type IN ('SENT', 'OUTBOX', 'FAILED'))
+               )
         )
         """,
     )
-    suspend fun existsOutgoingNear(address: String, body: String, from: Long, to: Long): Boolean
+    suspend fun existsNear(
+        address: String,
+        body: String,
+        from: Long,
+        to: Long,
+        incoming: Boolean,
+    ): Boolean
 
     /**
-     * Outgoing rows that repeat one this app already holds, newest copy first.
+     * Rows that repeat one this app already holds, reporting the later copy of each pair.
      *
-     * Keeps the lowest id of each (address, body) group — the row this app wrote when it sent the
-     * message, which carries its delivery status — and reports the later copies.
+     * Keeps the lowest id of each group — the row this app wrote when the message arrived or was
+     * sent, which carries its part count and delivery status — and reports the copies that came
+     * back from the platform store afterwards. Incoming is matched against incoming and outgoing
+     * against outgoing, so a message quoted back to its sender is never mistaken for a copy.
      */
     @Query(
         """
         SELECT later.id FROM messages AS later
-         WHERE later.type IN ('SENT', 'OUTBOX', 'FAILED')
-           AND EXISTS(
+         WHERE EXISTS(
                SELECT 1 FROM messages AS earlier
-                WHERE earlier.type IN ('SENT', 'OUTBOX', 'FAILED')
-                  AND earlier.address = later.address
+                WHERE earlier.address = later.address
                   AND earlier.body = later.body
                   AND earlier.id < later.id
                   AND ABS(earlier.date - later.date) <= :withinMillis
+                  AND (earlier.type = 'INBOX') = (later.type = 'INBOX')
            )
         """,
     )
-    suspend fun duplicateOutgoingIds(withinMillis: Long): List<Long>
+    suspend fun duplicateIds(withinMillis: Long): List<Long>
 
     @Query(
         """
