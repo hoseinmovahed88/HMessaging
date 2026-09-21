@@ -268,14 +268,14 @@
     <string name="blocked_messages_not_kept">پیام‌های مسدودشده نگه داشته نمی‌شوند. برای ذخیره‌شان «نگه‌داشتن پیام‌های مسدودشده» را روشن کنید.</string>
     <string name="bank_accounts_title">حساب‌ها</string>
     <string name="bank_account_unnamed">حساب بدون نام</string>
-    <string name="bank_account_transactions">همین حساب</string>
-    <string name="bank_all_transactions">همه تراکنش‌ها</string>
-    <string name="bank_tx_count">%1$d پیام</string>
-    <string name="bank_balance_as_of">مانده در %1$s</string>
     <string name="bank_this_is_a_bank_message">پیامک بانکی است</string>
     <string name="filter_all">همه</string>
     <string name="filter_unread">خوانده‌نشده</string>
     <string name="filter_contacts">مخاطبین</string>
     <string name="filter_unknown">ناشناس</string>
     <string name="no_conversations_in_filter">با این فیلتر چیزی نیست</string>
+    <string name="bank_accounts_desc">یک حساب را انتخاب کنید تا فقط پیام‌های همان را ببینید. مانده‌ها از خودِ پیام بانک نقل شده‌اند، نه محاسبه‌شده.</string>
+    <string name="bank_all_accounts">همه پیام‌ها</string>
+    <string name="bank_balance_stated">%1$s · اعلام %2$s</string>
+    <string name="bank_showing_account">فقط %1$s</string>
 </resources>

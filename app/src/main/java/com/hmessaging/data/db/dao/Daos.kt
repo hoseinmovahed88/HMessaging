@@ -600,13 +600,13 @@ interface BankDao {
     suspend fun deleteForMessage(messageId: Long)
 
     /**
-     * One bank's accounts as seen from its own conversation: what each holds now, and what has
-     * gone in and out of it.
+     * The accounts one bank has named in its own conversation.
      *
-     * `accountLabel` and `balance` are bare columns beside `MAX(at)`, which in SQLite takes them
-     * from the row that maximum came from — so the balance shown is the latest one the bank
-     * stated, not an arbitrary member of the group. Grouped by currency as well as by account,
-     * because rial and toman are never added together.
+     * No totals. The balance a bank states in each message is already the answer to "how much is
+     * in there", and a figure this app added up itself would only be a second, worse answer that
+     * disagrees with the messages whenever a format has not been taught. `accountLabel` and
+     * `balance` are bare columns beside `MAX(at)`, which in SQLite takes them from the row that
+     * maximum came from — so the balance is the latest one the bank actually stated.
      */
     @Query(
         """
@@ -615,9 +615,7 @@ interface BankDao {
                currency,
                COUNT(*) AS txCount,
                MAX(at) AS lastAt,
-               balance AS latestBalance,
-               SUM(CASE WHEN kind = 'DEPOSIT' THEN amount ELSE 0 END) AS deposits,
-               SUM(CASE WHEN kind = 'WITHDRAWAL' THEN amount ELSE 0 END) AS withdrawals
+               balance AS latestBalance
           FROM bank_tx
          WHERE threadId = :threadId AND amount > 0
          GROUP BY accountKey, currency
@@ -625,9 +623,6 @@ interface BankDao {
         """,
     )
     fun observeThreadAccounts(threadId: Long): Flow<List<ThreadAccountSummary>>
-
-    @Query("SELECT * FROM bank_tx WHERE threadId = :threadId AND amount > 0 ORDER BY at DESC LIMIT :limit")
-    fun observeThreadTx(threadId: Long, limit: Int = 500): Flow<List<BankTxEntity>>
 
     @Query("DELETE FROM bank_tx")
     suspend fun clear()
@@ -693,8 +688,6 @@ data class ThreadAccountSummary(
     val txCount: Int,
     val lastAt: Long,
     val latestBalance: Long?,
-    val deposits: Long,
-    val withdrawals: Long,
 )
 
 data class BankAccountSummary(

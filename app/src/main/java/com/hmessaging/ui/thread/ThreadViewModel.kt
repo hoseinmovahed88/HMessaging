@@ -4,7 +4,6 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.hmessaging.data.db.dao.ThreadAccountSummary
-import com.hmessaging.data.db.entity.BankTxEntity
 import com.hmessaging.data.db.entity.MessageEntity
 import com.hmessaging.data.db.entity.ScheduledMessageEntity
 import com.hmessaging.data.db.entity.TemplateEntity
@@ -12,6 +11,7 @@ import com.hmessaging.data.db.entity.ThreadEntity
 import com.hmessaging.data.model.RepeatMode
 import com.hmessaging.data.prefs.AppSettings
 import com.hmessaging.di.AppGraph
+import com.hmessaging.feature.bank.BankAccounts
 import com.hmessaging.sms.SimSlot
 import com.hmessaging.util.PhoneNumbers
 import com.hmessaging.util.SmsLength
@@ -42,9 +42,12 @@ data class ThreadUiState(
     /** The conversation below this one in the list, reachable by pulling past the newest message. */
     val nextThreadId: Long? = null,
     val nextThreadTitle: String? = null,
-    /** Accounts this sender has written about, once its format has been taught. */
+    /** Accounts this sender has named, once at least one of its formats has been taught. */
     val bankAccounts: List<ThreadAccountSummary> = emptyList(),
-    val bankTransactions: List<BankTxEntity> = emptyList(),
+    /** When set, the conversation shows only the messages about that account. */
+    val accountFilter: String? = null,
+    /** How many of this conversation's messages each account accounts for. */
+    val accountMessageCounts: Map<String, Int> = emptyMap(),
 ) {
     val length: SmsLength get() = SmsText.measure(input)
     val canSend: Boolean get() = input.isNotBlank() && !sending
@@ -64,6 +67,7 @@ class ThreadViewModel(
     private val selectedSubscription = MutableStateFlow(AppSettings.SUBSCRIPTION_UNSET)
     private val transient = MutableStateFlow(TransientState())
     private val selected = MutableStateFlow<Set<Long>>(emptySet())
+    private val accountFilter = MutableStateFlow<String?>(null)
 
     private data class TransientState(val sending: Boolean = false, val error: String? = null)
 
@@ -79,7 +83,7 @@ class ThreadViewModel(
     /** What the ledger holds for this one conversation. Empty until a format is taught. */
     private data class BankView(
         val accounts: List<ThreadAccountSummary> = emptyList(),
-        val transactions: List<BankTxEntity> = emptyList(),
+        val filter: String? = null,
     )
 
     // Templates are only needed once the user opens the picker, so they start empty rather than
@@ -102,8 +106,8 @@ class ThreadViewModel(
 
     private val bank = combine(
         graph.bankDao.observeThreadAccounts(threadId).onStart { emit(emptyList()) },
-        graph.bankDao.observeThreadTx(threadId).onStart { emit(emptyList()) },
-    ) { accounts, transactions -> BankView(accounts, transactions) }
+        accountFilter,
+    ) { accounts, filter -> BankView(accounts, filter) }
 
     val uiState: StateFlow<ThreadUiState> = combine(
         graph.messageRepository.observeThread(threadId),
@@ -121,10 +125,20 @@ class ThreadViewModel(
         },
     ) { thread, messages, text, templates, extras ->
         val (subscription, state, picked, next, bankView) = extras
+        // Which account each message is about, worked out from the account numbers already
+        // known for this bank. It covers the bank's other formats without them being taught,
+        // because the same account is written the same way in all of them.
+        val keys = bankView.accounts.map { it.accountKey }
+        val shown = if (bankView.filter == null) {
+            messages
+        } else {
+            messages.filter { BankAccounts.accountFor(it.body, keys) == bankView.filter }
+        }
+
         ThreadUiState(
             loaded = true,
             thread = thread,
-            messages = messages,
+            messages = shown,
             input = text,
             templates = templates,
             simSlots = graph.simManager.slots(),
@@ -132,11 +146,18 @@ class ThreadViewModel(
             sending = state.sending,
             error = state.error,
             // Messages deleted while selected must not leave a selection nothing can act on.
-            selected = picked.intersect(messages.mapTo(mutableSetOf()) { it.id }),
+            selected = picked.intersect(shown.mapTo(mutableSetOf()) { it.id }),
             nextThreadId = next?.id,
             nextThreadTitle = next?.let { it.contactName ?: PhoneNumbers.format(it.address) },
             bankAccounts = bankView.accounts,
-            bankTransactions = bankView.transactions,
+            accountFilter = bankView.filter,
+            accountMessageCounts = if (keys.isEmpty()) {
+                emptyMap()
+            } else {
+                messages.mapNotNull { BankAccounts.accountFor(it.body, keys) }
+                    .groupingBy { it }
+                    .eachCount()
+            },
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), ThreadUiState())
 
@@ -155,6 +176,11 @@ class ThreadViewModel(
 
     fun onSubscriptionChange(subscriptionId: Int) {
         selectedSubscription.value = subscriptionId
+    }
+
+    /** Narrows the conversation to one account, or clears the narrowing when given null. */
+    fun setAccountFilter(accountKey: String?) {
+        accountFilter.value = accountKey
     }
 
     fun markRead() = viewModelScope.launch {

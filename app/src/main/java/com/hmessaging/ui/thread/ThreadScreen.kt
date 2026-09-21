@@ -22,6 +22,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.Call
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Forward
@@ -323,11 +324,42 @@ fun ThreadScreen(
             )
         },
     ) { padding ->
-        Box(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding),
         ) {
+            // A conversation showing only part of itself has to say so. Without this the missing
+            // messages read as messages that were never received.
+            val narrowedTo = state.bankAccounts.firstOrNull { it.accountKey == state.accountFilter }
+            if (narrowedTo != null) {
+                Surface(
+                    color = MaterialTheme.colorScheme.secondaryContainer,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    ) {
+                        Text(
+                            text = stringResource(
+                                R.string.bank_showing_account,
+                                narrowedTo.accountLabel?.takeIf { it.isNotBlank() }
+                                    ?: stringResource(R.string.bank_account_unnamed),
+                            ),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer,
+                            modifier = Modifier.weight(1f),
+                        )
+                        HyperIconButton(
+                            icon = Icons.Filled.Close,
+                            contentDescription = stringResource(R.string.bank_all_accounts),
+                            onClick = { viewModel.setAccountFilter(null) },
+                        )
+                    }
+                }
+            }
+        Box(modifier = Modifier.weight(1f)) {
             // Reversed: the list is anchored at the bottom, so a conversation opens on its newest
             // message with no scrolling, and when the keyboard shrinks the viewport the newest
             // messages stay put instead of sliding underneath it.
@@ -378,6 +410,7 @@ fun ThreadScreen(
                 )
             }
         }
+        }
     }
 
     detail?.let { message ->
@@ -416,7 +449,12 @@ fun ThreadScreen(
     if (showAccounts) {
         BankAccountsSheet(
             accounts = state.bankAccounts,
-            transactions = state.bankTransactions,
+            messageCounts = state.accountMessageCounts,
+            selected = state.accountFilter,
+            onSelect = { key ->
+                viewModel.setAccountFilter(key)
+                showAccounts = false
+            },
             onDismiss = { showAccounts = false },
         )
     }
