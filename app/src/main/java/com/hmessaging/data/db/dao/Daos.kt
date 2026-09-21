@@ -74,11 +74,18 @@ interface ThreadDao {
         UPDATE threads
            SET snippet = :snippet,
                lastMessageAt = :date,
+               lastSubscriptionId = :subscriptionId,
                unreadCount = unreadCount + :unreadDelta
          WHERE id = :threadId
         """,
     )
-    suspend fun touch(threadId: Long, snippet: String, date: Long, unreadDelta: Int)
+    suspend fun touch(
+        threadId: Long,
+        snippet: String,
+        date: Long,
+        subscriptionId: Int,
+        unreadDelta: Int,
+    )
 
     @Query("UPDATE threads SET unreadCount = 0 WHERE id = :threadId")
     suspend fun clearUnread(threadId: Long)
@@ -122,6 +129,11 @@ interface ThreadDao {
                lastMessageAt = COALESCE((
                    SELECT MAX(date) FROM messages WHERE messages.threadId = threads.id
                ), lastMessageAt),
+               lastSubscriptionId = COALESCE((
+                   SELECT subscriptionId FROM messages
+                    WHERE messages.threadId = threads.id
+                    ORDER BY date DESC, id DESC LIMIT 1
+               ), lastSubscriptionId),
                unreadCount = (
                    SELECT COUNT(*) FROM messages
                     WHERE messages.threadId = threads.id AND type = 'INBOX' AND read = 0

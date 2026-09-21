@@ -14,7 +14,22 @@ data class SimSlot(
     val displayName: String,
     val carrierName: String?,
     val number: String?,
-)
+) {
+    /**
+     * What to print beside a message.
+     *
+     * The SIM's own name where it is short enough to sit in a bubble's footer — that is the name
+     * the phone shows everywhere else, so it is the one the reader recognises — and its slot
+     * number where the carrier has given it something like "Irancell Prepaid Line 1".
+     */
+    val shortLabel: String
+        get() = displayName.trim().takeIf { it.isNotEmpty() && it.length <= MAX_SHORT_LABEL }
+            ?: "SIM ${slotIndex + 1}"
+
+    private companion object {
+        const val MAX_SHORT_LABEL = 12
+    }
+}
 
 /** Enumerates active SIMs so the composer can offer a per-message SIM choice on dual-SIM phones. */
 class SimManager(private val context: Context) {

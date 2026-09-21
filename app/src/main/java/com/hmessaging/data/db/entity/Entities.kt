@@ -32,6 +32,8 @@ data class ThreadEntity(
     val contactName: String? = null,
     val snippet: String = "",
     val lastMessageAt: Long = 0L,
+    /** The SIM the newest message used, so the list can say so without reading every message. */
+    val lastSubscriptionId: Int = -1,
     val unreadCount: Int = 0,
     val pinned: Boolean = false,
     val archived: Boolean = false,

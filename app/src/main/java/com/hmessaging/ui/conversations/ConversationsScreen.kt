@@ -55,6 +55,7 @@ import com.hmessaging.di.AppGraph
 import com.hmessaging.feature.update.UpdateStatus
 import com.hmessaging.ui.HmViewModelFactory
 import com.hmessaging.ui.components.ContactAvatar
+import com.hmessaging.ui.components.SimBadge
 import com.hmessaging.ui.components.DefaultSmsAppBanner
 import com.hmessaging.ui.components.EmptyState
 import com.hmessaging.ui.components.HyperCard
@@ -198,7 +199,7 @@ fun ConversationsScreen(
                                 isLast = index == state.threads.lastIndex,
                                 dividerInset = 72,
                             ) {
-                                ThreadRow(thread, viewModel, onOpenThread)
+                                ThreadRow(thread, state, viewModel, onOpenThread)
                             }
                         }
                         if (state.showArchived && state.archived.isNotEmpty()) {
@@ -214,7 +215,7 @@ fun ConversationsScreen(
                                     isLast = index == state.archived.lastIndex,
                                     dividerInset = 72,
                                 ) {
-                                    ThreadRow(thread, viewModel, onOpenThread)
+                                    ThreadRow(thread, state, viewModel, onOpenThread)
                                 }
                             }
                         }
@@ -364,6 +365,7 @@ private fun filterLabel(filter: ConversationFilter): Int = when (filter) {
 @Composable
 private fun ThreadRow(
     thread: ThreadEntity,
+    state: ConversationsUiState,
     viewModel: ConversationsViewModel,
     onOpenThread: (Long) -> Unit,
 ) {
@@ -432,6 +434,9 @@ private fun ThreadRow(
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            // Beside the time, because it answers the same kind of question about the newest
+            // message: when it came, and on which line.
+            SimBadge(subscriptionId = thread.lastSubscriptionId, slots = state.simSlots)
             if (unread) {
                 Surface(
                     shape = RoundedCornerShape(50),

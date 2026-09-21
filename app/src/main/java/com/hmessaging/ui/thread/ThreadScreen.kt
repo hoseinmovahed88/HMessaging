@@ -71,6 +71,7 @@ import com.hmessaging.ui.components.ContactAvatar
 import com.hmessaging.ui.components.HyperDetailScreen
 import com.hmessaging.ui.components.HyperIconButton
 import com.hmessaging.ui.components.MessageComposer
+import com.hmessaging.ui.components.SimBadge
 import com.hmessaging.ui.theme.LocalHyperColors
 import com.hmessaging.util.Calls
 import com.hmessaging.util.Clipboards
@@ -536,6 +537,7 @@ private fun DayHeader(date: Long) {
 
 @Composable
 private fun MessageBubble(
+    state: ThreadUiState,
     message: MessageEntity,
     selected: Boolean,
     onTap: () -> Unit,
@@ -584,6 +586,11 @@ private fun MessageBubble(
                     } else {
                         hyper.onBubbleOutgoing.copy(alpha = 0.75f)
                     }
+                    SimBadge(
+                        subscriptionId = message.subscriptionId,
+                        slots = state.simSlots,
+                        color = metaColor,
+                    )
                     if (message.parts > 1) {
                         Text(
                             text = "${message.parts}×",

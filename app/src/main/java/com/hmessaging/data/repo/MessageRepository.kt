@@ -213,7 +213,7 @@ class MessageRepository(
                 isOtp = isOtp,
             ),
         )
-        threadDao.touch(threadId, body.snippet(), date, unreadDelta = 1)
+        threadDao.touch(threadId, body.snippet(), date, subscriptionId, unreadDelta = 1)
         return threadId to messageId
     }
 
@@ -240,7 +240,7 @@ class MessageRepository(
                 parts = parts,
             ),
         )
-        threadDao.touch(threadId, body.snippet(), date, unreadDelta = 0)
+        threadDao.touch(threadId, body.snippet(), date, subscriptionId, unreadDelta = 0)
         return threadId to messageId
     }
 

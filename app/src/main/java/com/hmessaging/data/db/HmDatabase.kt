@@ -51,7 +51,7 @@ import com.hmessaging.data.db.entity.ThreadEntity
         BankTxEntity::class,
         BankRuleEntity::class,
     ],
-    version = 6,
+    version = 7,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -177,9 +177,26 @@ abstract class HmDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * Remembers which SIM a conversation's newest message used.
+         *
+         * Backfilled from the messages already stored rather than left at "unknown", so the list
+         * says something useful about the history too and not only about what arrives next.
+         */
+        private val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `threads` ADD COLUMN `lastSubscriptionId` INTEGER NOT NULL DEFAULT -1")
+                db.execSQL(
+                    "UPDATE threads SET lastSubscriptionId = COALESCE((" +
+                        "SELECT subscriptionId FROM messages WHERE messages.threadId = threads.id " +
+                        "ORDER BY date DESC, id DESC LIMIT 1), -1)",
+                )
+            }
+        }
+
         fun build(context: Context): HmDatabase =
             Room.databaseBuilder(context.applicationContext, HmDatabase::class.java, NAME)
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
                 .build()
     }
 }

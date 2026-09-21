@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.hmessaging.data.db.entity.MessageEntity
 import com.hmessaging.data.db.entity.ThreadEntity
 import com.hmessaging.di.AppGraph
+import com.hmessaging.sms.SimSlot
 import com.hmessaging.util.SearchMatch
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -47,6 +48,8 @@ data class ConversationsUiState(
     val filter: ConversationFilter = ConversationFilter.ALL,
     /** How many conversations each filter would show, so a tap is never into an empty screen. */
     val filterCounts: Map<ConversationFilter, Int> = emptyMap(),
+    /** Empty on a single-SIM phone, which is what keeps the badge off every row there. */
+    val simSlots: List<SimSlot> = emptyList(),
 ) {
     /**
      * Results replace the conversation list only while the box that produced them is on screen.
@@ -106,6 +109,7 @@ class ConversationsViewModel(private val graph: AppGraph) : ViewModel() {
             query = text,
             searchOpen = open,
             showArchived = archivedVisible,
+            simSlots = graph.simManager.slots(),
             filter = chosen,
             filterCounts = ConversationFilter.entries.associateWith { candidate ->
                 threads.count { matches(candidate, it) }
