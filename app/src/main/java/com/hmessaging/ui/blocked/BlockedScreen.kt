@@ -82,7 +82,16 @@ fun BlockedScreen(
                     Text(stringResource(R.string.block_rules), modifier = Modifier.padding(12.dp))
                 }
                 Tab(selected = tab == 1, onClick = { tab = 1 }) {
-                    Text(stringResource(R.string.blocked_messages), modifier = Modifier.padding(12.dp))
+                    // The count is the point of the tab: without it there is no way to tell a
+                    // store that is empty from one that is not being written to.
+                    Text(
+                        text = if (state.blockedMessages.isEmpty()) {
+                            stringResource(R.string.blocked_messages)
+                        } else {
+                            "${stringResource(R.string.blocked_messages)} (${state.blockedMessages.size})"
+                        },
+                        modifier = Modifier.padding(12.dp),
+                    )
                 }
             }
 
@@ -107,8 +116,12 @@ fun BlockedScreen(
                         checked = state.settings.screenCalls,
                         onCheckedChange = viewModel::setScreenCalls,
                     )
+                    // Named for what it does rather than for what it is about; it used to carry
+                    // the same words as the tab beside it, which read as a second way in rather
+                    // than as the switch that decides whether there is anything in there.
                     HyperSwitchRow(
-                        title = stringResource(R.string.blocked_messages),
+                        title = stringResource(R.string.keep_blocked_messages),
+                        subtitle = stringResource(R.string.keep_blocked_messages_desc),
                         checked = state.settings.keepBlockedMessages,
                         onCheckedChange = viewModel::setKeepBlockedMessages,
                     )
@@ -134,7 +147,11 @@ fun BlockedScreen(
             } else {
                 if (state.blockedMessages.isEmpty()) {
                     EmptyState(
-                        text = stringResource(R.string.blocked_messages),
+                        text = if (state.settings.keepBlockedMessages) {
+                            stringResource(R.string.no_blocked_messages)
+                        } else {
+                            stringResource(R.string.blocked_messages_not_kept)
+                        },
                         icon = Icons.Filled.Block,
                         modifier = Modifier.weight(1f),
                     )

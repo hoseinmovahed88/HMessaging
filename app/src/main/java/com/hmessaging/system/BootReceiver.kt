@@ -6,6 +6,7 @@ import android.content.Intent
 import com.hmessaging.di.AppGraph
 import com.hmessaging.feature.schedule.ScheduleSweepWorker
 import com.hmessaging.sms.SmsSyncService
+import com.hmessaging.sms.WatcherNeed
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
@@ -33,7 +34,10 @@ class BootReceiver : BroadcastReceiver() {
                 graph.scheduleManager.sendDue()
                 graph.scheduleManager.rescheduleAll()
                 ScheduleSweepWorker.enqueue(context)
-                if (graph.prefs.settings.first().liveSyncEnabled) SmsSyncService.start(context)
+                val needed = WatcherNeed.isNeeded(graph.prefs.deliveryStats.first())
+                if (graph.prefs.settings.first().liveSyncEnabled && needed) {
+                    SmsSyncService.start(context)
+                }
             } finally {
                 pending.finish()
             }

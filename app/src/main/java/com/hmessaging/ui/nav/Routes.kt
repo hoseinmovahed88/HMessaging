@@ -26,12 +26,15 @@ object Routes {
     const val OTP = "otp"
     const val TEMPLATES = "templates"
     const val BANK = "bank"
-    const val BANK_TEACH = "bank/teach"
+    const val BANK_TEACH = "bank/teach?messageId={messageId}"
     const val STATS = "stats"
     const val SETTINGS = "settings"
     const val DIAGNOSTICS = "diagnostics"
 
     fun thread(threadId: Long): String = "thread/$threadId"
+
+    /** [messageId] of 0 opens the teach screen on its own list of candidates. */
+    fun bankTeach(messageId: Long = 0): String = "bank/teach?messageId=$messageId"
 }
 
 /** One entry in the navigation drawer. */

@@ -12,6 +12,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Forward
@@ -52,6 +53,7 @@ fun MessageDetailSheet(
     onShare: (String) -> Unit,
     onForward: (String) -> Unit,
     onDelete: () -> Unit,
+    onTeachBank: (() -> Unit)? = null,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val entities = remember(message.id, message.body) { TextEntities.detect(message.body) }
@@ -105,6 +107,16 @@ fun MessageDetailSheet(
                 SheetAction(Icons.Filled.Share, R.string.share) { onShare(message.body) }
                 SheetAction(Icons.Filled.Forward, R.string.forward) { onForward(message.body) }
                 SheetAction(Icons.Filled.Delete, R.string.delete, onClick = onDelete)
+                // Teaching a bank's format starts from a real message, and this is one. It used
+                // to mean opening the teach screen and finding this same message again in a list
+                // of every sender on the phone.
+                if (onTeachBank != null) {
+                    SheetAction(
+                        Icons.Filled.AccountBalance,
+                        R.string.bank_this_is_a_bank_message,
+                        onClick = onTeachBank,
+                    )
+                }
             }
         }
     }

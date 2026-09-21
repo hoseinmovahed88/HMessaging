@@ -1,5 +1,6 @@
 package com.hmessaging.ui.bank
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.hmessaging.data.db.entity.MessageEntity
@@ -46,7 +47,15 @@ data class TeachUiState(
  * which messages are worth showing first — a currency word narrows a hundred thousand messages to a
  * few hundred. What each number means is never inferred.
  */
-class TeachRuleViewModel(private val graph: AppGraph) : ViewModel() {
+class TeachRuleViewModel(
+    private val graph: AppGraph,
+    savedStateHandle: SavedStateHandle,
+) : ViewModel() {
+
+    /** The message this screen was opened on, or 0 when it was opened on its own. */
+    private val openedOn: Long = savedStateHandle.get<String>(ARG_MESSAGE_ID)?.toLongOrNull()
+        ?: savedStateHandle.get<Long>(ARG_MESSAGE_ID)
+        ?: 0L
 
     private val _uiState = MutableStateFlow(TeachUiState())
     val uiState: StateFlow<TeachUiState> = _uiState.asStateFlow()
@@ -55,6 +64,15 @@ class TeachRuleViewModel(private val graph: AppGraph) : ViewModel() {
 
     init {
         viewModelScope.launch {
+            // Opened from a message: that message is the sample, and the list it would otherwise
+            // have to be found in never appears.
+            if (openedOn > 0) {
+                graph.messageRepository.messageById(openedOn)?.let { message ->
+                    _uiState.value = _uiState.value.copy(loading = false)
+                    pick(message)
+                    return@launch
+                }
+            }
             val latest = graph.bankDao.latestPerSender(CANDIDATE_LIMIT)
             val volume = graph.bankDao.inboxSenderCounts(CANDIDATE_LIMIT)
                 .associate { PhoneNumbers.threadKey(it.address) to it.total }
@@ -164,17 +182,19 @@ class TeachRuleViewModel(private val graph: AppGraph) : ViewModel() {
         _uiState.value = _uiState.value.copy(saved = true)
     }
 
-    private companion object {
-        val GROUPED_NUMBER = Regex("[0-9]{1,3}(?:[,،٬][0-9]{3})+")
+    companion object {
+        const val ARG_MESSAGE_ID = "messageId"
 
-        val FINANCIAL_WORDS = listOf(
+        private val GROUPED_NUMBER = Regex("[0-9]{1,3}(?:[,،٬][0-9]{3})+")
+
+        private val FINANCIAL_WORDS = listOf(
             "مانده", "برداشت", "واریز", "کارمزد", "پایا", "ساتنا", "موجودی", "تراکنش",
             "حساب", "کارت", "ریال", "تومان", "شبا", "صورتحساب",
         )
 
-        const val GROUPED_NUMBER_SCORE = 500
-        const val FINANCIAL_WORD_SCORE = 300
-        const val VOLUME_CAP = 200
-        const val CANDIDATE_LIMIT = 500
+        private const val GROUPED_NUMBER_SCORE = 500
+        private const val FINANCIAL_WORD_SCORE = 300
+        private const val VOLUME_CAP = 200
+        private const val CANDIDATE_LIMIT = 500
     }
 }

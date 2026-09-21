@@ -18,6 +18,15 @@ import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
+/**
+ * The cuts of the conversation list worth one tap.
+ *
+ * Deliberately few. A filter row is only useful while it can be read at a glance, and these are
+ * the four questions a messages list actually gets asked: what is new, who is a person, what is a
+ * service, and what did I put aside.
+ */
+enum class ConversationFilter { ALL, UNREAD, CONTACTS, UNKNOWN }
+
 data class ConversationsUiState(
     /**
      * False until the first database emission arrives.
@@ -35,6 +44,9 @@ data class ConversationsUiState(
     /** Whether the search box is open. Held here rather than on the screen; see [ConversationsViewModel]. */
     val searchOpen: Boolean = false,
     val showArchived: Boolean = false,
+    val filter: ConversationFilter = ConversationFilter.ALL,
+    /** How many conversations each filter would show, so a tap is never into an empty screen. */
+    val filterCounts: Map<ConversationFilter, Int> = emptyMap(),
 ) {
     /**
      * Results replace the conversation list only while the box that produced them is on screen.
@@ -52,6 +64,7 @@ class ConversationsViewModel(private val graph: AppGraph) : ViewModel() {
     private val query = MutableStateFlow("")
     private val searchOpen = MutableStateFlow(false)
     private val showArchived = MutableStateFlow(false)
+    private val filter = MutableStateFlow(ConversationFilter.ALL)
 
     @OptIn(ExperimentalCoroutinesApi::class)
     private val searchResults = query.flatMapLatest { text ->
@@ -67,16 +80,20 @@ class ConversationsViewModel(private val graph: AppGraph) : ViewModel() {
     /** Query and box visibility travel together, so neither can outlive the other. */
     private val search = combine(query, searchOpen) { text, open -> text to open }
 
+    private val view = combine(showArchived, filter) { archivedVisible, chosen ->
+        archivedVisible to chosen
+    }
+
     val uiState: StateFlow<ConversationsUiState> = combine(
         graph.messageRepository.observeThreads(),
         archived,
         searchResults,
         search,
-        showArchived,
-    ) { threads, archived, results, (text, open), archivedVisible ->
+        view,
+    ) { threads, archived, results, (text, open), (archivedVisible, chosen) ->
         ConversationsUiState(
             loaded = true,
-            threads = threads,
+            threads = threads.filter { matches(chosen, it) },
             archived = archived,
             // Matched here rather than in SQL because both sides need normalising first: the
             // name may be spelled with Arabic letters, the number saved with a country code.
@@ -89,6 +106,10 @@ class ConversationsViewModel(private val graph: AppGraph) : ViewModel() {
             query = text,
             searchOpen = open,
             showArchived = archivedVisible,
+            filter = chosen,
+            filterCounts = ConversationFilter.entries.associateWith { candidate ->
+                threads.count { matches(candidate, it) }
+            },
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), ConversationsUiState())
 
@@ -103,6 +124,24 @@ class ConversationsViewModel(private val graph: AppGraph) : ViewModel() {
         val open = !searchOpen.value
         searchOpen.value = open
         if (!open) query.value = ""
+    }
+
+    /**
+     * Whether one conversation belongs in one cut.
+     *
+     * "Unknown" is asked of the stored contact name rather than of the address book directly: the
+     * name is already resolved on every row, so a list of several hundred can be filtered without
+     * a contacts-provider query per line.
+     */
+    private fun matches(filter: ConversationFilter, thread: ThreadEntity): Boolean = when (filter) {
+        ConversationFilter.ALL -> true
+        ConversationFilter.UNREAD -> thread.unreadCount > 0
+        ConversationFilter.CONTACTS -> thread.contactName != null
+        ConversationFilter.UNKNOWN -> thread.contactName == null
+    }
+
+    fun setFilter(value: ConversationFilter) {
+        filter.value = value
     }
 
     fun toggleArchivedVisible() {

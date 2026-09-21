@@ -31,6 +31,7 @@ import androidx.lifecycle.lifecycleScope
 import com.hmessaging.data.prefs.AppSettings
 import com.hmessaging.di.AppGraph
 import com.hmessaging.sms.SmsSyncService
+import com.hmessaging.sms.WatcherNeed
 import com.hmessaging.system.Diagnostics
 import com.hmessaging.ui.nav.HmApp
 import com.hmessaging.ui.nav.Routes
@@ -192,7 +193,15 @@ class MainActivity : AppCompatActivity() {
                     "merged $merged duplicate conversation(s) split by country code",
                 )
             }
-            if (settings.liveSyncEnabled) SmsSyncService.start(this@MainActivity)
+            // Started only while this phone has shown it needs it. The service cannot run
+            // without a permanent notification, so leaving it running on a phone that delivers
+            // its own broadcasts charges the user a line in the shade forever for nothing.
+            val stats = graph.prefs.deliveryStats.first()
+            if (settings.liveSyncEnabled && WatcherNeed.isNeeded(stats)) {
+                SmsSyncService.start(this@MainActivity)
+            } else {
+                SmsSyncService.stop(this@MainActivity)
+            }
             // Quiet unless it finds something; see UpdateCoordinator.
             graph.updates.checkIfDue()
         }

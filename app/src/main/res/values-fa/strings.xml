@@ -260,4 +260,22 @@
     <string name="new_message_results">مخاطبین</string>
     <string name="settings_persian_calendar">تقویم شمسی</string>
     <string name="bank_teach_needs_label">عددی را انتخاب کنید که کلمه‌ای جلویش نوشته شده باشد — همان کلمه است که پیام‌های بعدی را با آن می‌شناسیم.</string>
+    <string name="call">تماس</string>
+    <string name="currency">واحد</string>
+    <string name="keep_blocked_messages">نگه‌داشتن پیام‌های مسدودشده</string>
+    <string name="keep_blocked_messages_desc">پیام‌های مسدودشده به جای دور ریخته شدن اینجا ذخیره می‌شوند تا اگر چیزی اشتباه مسدود شد بتوانید بخوانید و برش گردانید.</string>
+    <string name="no_blocked_messages">هنوز چیزی مسدود نشده است</string>
+    <string name="blocked_messages_not_kept">پیام‌های مسدودشده نگه داشته نمی‌شوند. برای ذخیره‌شان «نگه‌داشتن پیام‌های مسدودشده» را روشن کنید.</string>
+    <string name="bank_accounts_title">حساب‌ها</string>
+    <string name="bank_account_unnamed">حساب بدون نام</string>
+    <string name="bank_account_transactions">همین حساب</string>
+    <string name="bank_all_transactions">همه تراکنش‌ها</string>
+    <string name="bank_tx_count">%1$d پیام</string>
+    <string name="bank_balance_as_of">مانده در %1$s</string>
+    <string name="bank_this_is_a_bank_message">پیامک بانکی است</string>
+    <string name="filter_all">همه</string>
+    <string name="filter_unread">خوانده‌نشده</string>
+    <string name="filter_contacts">مخاطبین</string>
+    <string name="filter_unknown">ناشناس</string>
+    <string name="no_conversations_in_filter">با این فیلتر چیزی نیست</string>
 </resources>

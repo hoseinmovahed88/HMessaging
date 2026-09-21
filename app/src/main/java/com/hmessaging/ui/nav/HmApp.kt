@@ -44,6 +44,7 @@ import com.hmessaging.ui.settings.SettingsScreen
 import com.hmessaging.ui.stats.StatsScreen
 import com.hmessaging.ui.templates.TemplatesScreen
 import com.hmessaging.ui.thread.ThreadScreen
+import com.hmessaging.ui.bank.TeachRuleViewModel
 import com.hmessaging.ui.thread.ThreadViewModel
 import kotlinx.coroutines.launch
 
@@ -133,6 +134,8 @@ fun HmApp(
                     // Replaces this conversation rather than stacking on it. Walking a morning's
                     // messages would otherwise build a back stack a dozen deep, and back would
                     // retrace every one of them instead of returning to the list.
+                    // Teaching starts from the message that is on screen, not from a list.
+                    onTeachBank = { messageId -> navController.navigate(Routes.bankTeach(messageId)) },
                     onOpenThread = { next ->
                         navController.navigate(Routes.thread(next)) {
                             popUpTo(Routes.THREAD) { inclusive = true }
@@ -175,10 +178,18 @@ fun HmApp(
             composable(Routes.BANK) {
                 BankScreen(
                     onOpenDrawer = openDrawer,
-                    onTeachRule = { navController.navigate(Routes.BANK_TEACH) },
+                    onTeachRule = { navController.navigate(Routes.bankTeach()) },
                 )
             }
-            composable(Routes.BANK_TEACH) {
+            composable(
+                route = Routes.BANK_TEACH,
+                arguments = listOf(
+                    navArgument(TeachRuleViewModel.ARG_MESSAGE_ID) {
+                        type = NavType.StringType
+                        defaultValue = "0"
+                    },
+                ),
+            ) {
                 TeachRuleScreen(onDone = { navController.popBackStack() })
             }
             composable(Routes.STATS) {

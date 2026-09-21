@@ -272,4 +272,22 @@
     <string name="new_message_results">Contacts</string>
     <string name="settings_persian_calendar">Solar Hijri calendar</string>
     <string name="bank_teach_needs_label">Pick an amount that has a word in front of it — that word is how later messages are recognised.</string>
+    <string name="call">Call</string>
+    <string name="currency">Currency</string>
+    <string name="keep_blocked_messages">Keep blocked messages</string>
+    <string name="keep_blocked_messages_desc">Blocked messages are stored here instead of being thrown away, so a wrongly blocked one can be read and let back in.</string>
+    <string name="no_blocked_messages">Nothing has been blocked yet</string>
+    <string name="blocked_messages_not_kept">Blocked messages are not being kept. Turn on "Keep blocked messages" to store them here.</string>
+    <string name="bank_accounts_title">Accounts</string>
+    <string name="bank_account_unnamed">Unnamed account</string>
+    <string name="bank_account_transactions">This account</string>
+    <string name="bank_all_transactions">All transactions</string>
+    <string name="bank_tx_count">%1$d messages</string>
+    <string name="bank_balance_as_of">Balance at %1$s</string>
+    <string name="bank_this_is_a_bank_message">Bank message</string>
+    <string name="filter_all">All</string>
+    <string name="filter_unread">Unread</string>
+    <string name="filter_contacts">Contacts</string>
+    <string name="filter_unknown">Unknown</string>
+    <string name="no_conversations_in_filter">Nothing here under this filter</string>
 </resources>

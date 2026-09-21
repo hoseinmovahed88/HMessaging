@@ -587,6 +587,36 @@ interface BankDao {
     @Query("DELETE FROM bank_tx WHERE messageId = :messageId")
     suspend fun deleteForMessage(messageId: Long)
 
+    /**
+     * One bank's accounts as seen from its own conversation: what each holds now, and what has
+     * gone in and out of it.
+     *
+     * `accountLabel` and `balance` are bare columns beside `MAX(at)`, which in SQLite takes them
+     * from the row that maximum came from — so the balance shown is the latest one the bank
+     * stated, not an arbitrary member of the group. Grouped by currency as well as by account,
+     * because rial and toman are never added together.
+     */
+    @Query(
+        """
+        SELECT accountKey,
+               accountLabel,
+               currency,
+               COUNT(*) AS txCount,
+               MAX(at) AS lastAt,
+               balance AS latestBalance,
+               SUM(CASE WHEN kind = 'DEPOSIT' THEN amount ELSE 0 END) AS deposits,
+               SUM(CASE WHEN kind = 'WITHDRAWAL' THEN amount ELSE 0 END) AS withdrawals
+          FROM bank_tx
+         WHERE threadId = :threadId AND amount > 0
+         GROUP BY accountKey, currency
+         ORDER BY lastAt DESC
+        """,
+    )
+    fun observeThreadAccounts(threadId: Long): Flow<List<ThreadAccountSummary>>
+
+    @Query("SELECT * FROM bank_tx WHERE threadId = :threadId AND amount > 0 ORDER BY at DESC LIMIT :limit")
+    fun observeThreadTx(threadId: Long, limit: Int = 500): Flow<List<BankTxEntity>>
+
     @Query("DELETE FROM bank_tx")
     suspend fun clear()
 
@@ -643,6 +673,18 @@ interface BankDao {
 }
 
 /** A bank account seen in the messages, with how much of it there is to show. */
+/** One account inside one bank's conversation, with the last balance that bank stated for it. */
+data class ThreadAccountSummary(
+    val accountKey: String,
+    val accountLabel: String?,
+    val currency: String,
+    val txCount: Int,
+    val lastAt: Long,
+    val latestBalance: Long?,
+    val deposits: Long,
+    val withdrawals: Long,
+)
+
 data class BankAccountSummary(
     val accountKey: String,
     val accountLabel: String?,

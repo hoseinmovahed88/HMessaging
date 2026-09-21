@@ -3,6 +3,8 @@ package com.hmessaging.ui.conversations
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -27,6 +29,7 @@ import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -124,6 +127,15 @@ fun ConversationsScreen(
                     placeholder = stringResource(R.string.search_name_or_message),
                 )
             }
+            // Above the list and outside it, for the same reason the search box is: a filter that
+            // scrolls away cannot be changed from where its results are being read.
+            if (!state.isSearching) {
+                FilterRow(
+                    selected = state.filter,
+                    counts = state.filterCounts,
+                    onSelect = viewModel::setFilter,
+                )
+            }
             LazyColumn(
                 // weight, not fillMaxSize: inside a Column the list has to take what is left
                 // after the search box rather than the whole screen.
@@ -164,7 +176,11 @@ fun ConversationsScreen(
                     state.threads.isEmpty() && (!state.showArchived || state.archived.isEmpty()) ->
                         item("empty") {
                             EmptyState(
-                                text = stringResource(R.string.no_conversations),
+                                text = if (state.filter == ConversationFilter.ALL) {
+                                    stringResource(R.string.no_conversations)
+                                } else {
+                                    stringResource(R.string.no_conversations_in_filter)
+                                },
                                 icon = Icons.Filled.Forum,
                                 modifier = Modifier.padding(top = 96.dp),
                             )
@@ -303,6 +319,46 @@ private fun androidx.compose.foundation.lazy.LazyListScope.searchResults(
             }
         }
     }
+}
+
+/** The one-tap cuts of the list, with what each holds. */
+@Composable
+private fun FilterRow(
+    selected: ConversationFilter,
+    counts: Map<ConversationFilter, Int>,
+    onSelect: (ConversationFilter) -> Unit,
+) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
+            .padding(horizontal = 16.dp, vertical = 4.dp),
+    ) {
+        ConversationFilter.entries.forEach { filter ->
+            val count = counts[filter] ?: 0
+            FilterChip(
+                selected = selected == filter,
+                onClick = { onSelect(filter) },
+                label = {
+                    Text(
+                        text = if (filter == ConversationFilter.ALL || count == 0) {
+                            stringResource(filterLabel(filter))
+                        } else {
+                            "${stringResource(filterLabel(filter))} $count"
+                        },
+                    )
+                },
+            )
+        }
+    }
+}
+
+private fun filterLabel(filter: ConversationFilter): Int = when (filter) {
+    ConversationFilter.ALL -> R.string.filter_all
+    ConversationFilter.UNREAD -> R.string.filter_unread
+    ConversationFilter.CONTACTS -> R.string.filter_contacts
+    ConversationFilter.UNKNOWN -> R.string.filter_unknown
 }
 
 @Composable

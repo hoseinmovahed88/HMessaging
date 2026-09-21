@@ -19,7 +19,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Forward
@@ -70,6 +72,7 @@ import com.hmessaging.ui.components.HyperDetailScreen
 import com.hmessaging.ui.components.HyperIconButton
 import com.hmessaging.ui.components.MessageComposer
 import com.hmessaging.ui.theme.LocalHyperColors
+import com.hmessaging.util.Calls
 import com.hmessaging.util.Clipboards
 import com.hmessaging.util.PhoneNumbers
 import com.hmessaging.util.Sharing
@@ -98,6 +101,7 @@ fun ThreadScreen(
     onBack: () -> Unit,
     onForward: (String) -> Unit = {},
     onOpenThread: (Long) -> Unit = {},
+    onTeachBank: (Long) -> Unit = {},
     viewModel: ThreadViewModel = viewModel(factory = HmViewModelFactory.Factory),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -111,6 +115,7 @@ fun ThreadScreen(
     var showTemplates by remember { mutableStateOf(false) }
     var showSimPicker by remember { mutableStateOf(false) }
     var detail by remember { mutableStateOf<MessageEntity?>(null) }
+    var showAccounts by remember { mutableStateOf(false) }
 
     val thread = state.thread
     val title = thread?.let { it.contactName ?: PhoneNumbers.format(it.address) }.orEmpty()
@@ -229,6 +234,22 @@ fun ThreadScreen(
                     onClick = viewModel::deleteSelected,
                 )
             } else {
+                // A conversation is usually with someone you might also ring. The number is right
+                // here; making the user copy it into the dialer was the only thing stopping them.
+                if (Calls.isDialable(thread?.address)) {
+                    HyperIconButton(
+                        icon = Icons.Filled.Call,
+                        contentDescription = stringResource(R.string.call),
+                        onClick = { Calls.dial(context, thread?.address) },
+                    )
+                }
+                if (state.bankAccounts.isNotEmpty()) {
+                    HyperIconButton(
+                        icon = Icons.Filled.AccountBalance,
+                        contentDescription = stringResource(R.string.bank_accounts_title),
+                        onClick = { showAccounts = true },
+                    )
+                }
                 Box {
                     HyperIconButton(Icons.Filled.MoreVert, null, { menuOpen = true })
                     DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
@@ -377,6 +398,24 @@ fun ThreadScreen(
                 viewModel.deleteMessage(message.id)
                 detail = null
             },
+            // Offered on received messages only: a bank's format is taught from what the bank
+            // wrote, never from a reply to it.
+            onTeachBank = if (message.type.isIncoming) {
+                {
+                    detail = null
+                    onTeachBank(message.id)
+                }
+            } else {
+                null
+            },
+        )
+    }
+
+    if (showAccounts) {
+        BankAccountsSheet(
+            accounts = state.bankAccounts,
+            transactions = state.bankTransactions,
+            onDismiss = { showAccounts = false },
         )
     }
 

@@ -40,7 +40,7 @@ object HmViewModelFactory {
         initializer { OtpViewModel(graph()) }
         initializer { TemplatesViewModel(graph()) }
         initializer { BankViewModel(graph()) }
-        initializer { TeachRuleViewModel(graph()) }
+        initializer { TeachRuleViewModel(graph(), createSavedStateHandle()) }
         initializer { StatsViewModel(graph()) }
         initializer { SettingsViewModel(graph()) }
         initializer { DiagnosticsViewModel(graph()) }

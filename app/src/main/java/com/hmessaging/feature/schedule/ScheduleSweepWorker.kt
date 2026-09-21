@@ -9,6 +9,7 @@ import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import com.hmessaging.di.AppGraph
 import com.hmessaging.sms.SmsSyncService
+import com.hmessaging.sms.WatcherNeed
 import kotlinx.coroutines.flow.first
 import java.util.concurrent.TimeUnit
 
@@ -37,7 +38,9 @@ class ScheduleSweepWorker(
                     "periodic sweep — picked up ${sync.imported}",
                 )
             }
-            if (settings.liveSyncEnabled) SmsSyncService.start(applicationContext)
+            if (settings.liveSyncEnabled && WatcherNeed.isNeeded(graph.prefs.deliveryStats.first())) {
+                SmsSyncService.start(applicationContext)
+            }
 
             graph.scheduleManager.sendDue()
             graph.scheduleManager.rescheduleAll()

@@ -3,6 +3,8 @@ package com.hmessaging.ui.thread
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.hmessaging.data.db.dao.ThreadAccountSummary
+import com.hmessaging.data.db.entity.BankTxEntity
 import com.hmessaging.data.db.entity.MessageEntity
 import com.hmessaging.data.db.entity.ScheduledMessageEntity
 import com.hmessaging.data.db.entity.TemplateEntity
@@ -40,6 +42,9 @@ data class ThreadUiState(
     /** The conversation below this one in the list, reachable by pulling past the newest message. */
     val nextThreadId: Long? = null,
     val nextThreadTitle: String? = null,
+    /** Accounts this sender has written about, once its format has been taught. */
+    val bankAccounts: List<ThreadAccountSummary> = emptyList(),
+    val bankTransactions: List<BankTxEntity> = emptyList(),
 ) {
     val length: SmsLength get() = SmsText.measure(input)
     val canSend: Boolean get() = input.isNotBlank() && !sending
@@ -68,6 +73,13 @@ class ThreadViewModel(
         val transient: TransientState,
         val selected: Set<Long>,
         val next: ThreadEntity?,
+        val bank: BankView,
+    )
+
+    /** What the ledger holds for this one conversation. Empty until a format is taught. */
+    private data class BankView(
+        val accounts: List<ThreadAccountSummary> = emptyList(),
+        val transactions: List<BankTxEntity> = emptyList(),
     )
 
     // Templates are only needed once the user opens the picker, so they start empty rather than
@@ -88,16 +100,27 @@ class ThreadViewModel(
         }
         .onStart { emit(null) }
 
+    private val bank = combine(
+        graph.bankDao.observeThreadAccounts(threadId).onStart { emit(emptyList()) },
+        graph.bankDao.observeThreadTx(threadId).onStart { emit(emptyList()) },
+    ) { accounts, transactions -> BankView(accounts, transactions) }
+
     val uiState: StateFlow<ThreadUiState> = combine(
         graph.messageRepository.observeThread(threadId),
         graph.messageRepository.observeMessages(threadId),
         input,
         templates,
-        combine(selectedSubscription, transient, selected, nextThread) { subscription, state, picked, next ->
-            Extras(subscription, state, picked, next)
+        combine(
+            selectedSubscription,
+            transient,
+            selected,
+            nextThread,
+            bank,
+        ) { subscription, state, picked, next, bankView ->
+            Extras(subscription, state, picked, next, bankView)
         },
     ) { thread, messages, text, templates, extras ->
-        val (subscription, state, picked, next) = extras
+        val (subscription, state, picked, next, bankView) = extras
         ThreadUiState(
             loaded = true,
             thread = thread,
@@ -112,6 +135,8 @@ class ThreadViewModel(
             selected = picked.intersect(messages.mapTo(mutableSetOf()) { it.id }),
             nextThreadId = next?.id,
             nextThreadTitle = next?.let { it.contactName ?: PhoneNumbers.format(it.address) },
+            bankAccounts = bankView.accounts,
+            bankTransactions = bankView.transactions,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), ThreadUiState())
 
