@@ -1,8 +1,8 @@
 {
-  "versionCode": 33,
-  "versionName": "1.0.32",
-  "url": "https://github.com/hoseinmovahed88/HMessaging/raw/claude/android-messenger-app-izbr89/dist/HMessaging-1.0.32.apk",
-  "sha256": "06c0a792d582861847cdb8a854674729b647ec221fd5a03d3b84eec9e17c82f0",
-  "size": 2569384,
-  "notes": "دکمه «این کد تأیید نیست»، رفع پیام‌های دریافتی تکراری، کشیدن به گفتگوی بعدی"
+  "versionCode": 35,
+  "versionName": "1.0.34",
+  "url": "https://github.com/hoseinmovahed88/HMessaging/raw/claude/android-messenger-app-izbr89/dist/HMessaging-1.0.34.apk",
+  "sha256": "5e84bf71eab93b21be576ecca200ae0ee30aa2778b906acacd97ee740d72e08a",
+  "size": 2588356,
+  "notes": "سیم‌کارت هر پیام، فیلترهای لیست، حساب‌های بانکی در گفتگو، دکمه تماس، حذف اعلان دائمی"
 }
