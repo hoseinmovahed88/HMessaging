@@ -354,6 +354,7 @@ fun ThreadScreen(
                             DayHeader(message.date)
                         }
                         MessageBubble(
+                            state = state,
                             message = message,
                             selected = message.id in state.selected,
                             onTap = {
