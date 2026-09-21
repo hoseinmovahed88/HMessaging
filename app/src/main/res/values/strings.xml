@@ -279,15 +279,12 @@
     <string name="no_blocked_messages">Nothing has been blocked yet</string>
     <string name="blocked_messages_not_kept">Blocked messages are not being kept. Turn on "Keep blocked messages" to store them here.</string>
     <string name="bank_accounts_title">Accounts</string>
-    <string name="bank_account_unnamed">Unnamed account</string>
     <string name="bank_this_is_a_bank_message">Bank message</string>
     <string name="filter_all">All</string>
     <string name="filter_unread">Unread</string>
     <string name="filter_contacts">Contacts</string>
     <string name="filter_unknown">Unknown</string>
     <string name="no_conversations_in_filter">Nothing here under this filter</string>
-    <string name="bank_accounts_desc">Pick an account to show only its messages. Balances are quoted from the bank, not added up here.</string>
-    <string name="bank_all_accounts">All messages</string>
-    <string name="bank_balance_stated">%1$s · stated %2$s</string>
-    <string name="bank_showing_account">Showing %1$s only</string>
+    <string name="bank_all_messages">All messages</string>
+    <string name="bank_no_messages_here">No messages under these tabs</string>
 </resources>

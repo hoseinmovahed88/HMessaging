@@ -4,6 +4,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.hmessaging.data.db.dao.ThreadAccountSummary
+import com.hmessaging.data.model.BankTxKind
 import com.hmessaging.data.db.entity.MessageEntity
 import com.hmessaging.data.db.entity.ScheduledMessageEntity
 import com.hmessaging.data.db.entity.TemplateEntity
@@ -16,15 +17,21 @@ import com.hmessaging.sms.SimSlot
 import com.hmessaging.util.PhoneNumbers
 import com.hmessaging.util.SmsLength
 import com.hmessaging.util.SmsText
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+
+/** One tab above a bank's conversation. */
+data class BankTab(val key: String, val count: Int)
 
 data class ThreadUiState(
     /** False until the conversation's own queries have returned; see ConversationsUiState. */
@@ -42,13 +49,21 @@ data class ThreadUiState(
     /** The conversation below this one in the list, reachable by pulling past the newest message. */
     val nextThreadId: Long? = null,
     val nextThreadTitle: String? = null,
-    /** Accounts this sender has named, once at least one of its formats has been taught. */
-    val bankAccounts: List<ThreadAccountSummary> = emptyList(),
+    /** The accounts this bank names in this conversation, each with how many messages it has. */
+    val bankAccounts: List<BankTab> = emptyList(),
+    /** How many messages the bank called money in, and money out. */
+    val depositCount: Int = 0,
+    val withdrawalCount: Int = 0,
     /** When set, the conversation shows only the messages about that account. */
     val accountFilter: String? = null,
-    /** How many of this conversation's messages each account accounts for. */
-    val accountMessageCounts: Map<String, Int> = emptyMap(),
+    /** When set, only money in or only money out. */
+    val directionFilter: BankTxKind? = null,
 ) {
+    /** True once there is anything to separate — the tabs are hidden until then. */
+    val hasBankTabs: Boolean
+        get() = bankAccounts.isNotEmpty() || depositCount > 0 || withdrawalCount > 0
+
+    val bankFiltered: Boolean get() = accountFilter != null || directionFilter != null
     val length: SmsLength get() = SmsText.measure(input)
     val canSend: Boolean get() = input.isNotBlank() && !sending
     val selecting: Boolean get() = selected.isNotEmpty()
@@ -68,6 +83,7 @@ class ThreadViewModel(
     private val transient = MutableStateFlow(TransientState())
     private val selected = MutableStateFlow<Set<Long>>(emptySet())
     private val accountFilter = MutableStateFlow<String?>(null)
+    private val directionFilter = MutableStateFlow<BankTxKind?>(null)
 
     private data class TransientState(val sending: Boolean = false, val error: String? = null)
 
@@ -77,13 +93,8 @@ class ThreadViewModel(
         val transient: TransientState,
         val selected: Set<Long>,
         val next: ThreadEntity?,
-        val bank: BankView,
-    )
-
-    /** What the ledger holds for this one conversation. Empty until a format is taught. */
-    private data class BankView(
-        val accounts: List<ThreadAccountSummary> = emptyList(),
-        val filter: String? = null,
+        val account: String?,
+        val direction: BankTxKind?,
     )
 
     // Templates are only needed once the user opens the picker, so they start empty rather than
@@ -104,14 +115,62 @@ class ThreadViewModel(
         }
         .onStart { emit(null) }
 
-    private val bank = combine(
+    /**
+     * The conversation with each message placed: which account it names, and which way the bank
+     * said the money went.
+     *
+     * Computed off the main thread. It walks every message in the conversation with a handful of
+     * regexes, which is nothing for a chat with a friend and several thousand messages for a bank
+     * that has been writing for years.
+     */
+    private data class Analysed(
+        val messages: List<MessageEntity> = emptyList(),
+        val accounts: List<BankTab> = emptyList(),
+        val accountOf: Map<Long, String?> = emptyMap(),
+        val directionOf: Map<Long, BankTxKind?> = emptyMap(),
+    )
+
+    private val analysed: Flow<Analysed> = combine(
+        graph.messageRepository.observeMessages(threadId),
+        graph.bankDao.observeAccountAnchorsForThread(threadId).onStart { emit(emptyList()) },
         graph.bankDao.observeThreadAccounts(threadId).onStart { emit(emptyList()) },
-        accountFilter,
-    ) { accounts, filter -> BankView(accounts, filter) }
+    ) { messages, anchors, ledger -> analyse(messages, anchors, ledger) }
+        .flowOn(Dispatchers.Default)
+
+    private fun analyse(
+        messages: List<MessageEntity>,
+        anchors: List<String>,
+        ledger: List<ThreadAccountSummary>,
+    ): Analysed {
+        // Only a conversation the reader has already called a bank is taken apart this way.
+        // Everywhere else the tabs never appear and none of this runs.
+        val isBank = anchors.isNotEmpty() || ledger.isNotEmpty()
+        if (!isBank) return Analysed(messages = messages)
+
+        val discovered = LinkedHashSet<String>()
+        ledger.forEach { row -> row.accountKey.takeIf { it.isNotBlank() && !it.startsWith("@") }?.let(discovered::add) }
+        messages.forEach { discovered.addAll(BankAccounts.accountsIn(it.body, anchors)) }
+
+        val keys = discovered.toList()
+        val accountOf = messages.associate { it.id to BankAccounts.accountFor(it.body, keys) }
+        val directionOf = messages.associate { it.id to BankAccounts.directionOf(it.body) }
+        val counts = accountOf.values.filterNotNull().groupingBy { it }.eachCount()
+
+        return Analysed(
+            messages = messages,
+            // Busiest first: the account most of the conversation is about is the one most often
+            // wanted, and an account with nothing in it is not offered at all.
+            accounts = keys.mapNotNull { key ->
+                counts[key]?.takeIf { it > 0 }?.let { BankTab(key, it) }
+            }.sortedByDescending { it.count },
+            accountOf = accountOf,
+            directionOf = directionOf,
+        )
+    }
 
     val uiState: StateFlow<ThreadUiState> = combine(
         graph.messageRepository.observeThread(threadId),
-        graph.messageRepository.observeMessages(threadId),
+        analysed,
         input,
         templates,
         combine(
@@ -119,20 +178,15 @@ class ThreadViewModel(
             transient,
             selected,
             nextThread,
-            bank,
-        ) { subscription, state, picked, next, bankView ->
-            Extras(subscription, state, picked, next, bankView)
+            combine(accountFilter, directionFilter) { account, direction -> account to direction },
+        ) { subscription, state, picked, next, filters ->
+            Extras(subscription, state, picked, next, filters.first, filters.second)
         },
-    ) { thread, messages, text, templates, extras ->
-        val (subscription, state, picked, next, bankView) = extras
-        // Which account each message is about, worked out from the account numbers already
-        // known for this bank. It covers the bank's other formats without them being taught,
-        // because the same account is written the same way in all of them.
-        val keys = bankView.accounts.map { it.accountKey }
-        val shown = if (bankView.filter == null) {
-            messages
-        } else {
-            messages.filter { BankAccounts.accountFor(it.body, keys) == bankView.filter }
+    ) { thread, analysis, text, templates, extras ->
+        val (subscription, state, picked, next, account, direction) = extras
+        val shown = analysis.messages.filter { message ->
+            (account == null || analysis.accountOf[message.id] == account) &&
+                (direction == null || analysis.directionOf[message.id] == direction)
         }
 
         ThreadUiState(
@@ -149,15 +203,11 @@ class ThreadViewModel(
             selected = picked.intersect(shown.mapTo(mutableSetOf()) { it.id }),
             nextThreadId = next?.id,
             nextThreadTitle = next?.let { it.contactName ?: PhoneNumbers.format(it.address) },
-            bankAccounts = bankView.accounts,
-            accountFilter = bankView.filter,
-            accountMessageCounts = if (keys.isEmpty()) {
-                emptyMap()
-            } else {
-                messages.mapNotNull { BankAccounts.accountFor(it.body, keys) }
-                    .groupingBy { it }
-                    .eachCount()
-            },
+            bankAccounts = analysis.accounts,
+            depositCount = analysis.directionOf.values.count { it == BankTxKind.DEPOSIT },
+            withdrawalCount = analysis.directionOf.values.count { it == BankTxKind.WITHDRAWAL },
+            accountFilter = account,
+            directionFilter = direction,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), ThreadUiState())
 
@@ -181,6 +231,15 @@ class ThreadViewModel(
     /** Narrows the conversation to one account, or clears the narrowing when given null. */
     fun setAccountFilter(accountKey: String?) {
         accountFilter.value = accountKey
+    }
+
+    fun setDirectionFilter(kind: BankTxKind?) {
+        directionFilter.value = kind
+    }
+
+    fun clearBankFilters() {
+        accountFilter.value = null
+        directionFilter.value = null
     }
 
     fun markRead() = viewModelScope.launch {

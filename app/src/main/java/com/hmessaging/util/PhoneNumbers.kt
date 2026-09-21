@@ -12,7 +12,24 @@ object PhoneNumbers {
 
     private val PERSIAN_DIGITS = '۰'..'۹'
     private val ARABIC_DIGITS = '٠'..'٩'
-    private val INVISIBLE = setOf(
+    /**
+     * Characters that carry no text but change how it is laid out.
+     *
+     * The directional embedding marks matter as much as the zero-width ones here: Sepah wraps
+     * account numbers in U+202A…U+202C so they read left-to-right inside a Persian sentence, and
+     * the same bank writes the same field without them in its other messages. Left in, those two
+     * spellings of one account compare unequal.
+     */
+    val INVISIBLE = setOf(
+        '\u202A', // left-to-right embedding
+        '\u202B', // right-to-left embedding
+        '\u202C', // pop directional formatting
+        '\u202D', // left-to-right override
+        '\u202E', // right-to-left override
+        '\u2066', // left-to-right isolate
+        '\u2067', // right-to-left isolate
+        '\u2068', // first-strong isolate
+        '\u2069', // pop directional isolate
         '\u200B', // zero-width space
         '\u200C', // zero-width non-joiner
         '\u200D', // zero-width joiner
@@ -20,6 +37,9 @@ object PhoneNumbers {
         '\u200F', // right-to-left mark
         '\uFEFF', // byte-order mark
     )
+
+    /** [input] with the invisible layout characters taken out. */
+    fun stripInvisible(input: String): String = input.filterNot { it in INVISIBLE }
 
     /** Converts ۰۱۲… and ٠١٢… to 012…, leaving everything else untouched. */
     /**

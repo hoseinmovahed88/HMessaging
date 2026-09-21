@@ -245,11 +245,14 @@ fun ThreadScreen(
                         onClick = { Calls.dial(context, thread?.address) },
                     )
                 }
-                if (state.bankAccounts.isNotEmpty()) {
+                if (state.hasBankTabs) {
                     HyperIconButton(
                         icon = Icons.Filled.AccountBalance,
                         contentDescription = stringResource(R.string.bank_accounts_title),
-                        onClick = { showAccounts = true },
+                        onClick = {
+                            showAccounts = !showAccounts
+                            if (!showAccounts) viewModel.clearBankFilters()
+                        },
                     )
                 }
                 Box {
@@ -329,87 +332,81 @@ fun ThreadScreen(
                 .fillMaxSize()
                 .padding(padding),
         ) {
-            // A conversation showing only part of itself has to say so. Without this the missing
-            // messages read as messages that were never received.
-            val narrowedTo = state.bankAccounts.firstOrNull { it.accountKey == state.accountFilter }
-            if (narrowedTo != null) {
-                Surface(
-                    color = MaterialTheme.colorScheme.secondaryContainer,
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                    ) {
-                        Text(
-                            text = stringResource(
-                                R.string.bank_showing_account,
-                                narrowedTo.accountLabel?.takeIf { it.isNotBlank() }
-                                    ?: stringResource(R.string.bank_account_unnamed),
-                            ),
-                            style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.onSecondaryContainer,
-                            modifier = Modifier.weight(1f),
-                        )
-                        HyperIconButton(
-                            icon = Icons.Filled.Close,
-                            contentDescription = stringResource(R.string.bank_all_accounts),
-                            onClick = { viewModel.setAccountFilter(null) },
-                        )
-                    }
-                }
-            }
-        Box(modifier = Modifier.weight(1f)) {
-            // Reversed: the list is anchored at the bottom, so a conversation opens on its newest
-            // message with no scrolling, and when the keyboard shrinks the viewport the newest
-            // messages stay put instead of sliding underneath it.
-            LazyColumn(
-                state = listState,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .nestedScroll(nextThreadPull),
-                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 10.dp),
-                verticalArrangement = Arrangement.spacedBy(3.dp),
-                reverseLayout = true,
-            ) {
-                items(
-                    count = state.messages.size,
-                    key = { index -> state.messages[state.messages.lastIndex - index].id },
-                ) { index ->
-                    // One column per item: a reversed list flips the order of an item's own children
-                    // too, which would put the day header underneath its messages.
-                    val position = state.messages.lastIndex - index
-                    val message = state.messages[position]
-                    val previous = state.messages.getOrNull(position - 1)
-                    Column {
-                        if (previous == null || !isSameDay(previous.date, message.date)) {
-                            DayHeader(message.date)
-                        }
-                        MessageBubble(
-                            state = state,
-                            message = message,
-                            selected = message.id in state.selected,
-                            onTap = {
-                                if (state.selecting) {
-                                    viewModel.toggleSelected(message.id)
-                                } else {
-                                    detail = message
-                                }
-                            },
-                            onLongPress = { viewModel.toggleSelected(message.id) },
-                        )
-                    }
-                }
-            }
-
-            if (nextThreadId != null && pull > 0f) {
-                NextConversationHint(
-                    title = state.nextThreadTitle.orEmpty(),
-                    progress = (pull / pullThreshold).coerceIn(0f, 1f),
-                    modifier = Modifier.align(Alignment.BottomCenter),
+            // Outside the list, like every other filter in this app: a tab that scrolls away
+            // cannot be changed from where its results are being read.
+            if (state.hasBankTabs && (showAccounts || state.bankFiltered)) {
+                BankTabsRow(
+                    accounts = state.bankAccounts,
+                    depositCount = state.depositCount,
+                    withdrawalCount = state.withdrawalCount,
+                    accountFilter = state.accountFilter,
+                    directionFilter = state.directionFilter,
+                    onAccount = viewModel::setAccountFilter,
+                    onDirection = viewModel::setDirectionFilter,
+                    onClearAll = viewModel::clearBankFilters,
                 )
             }
-        }
+            // A conversation showing part of itself has to say so, or the messages it is leaving
+            // out read as messages that never arrived.
+            if (state.bankFiltered && state.messages.isEmpty()) {
+                Text(
+                    text = stringResource(R.string.bank_no_messages_here),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                )
+            }
+            Box(modifier = Modifier.weight(1f)) {
+                // Reversed: the list is anchored at the bottom, so a conversation opens on its newest
+                // message with no scrolling, and when the keyboard shrinks the viewport the newest
+                // messages stay put instead of sliding underneath it.
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .nestedScroll(nextThreadPull),
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 10.dp),
+                    verticalArrangement = Arrangement.spacedBy(3.dp),
+                    reverseLayout = true,
+                ) {
+                    items(
+                        count = state.messages.size,
+                        key = { index -> state.messages[state.messages.lastIndex - index].id },
+                    ) { index ->
+                        // One column per item: a reversed list flips the order of an item's own children
+                        // too, which would put the day header underneath its messages.
+                        val position = state.messages.lastIndex - index
+                        val message = state.messages[position]
+                        val previous = state.messages.getOrNull(position - 1)
+                        Column {
+                            if (previous == null || !isSameDay(previous.date, message.date)) {
+                                DayHeader(message.date)
+                            }
+                            MessageBubble(
+                                state = state,
+                                message = message,
+                                selected = message.id in state.selected,
+                                onTap = {
+                                    if (state.selecting) {
+                                        viewModel.toggleSelected(message.id)
+                                    } else {
+                                        detail = message
+                                    }
+                                },
+                                onLongPress = { viewModel.toggleSelected(message.id) },
+                            )
+                        }
+                    }
+                }
+
+                if (nextThreadId != null && pull > 0f) {
+                    NextConversationHint(
+                        title = state.nextThreadTitle.orEmpty(),
+                        progress = (pull / pullThreshold).coerceIn(0f, 1f),
+                        modifier = Modifier.align(Alignment.BottomCenter),
+                    )
+                }
+            }
         }
     }
 
@@ -443,19 +440,6 @@ fun ThreadScreen(
             } else {
                 null
             },
-        )
-    }
-
-    if (showAccounts) {
-        BankAccountsSheet(
-            accounts = state.bankAccounts,
-            messageCounts = state.accountMessageCounts,
-            selected = state.accountFilter,
-            onSelect = { key ->
-                viewModel.setAccountFilter(key)
-                showAccounts = false
-            },
-            onDismiss = { showAccounts = false },
         )
     }
 

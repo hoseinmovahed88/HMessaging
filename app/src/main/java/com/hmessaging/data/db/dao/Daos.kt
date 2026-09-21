@@ -638,6 +638,24 @@ interface BankDao {
     @Query("SELECT * FROM bank_rules WHERE senderKey = :senderKey AND enabled = 1")
     suspend fun rulesForSender(senderKey: String): List<BankRuleEntity>
 
+    /**
+     * The account labels taught for the bank a conversation belongs to.
+     *
+     * Joined on `threads.matchKey`, which is the same significant-digits key a rule's `senderKey`
+     * is built from — so this asks "what has this bank been taught" without the caller having to
+     * work out the sender's identity first.
+     */
+    @Query(
+        """
+        SELECT DISTINCT accountAnchor FROM bank_rules
+         WHERE enabled = 1
+           AND accountAnchor IS NOT NULL
+           AND accountAnchor <> ''
+           AND senderKey IN (SELECT matchKey FROM threads WHERE id = :threadId)
+        """,
+    )
+    fun observeAccountAnchorsForThread(threadId: Long): Flow<List<String>>
+
     @Query("SELECT COUNT(*) FROM bank_rules")
     suspend fun ruleCount(): Int
 

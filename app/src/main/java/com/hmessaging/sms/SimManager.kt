@@ -15,8 +15,20 @@ data class SimSlot(
     val carrierName: String?,
     val number: String?,
 ) {
-    /** Always unambiguous: SIM 1, SIM 2, by the slot the card is in. */
-    val slotLabel: String get() = "SIM ${slotIndex + 1}"
+    /**
+     * What to print beside a message: the SIM's own name.
+     *
+     * That name is the one the phone shows everywhere else and, where the owner has set it, the
+     * one they chose — "Me" and "Dad" on this phone. Only a carrier's unedited mouthful like
+     * "Irancell Prepaid Line 1" falls back to the slot number, because it will not fit.
+     */
+    val shortLabel: String
+        get() = displayName.trim().takeIf { it.isNotEmpty() && it.length <= MAX_SHORT_LABEL }
+            ?: "SIM ${slotIndex + 1}"
+
+    private companion object {
+        const val MAX_SHORT_LABEL = 12
+    }
 
 }
 
