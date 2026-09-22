@@ -1,3 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    The status-bar icon: the same bubble, redrawn on the 24dp canvas the system expects rather than
+    scaled down, so the strokes land on whole pixels at the size it is actually seen.
+
+    A notification icon is a silhouette — the platform throws away every colour in it and keeps only
+    the alpha — so the initial has to be a hole, not a white shape on a dark one.
+-->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
@@ -6,5 +14,6 @@
     android:tint="#FFFFFFFF">
     <path
         android:fillColor="#FF000000"
-        android:pathData="M20,2H4C2.9,2 2.01,2.9 2.01,4L2,22l4,-4h14c1.1,0 2,-0.9 2,-2V4C22,2.9 21.1,2 20,2zM7,9h10v2H7V9zM13,14H7v-2h6V14zM17,8H7V6h10V8z" />
+        android:fillType="evenOdd"
+        android:pathData="M8.5,2.5 L15,2.5 A4.5,4.5 0 0 1 19.5,7 L19.5,11 A4.5,4.5 0 0 1 15,15.5 L11,15.5 L5,21.5 L8.5,15.5 A4.5,4.5 0 0 1 4,11 L4,7 A4.5,4.5 0 0 1 8.5,2.5 Z M7.5,5.5 L9.7,5.5 L9.7,7.9 L13.8,7.9 L13.8,5.5 L16,5.5 L16,12.5 L13.8,12.5 L13.8,10.1 L9.7,10.1 L9.7,12.5 L7.5,12.5 Z" />
 </vector>

@@ -287,4 +287,10 @@
     <string name="no_conversations_in_filter">Nothing here under this filter</string>
     <string name="bank_all_messages">All messages</string>
     <string name="bank_no_messages_here">No messages under these tabs</string>
+    <string name="alerts_off_title">Messages are arriving silently</string>
+    <string name="alerts_off_fix">Open settings</string>
+    <string name="alerts_off_permission">HMessaging has not been allowed to post notifications, so nothing is shown or heard when a message arrives.</string>
+    <string name="alerts_off_app">Notifications are turned off for HMessaging on this phone.</string>
+    <string name="alerts_off_channel">The Messages notification category is turned off, so new messages show nothing.</string>
+    <string name="alerts_off_silent">The Messages notification category is set to silent, so new messages arrive without a sound and stay off the lock screen.</string>
 </resources>

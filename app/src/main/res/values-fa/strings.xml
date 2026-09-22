@@ -275,4 +275,10 @@
     <string name="no_conversations_in_filter">با این فیلتر چیزی نیست</string>
     <string name="bank_all_messages">همه پیام‌ها</string>
     <string name="bank_no_messages_here">با این تب‌ها پیامی نیست</string>
+    <string name="alerts_off_title">پیام‌ها بی‌صدا می‌رسند</string>
+    <string name="alerts_off_fix">باز کردن تنظیمات</string>
+    <string name="alerts_off_permission">به HMessaging اجازه‌ی نمایش اعلان داده نشده، برای همین وقتی پیام می‌رسد نه چیزی دیده می‌شود نه شنیده.</string>
+    <string name="alerts_off_app">اعلان‌های HMessaging روی این گوشی خاموش است.</string>
+    <string name="alerts_off_channel">دسته‌ی اعلان «پیام‌ها» خاموش است، برای همین پیام تازه چیزی نشان نمی‌دهد.</string>
+    <string name="alerts_off_silent">دسته‌ی اعلان «پیام‌ها» روی بی‌صدا است، برای همین پیام تازه نه صدا می‌دهد نه روی صفحه‌قفل می‌آید.</string>
 </resources>

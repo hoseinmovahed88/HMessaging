@@ -2,6 +2,7 @@ package com.hmessaging.ui.conversations
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
+import android.content.Intent
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
@@ -36,9 +37,12 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -47,6 +51,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.hmessaging.R
@@ -54,6 +61,7 @@ import com.hmessaging.data.db.entity.ThreadEntity
 import com.hmessaging.di.AppGraph
 import com.hmessaging.feature.update.UpdateStatus
 import com.hmessaging.ui.HmViewModelFactory
+import com.hmessaging.ui.components.AlertProblemBanner
 import com.hmessaging.ui.components.ContactAvatar
 import com.hmessaging.ui.components.SimBadge
 import com.hmessaging.ui.components.DefaultSmsAppBanner
@@ -84,6 +92,17 @@ fun ConversationsScreen(
     val context = LocalContext.current
     val graph = remember(context) { AppGraph.from(context) }
     val updateStatus by graph.updates.status.collectAsStateWithLifecycle()
+    var alertsDismissed by rememberSaveable { mutableStateOf(false) }
+    // Bumped on every resume so the notification settings are re-read after a trip to Settings.
+    var lifecycleTick by remember { mutableIntStateOf(0) }
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) lifecycleTick++
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
 
     // Back closes the search rather than the screen, the same way it closes a selection in a
     // conversation: the search is the thing on top, so it is the thing back should undo.
@@ -156,6 +175,26 @@ fun ConversationsScreen(
                         },
                         onDismiss = graph.updates::dismiss,
                     )
+                }
+
+                    // Checked on every return to the list rather than once: these switches are
+                // changed outside the app, and the banner has to notice when it is put right.
+                val alertProblem = remember(lifecycleTick) { graph.notifications.alertProblem() }
+                if (alertProblem != null && !alertsDismissed) {
+                    item("alerts-banner") {
+                        AlertProblemBanner(
+                            problem = alertProblem,
+                            onOpenSettings = {
+                                runCatching {
+                                    context.startActivity(
+                                        graph.notifications.alertSettingsIntent(alertProblem)
+                                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                                    )
+                                }
+                            },
+                            onDismiss = { alertsDismissed = true },
+                        )
+                    }
                 }
 
                 if (!isDefaultSmsApp) {

@@ -1,8 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Pre-API-26 fallback; API 26+ uses the adaptive icon in mipmap-anydpi-v26. -->
+<!--
+    Pre-API-26 fallback; API 26+ uses the adaptive icon in mipmap-anydpi-v26.
+
+    Both layers are drawn at full size. No inset is needed here even though nothing masks the icon
+    on these versions: the foreground vector keeps its bubble inside the middle 72 of its 108-unit
+    canvas, which is the same allowance an adaptive launcher's mask makes.
+-->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:drawable="@color/ic_launcher_background" />
-    <item
-        android:drawable="@drawable/ic_launcher_foreground"
-        android:gravity="center" />
+    <item android:drawable="@drawable/ic_launcher_background" />
+    <item android:drawable="@drawable/ic_launcher_foreground" />
 </layer-list>

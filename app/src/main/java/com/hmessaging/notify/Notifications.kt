@@ -7,7 +7,10 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.media.AudioAttributes
+import android.media.RingtoneManager
 import android.net.Uri
+import android.provider.Settings
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
@@ -20,27 +23,63 @@ import com.hmessaging.feature.otp.OtpPopupActivity
 import com.hmessaging.util.Permissions
 import com.hmessaging.util.PhoneNumbers
 
+/** What is stopping this app from making a sound, when something is. */
+enum class AlertProblem { PERMISSION, APP_BLOCKED, CHANNEL_BLOCKED, CHANNEL_SILENT }
+
 /** Every user-visible notification the app posts, and the channels they live on. */
 class Notifications(private val context: Context) {
 
     private val manager = NotificationManagerCompat.from(context)
 
+    /**
+     * Creates the channels, and re-creates the message one under a new id whenever its settings
+     * change.
+     *
+     * A channel is created once and then belongs to the user: Android ignores every later attempt
+     * to change its importance, its sound or how it behaves on the lock screen. So the settings
+     * below only ever applied to phones that installed this app after they were written, and a
+     * phone carrying the first version's channel kept the first version's behaviour forever —
+     * silent, on a vendor ROM that had quietly decided what a new channel should default to. The
+     * id carries a version for that reason; bumping it is the only way to hand out a channel that
+     * actually has these settings, and the old one is deleted so the app does not end up listing
+     * two.
+     */
     fun ensureChannels() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         val system = context.getSystemService(NotificationManager::class.java) ?: return
+
+        RETIRED_CHANNELS.forEach { runCatching { system.deleteNotificationChannel(it) } }
+
+        val messageSound = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+        val messageAudio = AudioAttributes.Builder()
+            // The instant-message usage, not the generic notification one: it is what tells a
+            // phone to treat this as someone contacting the user rather than as app chatter.
+            .setUsage(AudioAttributes.USAGE_NOTIFICATION_COMMUNICATION_INSTANT)
+            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+            .build()
+
         val channels = listOf(
             NotificationChannel(
                 CHANNEL_MESSAGES,
                 context.getString(R.string.channel_messages),
                 NotificationManager.IMPORTANCE_HIGH,
-            ).apply { enableVibration(true) },
+            ).apply {
+                setSound(messageSound, messageAudio)
+                enableVibration(true)
+                vibrationPattern = MESSAGE_VIBRATION
+                enableLights(true)
+                setShowBadge(true)
+                lockscreenVisibility = Notification.VISIBILITY_PRIVATE
+            },
             NotificationChannel(
                 CHANNEL_OTP,
                 context.getString(R.string.channel_otp),
                 NotificationManager.IMPORTANCE_HIGH,
             ).apply {
+                setSound(messageSound, messageAudio)
                 enableVibration(true)
                 setShowBadge(false)
+                lockscreenVisibility = Notification.VISIBILITY_PRIVATE
             },
             NotificationChannel(
                 CHANNEL_SCHEDULED,
@@ -69,6 +108,52 @@ class Notifications(private val context: Context) {
         system.createNotificationChannels(channels)
     }
 
+    /**
+     * Why a message would arrive without a sound or a line on the lock screen.
+     *
+     * Three separate switches can each silence this app on their own, and none of them says so
+     * from inside the app: the runtime permission, the app's notifications as a whole, and the
+     * message channel's own importance — which a vendor ROM may set to silent without asking.
+     * Returning which one it is lets the app send the reader to the setting that will fix it
+     * rather than to a list of everything.
+     */
+    fun alertProblem(): AlertProblem? {
+        if (!Permissions.canPostNotifications(context)) return AlertProblem.PERMISSION
+        if (!manager.areNotificationsEnabled()) return AlertProblem.APP_BLOCKED
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return null
+        val system = context.getSystemService(NotificationManager::class.java) ?: return null
+        val channel = system.getNotificationChannel(CHANNEL_MESSAGES) ?: return null
+        return when {
+            channel.importance == NotificationManager.IMPORTANCE_NONE -> AlertProblem.CHANNEL_BLOCKED
+            channel.importance < NotificationManager.IMPORTANCE_DEFAULT -> AlertProblem.CHANNEL_SILENT
+            channel.sound == null -> AlertProblem.CHANNEL_SILENT
+            else -> null
+        }
+    }
+
+    /** The settings screen that can undo [alertProblem], as specific as the phone allows. */
+    fun alertSettingsIntent(problem: AlertProblem): Intent = when (problem) {
+        AlertProblem.CHANNEL_BLOCKED, AlertProblem.CHANNEL_SILENT ->
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                Intent(Settings.ACTION_CHANNEL_NOTIFICATION_SETTINGS)
+                    .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+                    .putExtra(Settings.EXTRA_CHANNEL_ID, CHANNEL_MESSAGES)
+            } else {
+                appNotificationSettings()
+            }
+
+        else -> appNotificationSettings()
+    }
+
+    private fun appNotificationSettings(): Intent =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+        } else {
+            Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                .setData(Uri.fromParts("package", context.packageName, null))
+        }
+
     fun showIncomingMessage(thread: ThreadEntity, body: String, receivedAt: Long, showPreview: Boolean) {
         if (thread.muted) return
         val title = thread.contactName ?: PhoneNumbers.format(thread.address)
@@ -88,6 +173,17 @@ class Notifications(private val context: Context) {
             .setAutoCancel(true)
             .setCategory(NotificationCompat.CATEGORY_MESSAGE)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
+            // Pre-O phones take their sound and vibration from the notification, not a channel.
+            .setDefaults(NotificationCompat.DEFAULT_ALL)
+            // Whether the words themselves appear on the lock screen follows the preview setting;
+            // that a message arrived is shown either way.
+            .setVisibility(
+                if (showPreview) {
+                    NotificationCompat.VISIBILITY_PUBLIC
+                } else {
+                    NotificationCompat.VISIBILITY_PRIVATE
+                },
+            )
             .setContentIntent(openThreadIntent(thread.id))
             .addAction(replyAction(thread.id))
             .addAction(markReadAction(thread.id))
@@ -254,11 +350,21 @@ class Notifications(private val context: Context) {
         }
 
     companion object {
-        const val CHANNEL_MESSAGES = "messages"
-        const val CHANNEL_OTP = "otp"
+        /**
+         * Versioned on purpose; see [ensureChannels]. Raise it whenever the channel's settings
+         * change, and add the id left behind to [RETIRED_CHANNELS].
+         */
+        const val CHANNEL_MESSAGES = "messages_v2"
+        const val CHANNEL_OTP = "otp_v2"
         const val CHANNEL_SCHEDULED = "scheduled"
         const val CHANNEL_STATUS = "status"
         const val CHANNEL_WATCHER = "watcher"
+
+        /** Channels earlier versions created, deleted so the settings list holds one of each. */
+        private val RETIRED_CHANNELS = listOf("messages", "otp")
+
+        /** Two short pulses: enough to feel through a pocket, short enough not to buzz. */
+        private val MESSAGE_VIBRATION = longArrayOf(0, 250, 200, 250)
 
         private const val MESSAGE_NOTIFICATION_BASE = 10_000
         private const val OTP_NOTIFICATION_BASE = 500_000
