@@ -1,8 +1,8 @@
 {
-  "versionCode": 37,
-  "versionName": "1.0.36",
-  "url": "https://github.com/hoseinmovahed88/HMessaging/raw/claude/android-messenger-app-izbr89/dist/HMessaging-1.0.36.apk",
-  "sha256": "dd014600913abf7583962778832d371a8cf6d44a52cd19f5747af20bfc503478",
-  "size": 2588040,
-  "notes": "تب‌های تفکیک حساب و واریز/برداشت در گفتگوی بانک"
+  "versionCode": 39,
+  "versionName": "1.0.38",
+  "url": "https://github.com/hoseinmovahed88/HMessaging/raw/claude/android-messenger-app-izbr89/dist/HMessaging-1.0.38.apk",
+  "sha256": "4c7f91966cbaf78372b8012fbbc816742b110fce8ba5abe4bbc17a973df7d0d5",
+  "size": 2590496,
+  "notes": "صدا و اعلان صفحه‌قفل، بنر تشخیص اعلان خاموش، آیکون تازه"
 }
