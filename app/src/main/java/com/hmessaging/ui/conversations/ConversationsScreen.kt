@@ -103,6 +103,10 @@ fun ConversationsScreen(
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
+    // Re-read on every return to the app rather than once: these switches are changed outside it,
+    // and the banner has to notice when one of them is put right. Hoisted to the composable body
+    // because a LazyColumn's content block is a LazyListScope, where remember cannot be called.
+    val alertProblem = remember(lifecycleTick) { graph.notifications.alertProblem() }
 
     // Back closes the search rather than the screen, the same way it closes a selection in a
     // conversation: the search is the thing on top, so it is the thing back should undo.
@@ -177,9 +181,6 @@ fun ConversationsScreen(
                     )
                 }
 
-                    // Checked on every return to the list rather than once: these switches are
-                // changed outside the app, and the banner has to notice when it is put right.
-                val alertProblem = remember(lifecycleTick) { graph.notifications.alertProblem() }
                 if (alertProblem != null && !alertsDismissed) {
                     item("alerts-banner") {
                         AlertProblemBanner(
