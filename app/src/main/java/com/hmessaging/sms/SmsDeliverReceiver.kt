@@ -42,9 +42,13 @@ class SmsDeliverReceiver : BroadcastReceiver() {
                     receivedAt = incoming.receivedAt,
                     subscriptionId = incoming.subscriptionId,
                     parts = incoming.parts,
-                    // Only write to the provider when the platform names us as default; if it
-                    // does not, it is still writing these messages itself and we would duplicate.
-                    mirrorToSystem = AppRoles.isPlatformDefaultSmsApp(context),
+                    // Mirror unless some other app is plainly the default. This used to ask the
+                    // platform alone, and the platform answers wrongly on ROMs that hand this app
+                    // every message while naming no default at all — which left the phone's own
+                    // message store empty, and every other app on it, the dialer included, unable
+                    // to see a single message. Asking both sources only skips the mirror when
+                    // neither says this app is default, which is when another app is writing them.
+                    mirrorToSystem = AppRoles.isDefaultSmsApp(context),
                     source = IncomingMessagePipeline.Source.BROADCAST,
                 )
             } finally {
@@ -91,8 +95,8 @@ class SmsReceivedReceiver : BroadcastReceiver() {
                     receivedAt = incoming.receivedAt,
                     subscriptionId = incoming.subscriptionId,
                     parts = incoming.parts,
-                    // As above: the platform's own answer decides who owns the provider.
-                    mirrorToSystem = AppRoles.isPlatformDefaultSmsApp(context),
+                    // As above: only an unambiguous "some other app is default" skips the mirror.
+                    mirrorToSystem = AppRoles.isDefaultSmsApp(context),
                     source = IncomingMessagePipeline.Source.BROADCAST,
                 )
             } finally {

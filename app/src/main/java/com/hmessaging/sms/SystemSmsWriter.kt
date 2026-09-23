@@ -21,6 +21,14 @@ import kotlinx.coroutines.withContext
  * without one is invisible to all of them however complete the rest of its columns are. The id
  * comes from [Telephony.Threads.getOrCreateThreadId], which is the only way to get the id the
  * platform itself would use for that address.
+ *
+ * Writes are attempted rather than pre-authorised. The platform decides whether they land, through
+ * an app-operation granted only to the default SMS app, and it decides silently: a refused insert
+ * returns a URI that points at no row. Asking [Telephony.Sms.getDefaultSmsPackage] first looked
+ * like the safer order, but that call is answered wrongly on some vendor ROMs — HyperOS among them
+ * — and an app that believes it is not the default writes nothing at all while messages are being
+ * delivered to it. So every insert is made and then read back, which is the only answer that does
+ * not depend on the ROM telling the truth.
  */
 class SystemSmsWriter(private val context: Context) {
 
@@ -69,7 +77,6 @@ class SystemSmsWriter(private val context: Context) {
     suspend fun moveToFailed(systemId: Long): Boolean = setType(systemId, Telephony.Sms.MESSAGE_TYPE_FAILED)
 
     private suspend fun setType(systemId: Long, type: Int): Boolean = withContext(Dispatchers.IO) {
-        if (!AppRoles.isPlatformDefaultSmsApp(context)) return@withContext false
         val values = ContentValues().apply { put(Telephony.Sms.TYPE, type) }
         runCatching {
             context.contentResolver.update(rowUri(systemId), values, null, null) > 0
@@ -77,12 +84,19 @@ class SystemSmsWriter(private val context: Context) {
     }
 
     suspend fun delete(systemId: Long): Boolean = withContext(Dispatchers.IO) {
-        if (!AppRoles.isPlatformDefaultSmsApp(context)) return@withContext false
         runCatching { context.contentResolver.delete(rowUri(systemId), null, null) > 0 }
             .getOrDefault(false)
     }
 
-    fun canWrite(): Boolean = AppRoles.isPlatformDefaultSmsApp(context)
+    /**
+     * Whether it is worth attempting a write at all.
+     *
+     * Deliberately the loose question — either the platform names this package or the role manager
+     * says the role is held — because the two disagree on vendor ROMs and the strict answer was
+     * stopping every write on a phone that was in fact the default. Nothing depends on this being
+     * right: it only decides whether a batch is worth starting, and each write is verified.
+     */
+    fun canWrite(): Boolean = AppRoles.isDefaultSmsApp(context)
 
     private fun rowUri(systemId: Long) = "${Telephony.Sms.CONTENT_URI}/$systemId".toUri()
 
@@ -105,7 +119,6 @@ class SystemSmsWriter(private val context: Context) {
         type: Int,
         read: Boolean,
     ): Long? = withContext(Dispatchers.IO) {
-        if (!AppRoles.isPlatformDefaultSmsApp(context)) return@withContext null
         val values = ContentValues().apply {
             put(Telephony.Sms.ADDRESS, address)
             put(Telephony.Sms.BODY, body)
@@ -119,10 +132,25 @@ class SystemSmsWriter(private val context: Context) {
                 put(Telephony.Sms.SUBSCRIPTION_ID, subscriptionId)
             }
         }
-        runCatching {
+        val id = runCatching {
             context.contentResolver.insert(uri.toUri(), values)?.lastPathSegment?.toLongOrNull()
         }.getOrNull()
+        // A refused write still hands back a URI, and taking its id on trust is what stamped
+        // messages as "already in the platform store" while the store stayed empty. Those stamps
+        // then hid the same messages from the backfill, permanently. Read the row back instead.
+        if (id != null && id > 0 && rowExists(id)) id else null
     }
+
+    /** True when the provider really holds a row under this id. */
+    private fun rowExists(systemId: Long): Boolean = runCatching {
+        context.contentResolver.query(
+            rowUri(systemId),
+            arrayOf(Telephony.Sms._ID),
+            null,
+            null,
+            null,
+        )?.use { it.moveToFirst() } ?: false
+    }.getOrDefault(false)
 
     /**
      * True when a message with this address, timestamp and body exists in the platform store.
@@ -141,6 +169,72 @@ class SystemSmsWriter(private val context: Context) {
             null,
             )?.use { it.count > 0 } ?: false
         }.getOrDefault(false)
+    }
+
+    /**
+     * Every row id the platform store currently holds, or null when it could not be read.
+     *
+     * The distinction matters more than the ids do. This app records the provider's id against
+     * each message it writes, and treats a recorded id as proof the message is there — so if the
+     * store is ever emptied underneath it, by a factory tool, another messaging app, or the ROM
+     * itself, every one of those messages becomes invisible to the rest of the phone and the
+     * backfill skips it forever. Comparing against the real set is the repair. A store that could
+     * not be read must not be mistaken for an empty one, hence null rather than an empty set.
+     */
+    suspend fun allRowIds(): Set<Long>? = withContext(Dispatchers.IO) {
+        runCatching {
+            context.contentResolver.query(
+                Telephony.Sms.CONTENT_URI,
+                arrayOf(Telephony.Sms._ID),
+                null,
+                null,
+                null,
+            )?.use { cursor ->
+                buildSet {
+                    while (cursor.moveToNext()) add(cursor.getLong(0))
+                }
+            }
+        }.getOrNull()
+    }
+
+    /**
+     * Gives a thread id to rows that were written without one.
+     *
+     * A row with `thread_id` unset is in the store and invisible all the same: the conversation
+     * view every other app reads is grouped by that column, so a row outside a thread belongs to
+     * no conversation. Rows written by earlier versions of this app are the ones that need it.
+     *
+     * Returns how many were repaired.
+     */
+    suspend fun repairThreadIds(limit: Int = THREAD_REPAIR_LIMIT): Int = withContext(Dispatchers.IO) {
+        val broken = runCatching {
+            context.contentResolver.query(
+                Telephony.Sms.CONTENT_URI,
+                arrayOf(Telephony.Sms._ID, Telephony.Sms.ADDRESS),
+                "${Telephony.Sms.THREAD_ID} IS NULL OR ${Telephony.Sms.THREAD_ID} <= 0",
+                null,
+                null,
+            )?.use { cursor ->
+                buildList {
+                    while (cursor.moveToNext() && size < limit) {
+                        val address = cursor.getString(1)
+                        if (!address.isNullOrBlank()) add(cursor.getLong(0) to address)
+                    }
+                }
+            }
+        }.getOrNull().orEmpty()
+
+        var repaired = 0
+        for ((id, address) in broken) {
+            val threadId = threadIdFor(address) ?: continue
+            if (threadId <= 0) continue
+            val values = ContentValues().apply { put(Telephony.Sms.THREAD_ID, threadId) }
+            val updated = runCatching {
+                context.contentResolver.update(rowUri(id), values, null, null) > 0
+            }.getOrDefault(false)
+            if (updated) repaired++
+        }
+        repaired
     }
 
     /** One row of the platform store, for the diagnostics screen to show what is actually there. */
@@ -212,5 +306,10 @@ class SystemSmsWriter(private val context: Context) {
                 total to threaded
             }
         }.getOrNull() ?: (0 to 0)
+    }
+
+    private companion object {
+        /** Enough to repair a long history in one pass without holding an app open for minutes. */
+        const val THREAD_REPAIR_LIMIT = 5_000
     }
 }

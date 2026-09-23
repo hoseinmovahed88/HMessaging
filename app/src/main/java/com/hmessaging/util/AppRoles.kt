@@ -32,17 +32,6 @@ object AppRoles {
         return byPackage || isSmsRoleHeld(context)
     }
 
-    /**
-     * The strict check: does the *platform* name this package as the default SMS app?
-     *
-     * This is the condition under which Android stops writing incoming messages to the SMS
-     * provider itself and expects the default app to do it. Mirroring on the looser role check
-     * would write a second copy of every message alongside the platform's own.
-     */
-    fun isPlatformDefaultSmsApp(context: Context): Boolean = runCatching {
-        context.packageName == Telephony.Sms.getDefaultSmsPackage(context)
-    }.getOrDefault(false)
-
     fun isSmsRoleHeld(context: Context): Boolean {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return false
         val roleManager = context.getSystemService(RoleManager::class.java) ?: return false

@@ -135,6 +135,35 @@ class MessageRepository(
         return ProviderBackfill(written, alreadyThere, refused)
     }
 
+    /**
+     * Drops the recorded platform-store id of every message whose row is no longer there.
+     *
+     * The ids are recorded as proof that a message is in the store, and the backfill trusts that
+     * proof absolutely — a message with an id is never written again. That is fine while the store
+     * only grows, and wrong the moment it does not: the history imported from the phone arrives
+     * already carrying the ids of the rows it was read from, so if those rows are later cleared,
+     * by another messaging app, a cleanup tool or the ROM itself, every imported message is at once
+     * missing from the phone and invisible to the repair meant to fix exactly that. Which is how a
+     * dialer ends up saying there are no messages while the app holds years of them.
+     *
+     * Reading the store must succeed first. A store that would not answer is not an empty one, and
+     * treating it as empty would throw away every id for nothing.
+     *
+     * Returns how many messages were put back in the queue.
+     */
+    suspend fun reconcileSystemProvider(): Int {
+        val present = systemWriter.allRowIds() ?: return 0
+        val stale = messageDao.knownSystemIds().filterNot { it in present }
+        if (stale.isEmpty()) return 0
+        // SQLite refuses a statement with more bound parameters than it allows, and this list is
+        // as long as the message history.
+        stale.chunked(SQL_PARAMETER_CHUNK).forEach { messageDao.clearSystemIds(it) }
+        return stale.size
+    }
+
+    /** Gives a thread id to platform-store rows written without one. See [SystemSmsWriter]. */
+    suspend fun repairProviderThreadIds(): Int = systemWriter.repairThreadIds()
+
     suspend fun threadById(threadId: Long): ThreadEntity? = threadDao.byId(threadId)
 
     /**
@@ -434,5 +463,8 @@ class MessageRepository(
          * opens until there is nothing left without a provider row.
          */
         const val PROVIDER_BACKFILL_LIMIT = 2_000
+
+        /** Comfortably under SQLite's limit on bound parameters in one statement. */
+        private const val SQL_PARAMETER_CHUNK = 400
     }
 }

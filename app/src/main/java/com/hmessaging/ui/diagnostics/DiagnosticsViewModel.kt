@@ -58,10 +58,19 @@ class DiagnosticsViewModel(private val graph: AppGraph) : ViewModel() {
         busy.value = false
     }
 
-    /** Writes everything still missing from the platform store, rather than a capped pass. */
+    /**
+     * Writes everything still missing from the platform store, rather than a capped pass.
+     *
+     * Three steps, in this order, because each one uncovers work for the next: check that the rows
+     * the app believes it wrote are still there, write whatever is missing, then give a thread id
+     * to any row that has none. A row without a thread id is in the store and still invisible to
+     * every other app on the phone.
+     */
     fun backfillProviderNow() = viewModelScope.launch {
         busy.value = true
+        val forgotten = runCatching { graph.messageRepository.reconcileSystemProvider() }.getOrDefault(0)
         var written = 0
+        var refused = 0
         var passes = 0
         // Repeats until a pass writes nothing, so one tap finishes a long history instead of
         // leaving the rest for a later open.
@@ -69,15 +78,25 @@ class DiagnosticsViewModel(private val graph: AppGraph) : ViewModel() {
             val pass = runCatching { graph.messageRepository.backfillSystemProvider() }.getOrNull()
                 ?: break
             written += pass.written
+            refused = pass.refused
             passes++
             if (pass.written == 0) break
         }
+        val rethreaded = runCatching { graph.messageRepository.repairProviderThreadIds() }.getOrDefault(0)
         graph.diagnostics.record(
             Diagnostics.KIND_SYNC,
-            if (graph.systemSmsWriter.canWrite()) {
-                "wrote $written message(s) into the system SMS store"
-            } else {
-                "system SMS store refused the write — this app is not the platform's default"
+            buildString {
+                if (forgotten > 0) append("$forgotten message(s) had gone missing from the store; ")
+                when {
+                    written > 0 -> append("wrote $written message(s) into the system SMS store")
+                    refused > 0 -> append(
+                        "the system SMS store refused the writes — Android accepts them only from " +
+                            "the app it names as the default, and it does not name this one",
+                    )
+
+                    else -> append("nothing left to write into the system SMS store")
+                }
+                if (rethreaded > 0) append("; gave $rethreaded row(s) a thread id")
             },
         )
         busy.value = false

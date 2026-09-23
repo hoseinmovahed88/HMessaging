@@ -279,6 +279,18 @@ interface MessageDao {
     suspend fun knownSystemIds(): List<Long>
 
     /**
+     * Forgets the platform-store rows named here.
+     *
+     * A recorded `systemId` is this app's proof that a message is in the platform store, and the
+     * backfill skips every message that has one. When the row behind it is gone — the store
+     * emptied by another app or by the ROM, or a write that was silently refused and answered with
+     * an id anyway — that proof is false, and the message stays invisible to the rest of the phone
+     * for good. Clearing it puts the message back in the queue to be written again.
+     */
+    @Query("UPDATE messages SET systemId = NULL WHERE systemId IN (:systemIds)")
+    suspend fun clearSystemIds(systemIds: List<Long>)
+
+    /**
      * True when this app already holds this exact text to or from this number, at about this time.
      *
      * The timestamp is deliberately not compared exactly. Two copies of one message carry two

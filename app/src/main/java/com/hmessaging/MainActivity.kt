@@ -190,11 +190,31 @@ class MainActivity : AppCompatActivity() {
             // only copy every other app on the phone can see, and this app is the only one allowed
             // to write it. Capped per pass, so a long history fills over several opens rather than
             // holding one up.
+            // Before writing anything, check that what the app believes is already there really
+            // is. A message remembers the platform row it was written to and is never written
+            // again — so a store that has been emptied underneath the app would otherwise stay
+            // empty forever, with every message convinced it was already handled.
+            val forgotten = graph.messageRepository.reconcileSystemProvider()
+            if (forgotten > 0) {
+                graph.diagnostics.record(
+                    Diagnostics.KIND_SYNC,
+                    "$forgotten message(s) were missing from the system SMS store — queued again",
+                )
+            }
             val backfill = graph.messageRepository.backfillSystemProvider()
             if (backfill.written > 0) {
                 graph.diagnostics.record(
                     Diagnostics.KIND_SYNC,
                     "wrote ${backfill.written} message(s) into the system SMS store",
+                )
+            }
+            // Rows left without a thread id by earlier versions belong to no conversation as far
+            // as every other app on the phone is concerned.
+            val rethreaded = graph.messageRepository.repairProviderThreadIds()
+            if (rethreaded > 0) {
+                graph.diagnostics.record(
+                    Diagnostics.KIND_SYNC,
+                    "gave $rethreaded system SMS row(s) a thread id",
                 )
             }
             val merged = graph.messageRepository.mergeDuplicateThreads()
