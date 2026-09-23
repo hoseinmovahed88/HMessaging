@@ -293,4 +293,14 @@
     <string name="alerts_off_app">Notifications are turned off for HMessaging on this phone.</string>
     <string name="alerts_off_channel">The Messages notification category is turned off, so new messages show nothing.</string>
     <string name="alerts_off_silent">The Messages notification category is set to silent, so new messages arrive without a sound and stay off the lock screen.</string>
+    <string name="diag_provider">System SMS store</string>
+    <string name="diag_provider_rows">Rows in content://sms</string>
+    <string name="diag_provider_rows_detail">%1$d rows, %2$d with a thread id</string>
+    <string name="diag_provider_writable">Writable by this app</string>
+    <string name="diag_provider_not_default">No — the platform does not name this app the default SMS app, so it refuses every write</string>
+    <string name="diag_provider_backfill">Write missing messages there</string>
+    <string name="diag_provider_pending">%1$d message(s) are not in the system store yet</string>
+    <string name="diag_provider_complete">Every message is in the system store</string>
+    <string name="diag_provider_row">%1$s · thread %2$d</string>
+    <string name="diag_yes">Yes</string>
 </resources>

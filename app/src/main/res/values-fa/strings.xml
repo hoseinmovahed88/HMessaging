@@ -281,4 +281,14 @@
     <string name="alerts_off_app">اعلان‌های HMessaging روی این گوشی خاموش است.</string>
     <string name="alerts_off_channel">دسته‌ی اعلان «پیام‌ها» خاموش است، برای همین پیام تازه چیزی نشان نمی‌دهد.</string>
     <string name="alerts_off_silent">دسته‌ی اعلان «پیام‌ها» روی بی‌صدا است، برای همین پیام تازه نه صدا می‌دهد نه روی صفحه‌قفل می‌آید.</string>
+    <string name="diag_provider">حافظه پیامک سیستم</string>
+    <string name="diag_provider_rows">ردیف‌ها در content://sms</string>
+    <string name="diag_provider_rows_detail">%1$d ردیف، %2$d با شناسه گفتگو</string>
+    <string name="diag_provider_writable">قابل نوشتن توسط این اپ</string>
+    <string name="diag_provider_not_default">نه — سیستم این اپ را پیام‌رسان پیش‌فرض نمی‌داند، پس هر نوشتنی را رد می‌کند</string>
+    <string name="diag_provider_backfill">نوشتن پیام‌های جامانده در آنجا</string>
+    <string name="diag_provider_pending">%1$d پیام هنوز در حافظه سیستم نیست</string>
+    <string name="diag_provider_complete">همه پیام‌ها در حافظه سیستم هستند</string>
+    <string name="diag_provider_row">%1$s · گفتگوی %2$d</string>
+    <string name="diag_yes">بله</string>
 </resources>

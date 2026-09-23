@@ -215,6 +215,19 @@ interface MessageDao {
     @Query("SELECT * FROM messages WHERE isOtp = 1")
     suspend fun flaggedAsOtp(): List<MessageEntity>
 
+    /**
+     * Messages this app holds that have no row in the platform SMS provider, oldest first.
+     *
+     * A null `systemId` is what "never written there" looks like. Oldest first so the provider
+     * fills in the order the messages happened, and so a run that hits its limit leaves a sensible
+     * boundary for the next one.
+     */
+    @Query("SELECT * FROM messages WHERE systemId IS NULL ORDER BY date ASC, id ASC LIMIT :limit")
+    suspend fun oldestWithoutSystemId(limit: Int): List<MessageEntity>
+
+    @Query("SELECT COUNT(*) FROM messages WHERE systemId IS NULL")
+    suspend fun countWithoutSystemId(): Int
+
     @Query("UPDATE messages SET isOtp = 0 WHERE id = :id")
     suspend fun clearOtpFlag(id: Long)
 

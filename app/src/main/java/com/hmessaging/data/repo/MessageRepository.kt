@@ -71,6 +71,70 @@ class MessageRepository(
         return ids.size
     }
 
+    /** What one [backfillSystemProvider] pass managed. */
+    data class ProviderBackfill(val written: Int, val alreadyThere: Int, val refused: Int)
+
+    /**
+     * Writes the messages this app already holds into the platform SMS provider.
+     *
+     * Needed because the provider is not a mirror that catches up on its own: this app is the only
+     * one allowed to write it, and anything it did not write at the time is missing from every
+     * other app on the phone, permanently. Messages stored before this app wrote thread ids — or
+     * during any spell when the platform did not consider it the default — are exactly that.
+     *
+     * Each row keeps its own original timestamp rather than the time of the backfill, so the
+     * history stays in the order it happened. Existing rows are matched on (address, date, body)
+     * before writing, so running this twice cannot duplicate anything, and the id the provider
+     * gives back is stored so later scans recognise the row as one of ours.
+     *
+     * Returns without writing anything when the app does not hold the role, which is not a
+     * failure: the provider refuses those writes, and the answer is to try again later.
+     */
+    suspend fun backfillSystemProvider(limit: Int = PROVIDER_BACKFILL_LIMIT): ProviderBackfill {
+        if (!systemWriter.canWrite()) return ProviderBackfill(0, 0, refused = 1)
+
+        var written = 0
+        var alreadyThere = 0
+        var refused = 0
+
+        // Oldest first, so a run that hits the limit leaves the newest messages for the next one
+        // and the provider fills in the order a reader would expect.
+        for (message in messageDao.oldestWithoutSystemId(limit)) {
+            if (message.body.isBlank() || message.address == PhoneNumbers.UNKNOWN_ADDRESS) continue
+            if (systemWriter.exists(message.address, message.date, message.body)) {
+                alreadyThere++
+                continue
+            }
+            val systemId = when {
+                message.type.isIncoming -> systemWriter.writeInbox(
+                    address = message.address,
+                    body = message.body,
+                    date = message.date,
+                    subscriptionId = message.subscriptionId,
+                    read = message.read,
+                )
+
+                message.type == MessageType.SENT -> systemWriter.writeSent(
+                    address = message.address,
+                    body = message.body,
+                    date = message.date,
+                    subscriptionId = message.subscriptionId,
+                )
+
+                // Drafts, failures and anything still in the outbox are this app's business until
+                // they are actually sent; the provider is for messages that happened.
+                else -> null
+            }
+            if (systemId != null) {
+                messageDao.setSystemId(message.id, systemId)
+                written++
+            } else if (message.type.isIncoming || message.type == MessageType.SENT) {
+                refused++
+            }
+        }
+        return ProviderBackfill(written, alreadyThere, refused)
+    }
+
     suspend fun threadById(threadId: Long): ThreadEntity? = threadDao.byId(threadId)
 
     /**
@@ -217,7 +281,13 @@ class MessageRepository(
         return threadId to messageId
     }
 
-    /** Records an outgoing message before it hits the radio, so the UI can show it immediately. */
+    /**
+     * Records an outgoing message before it hits the radio, so the UI can show it immediately.
+     *
+     * It goes into the platform store's outbox at the same moment, and moves to sent or failed
+     * when the radio answers. Writing it only on success would leave every other app on the phone
+     * blind to a message for as long as it takes to send — which on a poor signal is minutes.
+     */
     suspend fun insertOutgoing(
         rawAddress: String,
         body: String,
@@ -227,6 +297,7 @@ class MessageRepository(
     ): Pair<Long, Long> {
         val address = PhoneNumbers.normalize(rawAddress)
         val threadId = threadIdFor(address)
+        val systemId = systemWriter.writeOutbox(address, body, date, subscriptionId)
         val messageId = messageDao.insert(
             MessageEntity(
                 threadId = threadId,
@@ -238,6 +309,7 @@ class MessageRepository(
                 status = DeliveryStatus.PENDING,
                 subscriptionId = subscriptionId,
                 parts = parts,
+                systemId = systemId,
             ),
         )
         threadDao.touch(threadId, body.snippet(), date, subscriptionId, unreadDelta = 0)
@@ -251,21 +323,28 @@ class MessageRepository(
      * phone that refuses the write simply ignores it. Skipping it outright is the only option
      * that guarantees other apps — a dialer showing a contact's last message, for instance —
      * never see anything sent from here.
+     *
+     * The row is normally already in the provider's outbox from [insertOutgoing] and only needs
+     * moving; it is written here only when that first attempt was refused, which happens when the
+     * app was not yet the default at the moment of sending.
      */
     suspend fun markSent(messageId: Long, mirrorToSystem: Boolean) {
         val message = messageDao.byId(messageId) ?: return
         if (message.status == DeliveryStatus.FAILED) return
         messageDao.setType(messageId, MessageType.SENT)
         messageDao.setStatus(messageId, DeliveryStatus.SENT, null)
-        if (message.systemId == null) {
-            val systemId = systemWriter.writeSent(
-                message.address,
-                message.body,
-                message.date,
-                message.subscriptionId,
-            )
-            if (systemId != null) messageDao.setSystemId(messageId, systemId)
+
+        val systemId = message.systemId
+        if (systemId != null) {
+            systemWriter.moveToSent(systemId)
+            return
         }
+        systemWriter.writeSent(
+            message.address,
+            message.body,
+            message.date,
+            message.subscriptionId,
+        )?.let { messageDao.setSystemId(messageId, it) }
     }
 
     suspend fun markDelivered(messageId: Long) {
@@ -275,6 +354,8 @@ class MessageRepository(
     suspend fun markFailed(messageId: Long, error: String) {
         messageDao.setType(messageId, MessageType.FAILED)
         messageDao.setStatus(messageId, DeliveryStatus.FAILED, error)
+        // The provider keeps its own outbox; a message that never went must not sit in it forever.
+        messageDao.byId(messageId)?.systemId?.let { systemWriter.moveToFailed(it) }
     }
 
     /** Anything still in OUTBOX long after the process died can never be resolved; fail it. */
@@ -295,7 +376,7 @@ class MessageRepository(
 
     suspend fun deleteMessage(messageId: Long) {
         val message = messageDao.byId(messageId) ?: return
-        message.systemId?.let(systemWriter::delete)
+        message.systemId?.let { systemWriter.delete(it) }
         messageDao.deleteById(messageId)
     }
 
@@ -344,5 +425,14 @@ class MessageRepository(
          * still far short of any interval at which anyone repeats themselves word for word.
          */
         const val DUPLICATE_WINDOW_MS = 10L * 60 * 1000
+
+        /**
+         * How many messages one backfill pass writes.
+         *
+         * Each one is a provider insert plus a read-back to check for a duplicate, so a hundred
+         * thousand of them is not something to do inside one resume. The pass repeats on later
+         * opens until there is nothing left without a provider row.
+         */
+        const val PROVIDER_BACKFILL_LIMIT = 2_000
     }
 }

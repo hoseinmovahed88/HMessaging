@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -24,6 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -54,6 +56,7 @@ fun DiagnosticsScreen(
     val report by viewModel.state.collectAsStateWithLifecycle()
     val refreshing by viewModel.refreshing.collectAsStateWithLifecycle()
     val importProgress by viewModel.importProgress.collectAsStateWithLifecycle()
+    val provider by viewModel.provider.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
     HyperScreen(
@@ -205,6 +208,75 @@ fun DiagnosticsScreen(
                         showChevron = true,
                         onClick = viewModel::clearLog,
                     )
+                }
+            }
+
+            // The platform SMS store, read back the way the dialer, a watch or a backup tool
+            // reads it. Nothing else in the app can show whether the mirroring actually worked.
+            item("provider-title") { HyperGroupTitle(stringResource(R.string.diag_provider)) }
+            item("provider") {
+                HyperCard {
+                    Column(modifier = Modifier.padding(vertical = 4.dp)) {
+                        HyperRow(
+                            title = stringResource(R.string.diag_provider_rows),
+                            subtitle = stringResource(
+                                R.string.diag_provider_rows_detail,
+                                provider.total,
+                                provider.threaded,
+                            ),
+                        )
+                        HyperRowDivider()
+                        HyperRow(
+                            title = stringResource(R.string.diag_provider_writable),
+                            subtitle = stringResource(
+                                if (provider.canWrite) R.string.diag_yes else R.string.diag_provider_not_default,
+                            ),
+                        )
+                        HyperRowDivider()
+                        HyperRow(
+                            title = stringResource(R.string.diag_provider_backfill),
+                            subtitle = if (provider.awaitingBackfill > 0) {
+                                stringResource(R.string.diag_provider_pending, provider.awaitingBackfill)
+                            } else {
+                                stringResource(R.string.diag_provider_complete)
+                            },
+                            showChevron = true,
+                            onClick = viewModel::backfillProviderNow,
+                        )
+                    }
+                }
+            }
+            if (provider.rows.isNotEmpty()) {
+                items(provider.rows, key = { "provider-${it.id}" }) { row ->
+                    HyperCard {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Text(
+                                text = stringResource(
+                                    R.string.diag_provider_row,
+                                    row.address,
+                                    row.threadId,
+                                ),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = if (row.threadId > 0) {
+                                    MaterialTheme.colorScheme.onSurface
+                                } else {
+                                    MaterialTheme.colorScheme.error
+                                },
+                            )
+                            Text(
+                                text = row.body,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                            Text(
+                                text = TimeFormat.full(row.date),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.outline,
+                            )
+                        }
+                    }
                 }
             }
 

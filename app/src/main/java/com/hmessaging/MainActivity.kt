@@ -186,6 +186,17 @@ class MainActivity : AppCompatActivity() {
                     )
                 }
             }
+            // Keeps going until nothing is left without a provider row: the platform store is the
+            // only copy every other app on the phone can see, and this app is the only one allowed
+            // to write it. Capped per pass, so a long history fills over several opens rather than
+            // holding one up.
+            val backfill = graph.messageRepository.backfillSystemProvider()
+            if (backfill.written > 0) {
+                graph.diagnostics.record(
+                    Diagnostics.KIND_SYNC,
+                    "wrote ${backfill.written} message(s) into the system SMS store",
+                )
+            }
             val merged = graph.messageRepository.mergeDuplicateThreads()
             if (merged > 0) {
                 graph.diagnostics.record(
