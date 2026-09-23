@@ -1,8 +1,8 @@
 {
-  "versionCode": 40,
-  "versionName": "1.0.39",
-  "url": "https://github.com/hoseinmovahed88/HMessaging/raw/claude/android-messenger-app-izbr89/dist/HMessaging-1.0.39.apk",
-  "sha256": "6b9995518447de19b18b046a182f5f1fa2a96ecef70c71b5562a24f88038b92e",
-  "size": 2592152,
-  "notes": "نوشتن پیام‌ها در SMS provider اندروید با thread_id، چرخه outbox، و مهاجرت تاریخچه"
+  "versionCode": 41,
+  "versionName": "1.0.40",
+  "url": "https://github.com/hoseinmovahed88/HMessaging/raw/claude/android-messenger-app-izbr89/dist/HMessaging-1.0.40.apk",
+  "sha256": "25041a54cd91906a3ca0904da72d636d8e42f71013dc4238ead14c249eeee768",
+  "size": 2608536,
+  "notes": "نوشتن پیام‌ها در حافظهٔ پیامک اندروید درست شد: نوشتن‌ها دیگر به جواب گوشی دربارهٔ اپ پیش‌فرض وابسته نیست و هر درج با خواندن دوباره تأیید می‌شود؛ پیام‌هایی که ردیفشان از حافظهٔ گوشی گم شده دوباره نوشته می‌شوند؛ ردیف‌های بدون شناسهٔ گفتگو ترمیم می‌شوند."
 }
