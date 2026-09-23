@@ -1,8 +1,8 @@
 {
-  "versionCode": 39,
-  "versionName": "1.0.38",
-  "url": "https://github.com/hoseinmovahed88/HMessaging/raw/claude/android-messenger-app-izbr89/dist/HMessaging-1.0.38.apk",
-  "sha256": "4c7f91966cbaf78372b8012fbbc816742b110fce8ba5abe4bbc17a973df7d0d5",
-  "size": 2590496,
-  "notes": "صدا و اعلان صفحه‌قفل، بنر تشخیص اعلان خاموش، آیکون تازه"
+  "versionCode": 40,
+  "versionName": "1.0.39",
+  "url": "https://github.com/hoseinmovahed88/HMessaging/raw/claude/android-messenger-app-izbr89/dist/HMessaging-1.0.39.apk",
+  "sha256": "6b9995518447de19b18b046a182f5f1fa2a96ecef70c71b5562a24f88038b92e",
+  "size": 2592152,
+  "notes": "نوشتن پیام‌ها در SMS provider اندروید با thread_id، چرخه outbox، و مهاجرت تاریخچه"
 }
