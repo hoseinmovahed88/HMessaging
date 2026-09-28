@@ -1,8 +1,8 @@
 {
-  "versionCode": 50,
-  "versionName": "1.0.49",
-  "url": "https://github.com/hoseinmovahed88/HMessaging/raw/claude/android-messenger-app-izbr89/dist/HMessaging-1.0.49.apk",
-  "sha256": "d4f73a3e47da567677bd9995bb1a65f55b0cd4f44fd8a889a1d8b1ee21d1176e",
-  "size": 2634304,
-  "notes": "انتخاب جمعی در فهرست گفتگوها (نگه داشتن انگشت): انتخاب همه، خوانده، خوانده‌نشده، بایگانی، حذف. وضعیت خوانده‌شدن حالا در حافظهٔ پیامک گوشی هم ثبت می‌شود؛ حذف گفتگو ردیف‌هایش را از گوشی هم پاک می‌کند."
+  "versionCode": 53,
+  "versionName": "1.0.52",
+  "url": "https://github.com/hoseinmovahed88/HMessaging/raw/claude/android-messenger-app-izbr89/dist/HMessaging-1.0.52.apk",
+  "sha256": "33d57f505602b13bab907d936d6db69d1a76db17500116264edcac7e0522e990",
+  "size": 2635360,
+  "notes": "پیام‌های تکراریِ واقعی (همان متن از همان فرستنده در کمتر از ۱۰ دقیقه) دیگر دور ریخته نمی‌شوند. یادآوری «اجرای خودکار» برای گوشی‌های شیائومی؛ «دریافت مطمئن» حالا وقتی اپ پیش‌فرض است هم اپ را زنده نگه می‌دارد."
 }
