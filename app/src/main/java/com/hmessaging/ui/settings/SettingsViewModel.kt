@@ -9,10 +9,12 @@ import com.hmessaging.di.AppGraph
 import com.hmessaging.sms.SimSlot
 import com.hmessaging.sms.SmsImporter
 import com.hmessaging.sms.SmsSyncService
+import com.hmessaging.sms.WatcherNeed
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -52,7 +54,12 @@ class SettingsViewModel(private val graph: AppGraph) : ViewModel() {
 
     fun setLiveSyncEnabled(value: Boolean) = viewModelScope.launch {
         graph.prefs.setLiveSyncEnabled(value)
-        if (value) SmsSyncService.start(context) else SmsSyncService.stop(context)
+        val settings = graph.prefs.settings.first()
+        if (WatcherNeed.shouldRun(context, settings, graph.prefs.deliveryStats.first())) {
+            SmsSyncService.start(context)
+        } else {
+            SmsSyncService.stop(context)
+        }
     }
 
     /** Live row counter while a full import runs. */

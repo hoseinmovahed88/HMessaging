@@ -14,6 +14,8 @@ import com.hmessaging.data.db.dao.MessageDao
 import com.hmessaging.data.db.dao.ThreadDao
 import com.hmessaging.data.db.entity.DiagEventEntity
 import com.hmessaging.data.prefs.AppPrefs
+import com.hmessaging.notify.AlertProblem
+import com.hmessaging.notify.Notifications
 import com.hmessaging.sms.SmsSyncService
 import com.hmessaging.sms.SystemSmsWriter
 import com.hmessaging.util.AppRoles
@@ -34,6 +36,7 @@ class Diagnostics(
     private val threadDao: ThreadDao,
     private val prefs: AppPrefs,
     private val systemWriter: SystemSmsWriter,
+    private val notifications: Notifications,
 ) {
 
     private fun contactsPermissionGranted(): Boolean =
@@ -142,17 +145,21 @@ class Diagnostics(
             )
         }
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            val granted = Permissions.has(context, Manifest.permission.POST_NOTIFICATIONS)
-            add(
-                Check(
-                    label = "Notifications",
-                    // Messages still arrive without it; they just do so silently.
-                    severity = if (granted) Severity.OK else Severity.WARNING,
-                    detail = if (granted) "granted" else "denied — messages still arrive, silently",
-                ),
-            )
-        }
+        // Every switch that can silence a message, asked in one place. Messages still arrive
+        // whatever these say; they just do so without a sound or a line on the lock screen.
+        add(
+            Check(
+                label = "Alerts",
+                severity = if (notifications.alertProblem() == null) Severity.OK else Severity.WARNING,
+                detail = when (notifications.alertProblem()) {
+                    null -> "sound and lock screen allowed"
+                    AlertProblem.PERMISSION -> "notification permission denied — messages arrive silently"
+                    AlertProblem.APP_BLOCKED -> "notifications are turned off for this app on this phone"
+                    AlertProblem.CHANNEL_BLOCKED -> "the Messages notification category is turned off"
+                    AlertProblem.CHANNEL_SILENT -> "the Messages notification category is set to silent"
+                },
+            ),
+        )
 
         // A component the system cannot resolve makes the app ineligible for the role, which is
         // the failure mode that looks most like "nothing happens".
@@ -359,6 +366,7 @@ class Diagnostics(
         const val KIND_SMS_RECEIVED = "SMS_RECEIVED"
         const val KIND_WAP_PUSH = "WAP_PUSH"
         const val KIND_STORED = "STORED"
+        const val KIND_NOTIFY = "NOTIFY"
         const val KIND_BLOCKED = "BLOCKED"
         const val KIND_DUPLICATE = "DUPLICATE"
         const val KIND_SYNC = "SYNC"

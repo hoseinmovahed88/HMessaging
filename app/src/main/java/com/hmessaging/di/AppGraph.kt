@@ -55,7 +55,7 @@ class AppGraph private constructor(val appContext: Context) {
     val diagDao by lazy { database.diagDao() }
     val bankDao by lazy { database.bankDao() }
 
-    val diagnostics: Diagnostics by lazy { Diagnostics(appContext, diagDao, messageDao, threadDao, prefs, systemSmsWriter) }
+    val diagnostics: Diagnostics by lazy { Diagnostics(appContext, diagDao, messageDao, threadDao, prefs, systemSmsWriter, notifications) }
 
     /** Registered by the Application; see [ForegroundTracker]. */
     val foreground = ForegroundTracker()

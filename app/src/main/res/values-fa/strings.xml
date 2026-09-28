@@ -34,6 +34,11 @@
     <string name="diag_battery">اجازه فعالیت در پس‌زمینه (باتری)</string>
     <string name="diag_copy_report">کپی گزارش کامل</string>
     <string name="diag_clear_log">پاک کردن گزارش</string>
+    <string name="diag_alerts">صدا و صفحه‌قفل</string>
+    <string name="diag_alerts_ok">مجاز است — پیام تازه باید صدا بدهد و روی صفحه‌قفل بیاید. اگر نمی‌آید، کلیدهایش در تنظیمات خودِ گوشی برای این اپ است: بزنید تا باز شود.</string>
+    <string name="diag_notify_test">ارسال اعلان آزمایشی</string>
+    <string name="diag_notify_test_desc">یک اعلان پیام بدون پیام واقعی می‌فرستد. اگر صدایش را شنیدید و روی صفحه‌قفل دیدید، هشدارها کار می‌کند.</string>
+    <string name="diag_notify_test_body">این یک آزمایش است. اگر صدایی شنیدید و این را روی صفحه‌قفل می‌بینید، هشدار پیام‌ها کار می‌کند.</string>
     <string name="default_app_why">کار نمی‌کند؟ عیب‌یابی را باز کنید</string>
     <string name="nav_archived">بایگانی</string>
 
@@ -150,7 +155,7 @@
     <string name="sync_service_title">در حال پایش پیام‌ها</string>
     <string name="sync_service_text">فقط به این دلیل لازم است که این گوشی بیدارباش پس‌زمینه را می‌بندد</string>
     <string name="settings_live_sync">دریافت مطمئن</string>
-    <string name="settings_live_sync_desc">یک اعلان کم‌اهمیت در پس‌زمینه نگه می‌دارد تا پیام‌ها حتی وقتی سیستم اجازه بیدار کردن برنامه را نمی‌دهد برسند. فقط اگر گوشی‌تان بدون این هم پیام‌ها را می‌رساند خاموشش کنید.</string>
+    <string name="settings_live_sync_desc">یک اعلان کم‌اهمیت در پس‌زمینه نگه می‌دارد که حافظهٔ پیامک گوشی را برای پیام‌هایی که سیستم به این اپ نداده زیر نظر بگیرد. فقط وقتی به کار می‌آید که اپ دیگری پیام‌رسان پیش‌فرض باشد؛ تا وقتی این اپ پیش‌فرض است، هیچ‌کس دیگری در آن حافظه نمی‌نویسد و ناظر خاموش می‌ماند.</string>
     <string name="diag_autostart">باز کردن تنظیمات اجرای خودکار (MIUI / HyperOS)</string>
     <string name="diag_sync_service">پایشگر پس‌زمینه</string>
     <string name="notif_reply">پاسخ</string>

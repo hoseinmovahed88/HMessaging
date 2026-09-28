@@ -34,8 +34,8 @@ class BootReceiver : BroadcastReceiver() {
                 graph.scheduleManager.sendDue()
                 graph.scheduleManager.rescheduleAll()
                 ScheduleSweepWorker.enqueue(context)
-                val needed = WatcherNeed.isNeeded(graph.prefs.deliveryStats.first())
-                if (graph.prefs.settings.first().liveSyncEnabled && needed) {
+                val settings = graph.prefs.settings.first()
+                if (WatcherNeed.shouldRun(context, settings, graph.prefs.deliveryStats.first())) {
                     SmsSyncService.start(context)
                 }
             } finally {

@@ -44,7 +44,9 @@ data class AppSettings(
     // Security
     val appLockEnabled: Boolean = false,
     // Delivery
-    val liveSyncEnabled: Boolean = true,
+    // Off unless asked for: it costs a permanent notification, and on a phone where this app
+    // is the default SMS app it cannot find anything anyway (see WatcherNeed.shouldRun).
+    val liveSyncEnabled: Boolean = false,
 
     // One-time flags
     val systemSmsImported: Boolean = false,

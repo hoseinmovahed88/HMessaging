@@ -228,7 +228,7 @@ class MainActivity : AppCompatActivity() {
             // without a permanent notification, so leaving it running on a phone that delivers
             // its own broadcasts charges the user a line in the shade forever for nothing.
             val stats = graph.prefs.deliveryStats.first()
-            if (settings.liveSyncEnabled && WatcherNeed.isNeeded(stats)) {
+            if (WatcherNeed.shouldRun(this@MainActivity, settings, stats)) {
                 SmsSyncService.start(this@MainActivity)
             } else {
                 SmsSyncService.stop(this@MainActivity)

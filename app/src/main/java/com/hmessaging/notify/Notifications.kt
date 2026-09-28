@@ -26,6 +26,14 @@ import com.hmessaging.util.PhoneNumbers
 /** What is stopping this app from making a sound, when something is. */
 enum class AlertProblem { PERMISSION, APP_BLOCKED, CHANNEL_BLOCKED, CHANNEL_SILENT }
 
+/**
+ * What became of one attempt to alert the reader.
+ *
+ * Every reason a message can arrive in silence used to look the same from outside: nothing. The
+ * pipeline records this against each message so the diagnostics log can say which it was.
+ */
+enum class AlertOutcome { POSTED, MUTED, NO_PERMISSION, APP_BLOCKED, FAILED }
+
 /** Every user-visible notification the app posts, and the channels they live on. */
 class Notifications(private val context: Context) {
 
@@ -52,9 +60,11 @@ class Notifications(private val context: Context) {
 
         val messageSound = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
         val messageAudio = AudioAttributes.Builder()
-            // The instant-message usage, not the generic notification one: it is what tells a
-            // phone to treat this as someone contacting the user rather than as app chatter.
-            .setUsage(AudioAttributes.USAGE_NOTIFICATION_COMMUNICATION_INSTANT)
+            // The plain notification usage. The instant-message one is more descriptive, and on
+            // stock Android it plays through the same stream — but a vendor ROM's sound pipeline
+            // only has to route one usage wrongly for every message to arrive silent, and that is
+            // the one usage every notification on the phone already proves works.
+            .setUsage(AudioAttributes.USAGE_NOTIFICATION)
             .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
             .build()
 
@@ -69,7 +79,11 @@ class Notifications(private val context: Context) {
                 vibrationPattern = MESSAGE_VIBRATION
                 enableLights(true)
                 setShowBadge(true)
-                lockscreenVisibility = Notification.VISIBILITY_PRIVATE
+                // The channel sets the ceiling and each notification chooses below it: with the
+                // preview off, the notification itself asks to be private. A private ceiling here
+                // meant a ROM that hides private notifications from the lock screen altogether
+                // showed nothing at all, whatever the notification asked for.
+                lockscreenVisibility = Notification.VISIBILITY_PUBLIC
             },
             NotificationChannel(
                 CHANNEL_OTP,
@@ -79,7 +93,7 @@ class Notifications(private val context: Context) {
                 setSound(messageSound, messageAudio)
                 enableVibration(true)
                 setShowBadge(false)
-                lockscreenVisibility = Notification.VISIBILITY_PRIVATE
+                lockscreenVisibility = Notification.VISIBILITY_PUBLIC
             },
             NotificationChannel(
                 CHANNEL_SCHEDULED,
@@ -154,8 +168,13 @@ class Notifications(private val context: Context) {
                 .setData(Uri.fromParts("package", context.packageName, null))
         }
 
-    fun showIncomingMessage(thread: ThreadEntity, body: String, receivedAt: Long, showPreview: Boolean) {
-        if (thread.muted) return
+    fun showIncomingMessage(
+        thread: ThreadEntity,
+        body: String,
+        receivedAt: Long,
+        showPreview: Boolean,
+    ): AlertOutcome {
+        if (thread.muted) return AlertOutcome.MUTED
         val title = thread.contactName ?: PhoneNumbers.format(thread.address)
         val person = Person.Builder().setName(title).setKey(thread.address).build()
         val text = if (showPreview) body else context.getString(R.string.channel_messages)
@@ -164,17 +183,8 @@ class Notifications(private val context: Context) {
             Person.Builder().setName(context.getString(R.string.app_name)).build(),
         ).addMessage(text, receivedAt, person)
 
-        val builder = NotificationCompat.Builder(context, CHANNEL_MESSAGES)
-            .setSmallIcon(R.drawable.ic_notification)
+        val builder = messageBuilder(title, text, receivedAt)
             .setStyle(style)
-            .setContentTitle(title)
-            .setContentText(text)
-            .setWhen(receivedAt)
-            .setAutoCancel(true)
-            .setCategory(NotificationCompat.CATEGORY_MESSAGE)
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
-            // Pre-O phones take their sound and vibration from the notification, not a channel.
-            .setDefaults(NotificationCompat.DEFAULT_ALL)
             // Whether the words themselves appear on the lock screen follows the preview setting;
             // that a message arrived is shown either way.
             .setVisibility(
@@ -189,10 +199,53 @@ class Notifications(private val context: Context) {
             .addAction(markReadAction(thread.id))
             .addAction(blockAction(thread.id, thread.address))
 
-        post(messageNotificationId(thread.id), builder.build())
+        return post(messageNotificationId(thread.id), builder.build())
     }
 
-    fun showOtp(otpId: Long, code: String, sender: String, serviceName: String?, body: String) {
+    /**
+     * A message notification with nothing behind it, for checking the phone.
+     *
+     * It goes through the same channel and the same builder as a real message, so what it does —
+     * sound, lock screen, banner — is exactly what a real message would do. When this one is heard
+     * and a message is not, the fault is on the receiving side; when neither is, it is the phone's
+     * notification settings, and the diagnostics screen can say which.
+     */
+    fun showTest(): AlertOutcome {
+        val title = context.getString(R.string.app_name)
+        val text = context.getString(R.string.diag_notify_test_body)
+        val now = System.currentTimeMillis()
+        val style = NotificationCompat.MessagingStyle(Person.Builder().setName(title).build())
+            .addMessage(text, now, Person.Builder().setName(title).setKey("test").build())
+        val builder = messageBuilder(title, text, now)
+            .setStyle(style)
+            .setContentIntent(openScheduledIntent())
+        return post(TEST_NOTIFICATION_ID, builder.build())
+    }
+
+    /**
+     * Everything a message notification needs to be heard and seen, stated on the notification
+     * as well as on the channel.
+     *
+     * Android O and later ignore the sound, vibration and priority set here and use the channel's;
+     * earlier phones use these and have no channel. Both are set so the same code works on both,
+     * and so a ROM that consults the notification where it should consult the channel finds the
+     * same answer in both places.
+     */
+    private fun messageBuilder(title: String, text: String, at: Long): NotificationCompat.Builder =
+        NotificationCompat.Builder(context, CHANNEL_MESSAGES)
+            .setSmallIcon(R.drawable.ic_notification)
+            .setContentTitle(title)
+            .setContentText(text)
+            .setWhen(at)
+            .setShowWhen(true)
+            .setAutoCancel(true)
+            .setCategory(NotificationCompat.CATEGORY_MESSAGE)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION))
+            .setVibrate(MESSAGE_VIBRATION)
+            .setDefaults(NotificationCompat.DEFAULT_LIGHTS)
+
+    fun showOtp(otpId: Long, code: String, sender: String, serviceName: String?, body: String): AlertOutcome {
         val title = context.getString(R.string.otp_title)
         val from = serviceName ?: PhoneNumbers.format(sender)
         val builder = NotificationCompat.Builder(context, CHANNEL_OTP)
@@ -212,7 +265,7 @@ class Notifications(private val context: Context) {
                 ).build(),
             )
         builder.setTimeoutAfter(OTP_NOTIFICATION_TIMEOUT_MS)
-        post(otpNotificationId(otpId), builder.build())
+        return post(otpNotificationId(otpId), builder.build())
     }
 
     fun showScheduleResult(scheduledId: Long, title: String, text: String) {
@@ -231,9 +284,14 @@ class Notifications(private val context: Context) {
     fun cancelOtp(otpId: Long) = manager.cancel(otpNotificationId(otpId))
 
     @SuppressLint("MissingPermission") // Guarded by the runtime check on the line below.
-    private fun post(id: Int, notification: Notification) {
-        if (!Permissions.canPostNotifications(context)) return
-        runCatching { manager.notify(id, notification) }
+    private fun post(id: Int, notification: Notification): AlertOutcome {
+        if (!Permissions.canPostNotifications(context)) return AlertOutcome.NO_PERMISSION
+        if (!manager.areNotificationsEnabled()) return AlertOutcome.APP_BLOCKED
+        return if (runCatching { manager.notify(id, notification) }.isSuccess) {
+            AlertOutcome.POSTED
+        } else {
+            AlertOutcome.FAILED
+        }
     }
 
     private fun openThreadIntent(threadId: Long): PendingIntent {
@@ -354,14 +412,14 @@ class Notifications(private val context: Context) {
          * Versioned on purpose; see [ensureChannels]. Raise it whenever the channel's settings
          * change, and add the id left behind to [RETIRED_CHANNELS].
          */
-        const val CHANNEL_MESSAGES = "messages_v2"
-        const val CHANNEL_OTP = "otp_v2"
+        const val CHANNEL_MESSAGES = "messages_v3"
+        const val CHANNEL_OTP = "otp_v3"
         const val CHANNEL_SCHEDULED = "scheduled"
         const val CHANNEL_STATUS = "status"
         const val CHANNEL_WATCHER = "watcher"
 
         /** Channels earlier versions created, deleted so the settings list holds one of each. */
-        private val RETIRED_CHANNELS = listOf("messages", "otp")
+        private val RETIRED_CHANNELS = listOf("messages", "otp", "messages_v2", "otp_v2")
 
         /** Two short pulses: enough to feel through a pocket, short enough not to buzz. */
         private val MESSAGE_VIBRATION = longArrayOf(0, 250, 200, 250)
@@ -370,6 +428,7 @@ class Notifications(private val context: Context) {
         private const val OTP_NOTIFICATION_BASE = 500_000
         private const val SCHEDULE_NOTIFICATION_BASE = 900_000
         private const val SCHEDULE_REQUEST_CODE = 7_001
+        private const val TEST_NOTIFICATION_ID = 8_001
         private const val REPLY_REQUEST_BASE = 100_000
         private const val MARK_READ_REQUEST_BASE = 200_000
         private const val BLOCK_REQUEST_BASE = 300_000

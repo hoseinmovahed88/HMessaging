@@ -38,8 +38,10 @@ class ScheduleSweepWorker(
                     "periodic sweep — picked up ${sync.imported}",
                 )
             }
-            if (settings.liveSyncEnabled && WatcherNeed.isNeeded(graph.prefs.deliveryStats.first())) {
+            if (WatcherNeed.shouldRun(applicationContext, settings, graph.prefs.deliveryStats.first())) {
                 SmsSyncService.start(applicationContext)
+            } else {
+                SmsSyncService.stop(applicationContext)
             }
 
             graph.scheduleManager.sendDue()

@@ -1,8 +1,11 @@
 package com.hmessaging.ui.diagnostics
 
+import android.content.Intent
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.hmessaging.di.AppGraph
+import com.hmessaging.notify.AlertOutcome
+import com.hmessaging.notify.AlertProblem
 import com.hmessaging.sms.SmsImporter
 import com.hmessaging.sms.SystemSmsWriter
 import com.hmessaging.system.Diagnostics
@@ -40,13 +43,35 @@ class DiagnosticsViewModel(private val graph: AppGraph) : ViewModel() {
         val rows: List<SystemSmsWriter.ProviderRow> = emptyList(),
     )
 
+    /** What is silencing messages right now, or null; re-read on every refresh. */
+    private val _alertProblem = MutableStateFlow<AlertProblem?>(null)
+    val alertProblem: StateFlow<AlertProblem?> = _alertProblem.asStateFlow()
+
     init {
+        refresh()
+    }
+
+    /**
+     * Posts a message-channel notification with nothing behind it and logs what happened to it.
+     *
+     * The one experiment that separates "the phone will not let this app be heard" from "the
+     * message never reached the notification": it uses the same channel and builder a real
+     * message does, so the reader can tell at once whether it sounded and reached the lock screen.
+     */
+    /** The settings page that can fix [problem]; the app's own notification page when there is none. */
+    fun alertSettingsIntent(problem: AlertProblem?): Intent =
+        graph.notifications.alertSettingsIntent(problem ?: AlertProblem.APP_BLOCKED)
+
+    fun sendTestNotification() = viewModelScope.launch {
+        val outcome = runCatching { graph.notifications.showTest() }.getOrDefault(AlertOutcome.FAILED)
+        graph.diagnostics.record(Diagnostics.KIND_NOTIFY, "test notification — ${outcome.name.lowercase()}")
         refresh()
     }
 
     fun refresh() = viewModelScope.launch {
         busy.value = true
         report.value = runCatching { graph.diagnostics.collect() }.getOrNull()
+        _alertProblem.value = runCatching { graph.notifications.alertProblem() }.getOrNull()
         val (total, threaded) = runCatching { graph.systemSmsWriter.rowStats() }.getOrDefault(0 to 0)
         _provider.value = ProviderView(
             canWrite = graph.systemSmsWriter.canWrite(),

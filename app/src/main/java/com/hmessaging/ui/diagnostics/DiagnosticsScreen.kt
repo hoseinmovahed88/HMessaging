@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.hmessaging.R
+import com.hmessaging.notify.AlertProblem
 import com.hmessaging.system.Diagnostics
 import com.hmessaging.ui.HmViewModelFactory
 import com.hmessaging.ui.components.HyperCard
@@ -57,6 +58,7 @@ fun DiagnosticsScreen(
     val refreshing by viewModel.refreshing.collectAsStateWithLifecycle()
     val importProgress by viewModel.importProgress.collectAsStateWithLifecycle()
     val provider by viewModel.provider.collectAsStateWithLifecycle()
+    val alertProblem by viewModel.alertProblem.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
     HyperScreen(
@@ -174,6 +176,32 @@ fun DiagnosticsScreen(
                             onClick = { runCatching { context.startActivity(intent) } },
                         )
                     }
+                    HyperRowDivider()
+                    // Sound and lock screen, and the one tap that proves them either way.
+                    val problem = alertProblem
+                    HyperRow(
+                        title = stringResource(R.string.diag_alerts),
+                        subtitle = stringResource(
+                            when (problem) {
+                                null -> R.string.diag_alerts_ok
+                                AlertProblem.PERMISSION -> R.string.alerts_off_permission
+                                AlertProblem.APP_BLOCKED -> R.string.alerts_off_app
+                                AlertProblem.CHANNEL_BLOCKED -> R.string.alerts_off_channel
+                                AlertProblem.CHANNEL_SILENT -> R.string.alerts_off_silent
+                            },
+                        ),
+                        showChevron = true,
+                        onClick = {
+                            runCatching { context.startActivity(viewModel.alertSettingsIntent(problem)) }
+                        },
+                    )
+                    HyperRowDivider()
+                    HyperRow(
+                        title = stringResource(R.string.diag_notify_test),
+                        subtitle = stringResource(R.string.diag_notify_test_desc),
+                        showChevron = true,
+                        onClick = viewModel::sendTestNotification,
+                    )
                     HyperRowDivider()
                     val running = importProgress
                     HyperRow(

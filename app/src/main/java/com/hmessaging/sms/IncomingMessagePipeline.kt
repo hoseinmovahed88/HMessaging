@@ -11,6 +11,7 @@ import com.hmessaging.feature.otp.OtpDetector
 import com.hmessaging.feature.otp.OtpPresenter
 import com.hmessaging.feature.otp.OtpVetoes
 import com.hmessaging.feature.quickreply.QuickReplyPresenter
+import com.hmessaging.notify.AlertOutcome
 import com.hmessaging.notify.Notifications
 import com.hmessaging.system.Diagnostics
 import kotlinx.coroutines.flow.first
@@ -117,17 +118,23 @@ class IncomingMessagePipeline(
         )
         prefs.recordDelivery(viaBroadcast = source == Source.BROADCAST)
 
+        // Written down whatever happens. A message that arrives in silence has half a dozen
+        // possible causes and, from the outside, they all look the same; the log is how the
+        // diagnostics screen tells them apart.
         if (otpMatch != null) {
-            runCatching { otpPresenter.present(otpMatch, address, body, receivedAt) }
+            val outcome = runCatching { otpPresenter.present(otpMatch, address, body, receivedAt) }
+                .getOrDefault(AlertOutcome.FAILED)
+            diagnostics.record(Diagnostics.KIND_NOTIFY, "code from $address — ${outcome.name.lowercase()}")
         } else {
             val thread = repository.threadById(threadId)
             if (thread != null) {
-                notifications.showIncomingMessage(
+                val outcome = notifications.showIncomingMessage(
                     thread = thread,
                     body = body,
                     receivedAt = receivedAt,
                     showPreview = settings.notificationPreview,
                 )
+                diagnostics.record(Diagnostics.KIND_NOTIFY, "from $address — ${outcome.name.lowercase()}")
                 // After the notification, never instead of it: the pop-up only appears when the
                 // screen is in use, and dismissing it must not be how a message goes missing.
                 if (!thread.muted) {

@@ -35,6 +35,11 @@
     <string name="diag_battery">Allow background activity (battery)</string>
     <string name="diag_copy_report">Copy the full report</string>
     <string name="diag_clear_log">Clear the log</string>
+    <string name="diag_alerts">Sound and lock screen</string>
+    <string name="diag_alerts_ok">Allowed — a new message should sound and appear on the lock screen. If it does not, the switches are in the phone\'s own settings for this app: tap to open them.</string>
+    <string name="diag_notify_test">Send a test notification</string>
+    <string name="diag_notify_test_desc">Posts a message notification with nothing behind it. If you hear it and see it on the lock screen, alerts work.</string>
+    <string name="diag_notify_test_body">This is a test. If you heard a sound and can see this on the lock screen, message alerts are working.</string>
     <string name="default_app_why">Not working? Open diagnostics</string>
     <string name="nav_archived">Archived</string>
 
@@ -161,7 +166,7 @@
     <string name="sync_service_title">Watching for messages</string>
     <string name="sync_service_text">Only needed because this phone blocks background wake-ups</string>
     <string name="settings_live_sync">Reliable delivery</string>
-    <string name="settings_live_sync_desc">Keeps a quiet background notification so messages arrive even when the system refuses to wake the app. Turn this off only if your phone delivers messages without it.</string>
+    <string name="settings_live_sync_desc">Keeps a quiet background notification that watches the phone\'s SMS store for messages the system never handed to this app. Only useful when another app is the default messaging app; while this one is, nothing else writes that store and the watcher stays off.</string>
     <string name="diag_autostart">Open autostart settings (MIUI / HyperOS)</string>
     <string name="diag_sync_service">Background watcher</string>
     <string name="notif_reply">Reply</string>
