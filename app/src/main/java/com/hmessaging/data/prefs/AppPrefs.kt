@@ -94,6 +94,7 @@ class AppPrefs(context: Context) {
     suspend fun setOnboardingDone(value: Boolean) = put(Keys.ONBOARDING, value)
     suspend fun setAutoBackupEnabled(value: Boolean) = put(Keys.AUTO_BACKUP, value)
     suspend fun setGapCheckedAtRows(value: Long) = put(Keys.GAP_CHECKED_ROWS, value)
+    suspend fun setXiaomiSoundHintDone(value: Boolean) = put(Keys.XIAOMI_SOUND_HINT, value)
     suspend fun setLastBackup(at: Long, count: Int) {
         store.edit {
             it[Keys.LAST_BACKUP_AT] = at
@@ -156,6 +157,7 @@ class AppPrefs(context: Context) {
             lastBackupAt = this[Keys.LAST_BACKUP_AT] ?: defaults.lastBackupAt,
             lastBackupCount = this[Keys.LAST_BACKUP_COUNT] ?: defaults.lastBackupCount,
             gapCheckedAtRows = this[Keys.GAP_CHECKED_ROWS] ?: defaults.gapCheckedAtRows,
+            xiaomiSoundHintDone = this[Keys.XIAOMI_SOUND_HINT] ?: defaults.xiaomiSoundHintDone,
         )
     }
 
@@ -196,6 +198,7 @@ class AppPrefs(context: Context) {
         val LAST_BACKUP_AT = longPreferencesKey("last_backup_at")
         val LAST_BACKUP_COUNT = intPreferencesKey("last_backup_count")
         val GAP_CHECKED_ROWS = longPreferencesKey("gap_checked_at_rows")
+        val XIAOMI_SOUND_HINT = booleanPreferencesKey("xiaomi_sound_hint_done")
         val DELIVERED_BY_BROADCAST = longPreferencesKey("delivered_by_broadcast")
         val MISSED_BY_BROADCAST = longPreferencesKey("missed_by_broadcast")
         val BANK_SCAN_CURSOR = longPreferencesKey("bank_scan_cursor")

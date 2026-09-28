@@ -60,6 +60,8 @@ data class AppSettings(
     val lastBackupCount: Int = 0,
     /** The SMS-store row count at which the last full walk for missing messages ran. */
     val gapCheckedAtRows: Long = -1L,
+    /** Whether the reader has been shown where HyperOS hides the message-sound switch. */
+    val xiaomiSoundHintDone: Boolean = false,
 ) {
     val awayModeActive: Boolean get() = awayUntil > System.currentTimeMillis()
 

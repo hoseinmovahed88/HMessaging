@@ -62,6 +62,10 @@ import com.hmessaging.di.AppGraph
 import com.hmessaging.feature.update.UpdateStatus
 import com.hmessaging.ui.HmViewModelFactory
 import com.hmessaging.ui.components.AlertProblemBanner
+import com.hmessaging.util.Vendor
+import com.hmessaging.ui.components.HintBanner
+import com.hmessaging.notify.AlertProblem
+import com.hmessaging.data.prefs.AppSettings
 import com.hmessaging.ui.components.ContactAvatar
 import com.hmessaging.ui.components.SimBadge
 import com.hmessaging.ui.components.DefaultSmsAppBanner
@@ -107,6 +111,10 @@ fun ConversationsScreen(
     // and the banner has to notice when one of them is put right. Hoisted to the composable body
     // because a LazyColumn's content block is a LazyListScope, where remember cannot be called.
     val alertProblem = remember(lifecycleTick) { graph.notifications.alertProblem() }
+    // Starts as "already shown" so the pointer never flashes before the preference is read.
+    val settings by graph.prefs.settings.collectAsStateWithLifecycle(
+        initialValue = AppSettings(xiaomiSoundHintDone = true),
+    )
 
     // Back closes the search rather than the screen, the same way it closes a selection in a
     // conversation: the search is the thing on top, so it is the thing back should undo.
@@ -179,6 +187,28 @@ fun ConversationsScreen(
                         },
                         onDismiss = graph.updates::dismiss,
                     )
+                }
+
+                // Only when Android itself reports nothing wrong: when it does, that banner is
+                // the one to act on, and this one would say the opposite of it.
+                if (alertProblem == null && Vendor.isXiaomi && !settings.xiaomiSoundHintDone) {
+                    item("xiaomi-sound-hint") {
+                        HintBanner(
+                            title = stringResource(R.string.xiaomi_sound_title),
+                            text = stringResource(R.string.xiaomi_sound_text),
+                            actionLabel = stringResource(R.string.xiaomi_sound_open),
+                            onAction = {
+                                runCatching {
+                                    context.startActivity(
+                                        graph.notifications.alertSettingsIntent(AlertProblem.APP_BLOCKED)
+                                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                                    )
+                                }
+                                viewModel.dismissXiaomiSoundHint()
+                            },
+                            onDismiss = viewModel::dismissXiaomiSoundHint,
+                        )
+                    }
                 }
 
                 if (alertProblem != null && !alertsDismissed) {
