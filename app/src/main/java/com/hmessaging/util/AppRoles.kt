@@ -46,13 +46,19 @@ object AppRoles {
      * way. A package can then be the role holder, receive every message, and have every insert
      * answered with a URI that points at no row. This is the switch the provider consults.
      */
-    fun smsWriteOp(context: Context): OpState = opState(context, AppOpsManager.OPSTR_WRITE_SMS)
+    fun smsWriteOp(context: Context): OpState = opState(context, OP_WRITE_SMS)
 
     fun smsReadOp(context: Context): OpState = opState(context, AppOpsManager.OPSTR_READ_SMS)
 
     /** The package the platform itself names as default, or null when it names none. */
     fun platformDefaultSmsPackage(context: Context): String? =
         runCatching { Telephony.Sms.getDefaultSmsPackage(context) }.getOrNull()
+
+    /**
+     * The write-SMS operation's name. Not in the public SDK — only the system API declares it —
+     * but the check accepts any operation by name, and this is the one the SMS provider consults.
+     */
+    private const val OP_WRITE_SMS = "android:write_sms"
 
     private fun opState(context: Context, op: String): OpState {
         val appOps = context.getSystemService(AppOpsManager::class.java) ?: return OpState.UNKNOWN
