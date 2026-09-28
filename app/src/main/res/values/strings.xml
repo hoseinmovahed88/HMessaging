@@ -41,6 +41,9 @@
     <string name="xiaomi_sound_title">Message sound on Xiaomi phones</string>
     <string name="xiaomi_sound_text">HyperOS keeps notification sound off by default for apps installed outside its store, and the app cannot see that switch. Open this app\'s notification settings once and turn on Sound and Lock screen.</string>
     <string name="xiaomi_sound_open">Open notification settings</string>
+    <string name="xiaomi_autostart_title">Turn on autostart, or messages stop arriving</string>
+    <string name="xiaomi_autostart_text">Xiaomi phones switch autostart off for every newly installed app. Without it, whenever this app is closed the phone will not wake it for an incoming SMS — and as the default messaging app, no other app receives it either. Open Security › Autostart and turn HMessaging on. Reinstalling resets it.</string>
+    <string name="xiaomi_autostart_open">Open autostart</string>
     <string name="diag_notify_test">Send a test notification</string>
     <string name="diag_notify_test_desc">Posts a message notification with nothing behind it. If you hear it and see it on the lock screen, alerts work.</string>
     <string name="diag_notify_test_body">This is a test. If you heard a sound and can see this on the lock screen, message alerts are working.</string>
@@ -175,7 +178,7 @@
     <string name="sync_service_title">Watching for messages</string>
     <string name="sync_service_text">Only needed because this phone blocks background wake-ups</string>
     <string name="settings_live_sync">Reliable delivery</string>
-    <string name="settings_live_sync_desc">Keeps a quiet background notification that watches the phone\'s SMS store for messages the system never handed to this app. Only useful when another app is the default messaging app; while this one is, nothing else writes that store and the watcher stays off.</string>
+    <string name="settings_live_sync_desc">Keeps the app running in the background, with a quiet notification, so a phone that will not wake closed apps still delivers every message. Turn it on if messages only arrive while the app is open.</string>
     <string name="diag_autostart">Open autostart settings (MIUI / HyperOS)</string>
     <string name="diag_sync_service">Background watcher</string>
     <string name="notif_reply">Reply</string>

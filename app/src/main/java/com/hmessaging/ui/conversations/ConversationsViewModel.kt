@@ -127,6 +127,8 @@ class ConversationsViewModel(private val graph: AppGraph) : ViewModel() {
     /** The pointer to HyperOS's sound switch is shown once; opening it or waving it away ends it. */
     fun dismissXiaomiSoundHint() = viewModelScope.launch { graph.prefs.setXiaomiSoundHintDone(true) }
 
+    fun dismissXiaomiAutostartHint() = viewModelScope.launch { graph.prefs.setXiaomiAutostartHintDone(true) }
+
     val queryState: StateFlow<String> = query.asStateFlow()
 
     fun onQueryChange(value: String) {

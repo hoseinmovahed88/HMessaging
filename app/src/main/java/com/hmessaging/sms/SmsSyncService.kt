@@ -20,6 +20,7 @@ import com.hmessaging.di.AppGraph
 import com.hmessaging.notify.NotificationActionReceiver
 import com.hmessaging.notify.Notifications
 import com.hmessaging.system.Diagnostics
+import com.hmessaging.util.AppRoles
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
@@ -47,7 +48,26 @@ class SmsSyncService : Service() {
 
     private val smsReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
-            sync("runtime ${intent.action?.substringAfterLast('.')}")
+            // The message is in the intent. Looking for it in the SMS store instead only works
+            // when some other app wrote it there, and while this app is default nobody has: the
+            // runtime receiver found nothing and the message was lost. The pipeline discards the
+            // second copy when the manifest receiver delivers it too.
+            val incoming = IncomingSms.fromIntent(intent)
+            if (incoming == null) {
+                sync("runtime ${intent.action?.substringAfterLast('.')}")
+                return
+            }
+            graph.applicationScope.launch {
+                graph.incomingPipeline.handle(
+                    address = incoming.address,
+                    body = incoming.body,
+                    receivedAt = incoming.receivedAt,
+                    subscriptionId = incoming.subscriptionId,
+                    parts = incoming.parts,
+                    mirrorToSystem = AppRoles.isDefaultSmsApp(context),
+                    source = IncomingMessagePipeline.Source.BROADCAST,
+                )
+            }
         }
     }
 

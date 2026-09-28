@@ -75,6 +75,7 @@ import com.hmessaging.di.AppGraph
 import com.hmessaging.feature.update.UpdateStatus
 import com.hmessaging.ui.HmViewModelFactory
 import com.hmessaging.ui.components.AlertProblemBanner
+import com.hmessaging.util.AppRoles
 import com.hmessaging.util.Vendor
 import com.hmessaging.ui.components.HintBanner
 import com.hmessaging.notify.AlertProblem
@@ -126,7 +127,7 @@ fun ConversationsScreen(
     val alertProblem = remember(lifecycleTick) { graph.notifications.alertProblem() }
     // Starts as "already shown" so the pointer never flashes before the preference is read.
     val settings by graph.prefs.settings.collectAsStateWithLifecycle(
-        initialValue = AppSettings(xiaomiSoundHintDone = true),
+        initialValue = AppSettings(xiaomiSoundHintDone = true, xiaomiAutostartHintDone = true),
     )
 
     // Back closes the search rather than the screen, the same way it closes a selection in a
@@ -261,6 +262,34 @@ fun ConversationsScreen(
                         },
                         onDismiss = graph.updates::dismiss,
                     )
+                }
+
+                // First, because without it nothing else matters: a fresh install on HyperOS has
+                // autostart off, and with the app closed no message is delivered to anyone.
+                if (Vendor.isXiaomi && !settings.xiaomiAutostartHintDone) {
+                    item("xiaomi-autostart-hint") {
+                        HintBanner(
+                            title = stringResource(R.string.xiaomi_autostart_title),
+                            text = stringResource(R.string.xiaomi_autostart_text),
+                            actionLabel = stringResource(R.string.xiaomi_autostart_open),
+                            onAction = {
+                                val intent = AppRoles.autostartSettingsIntent()
+                                    ?: AppRoles.appDetailsSettingsIntent(context)
+                                runCatching {
+                                    context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                                }.onFailure {
+                                    runCatching {
+                                        context.startActivity(
+                                            AppRoles.appDetailsSettingsIntent(context)
+                                                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                                        )
+                                    }
+                                }
+                                viewModel.dismissXiaomiAutostartHint()
+                            },
+                            onDismiss = viewModel::dismissXiaomiAutostartHint,
+                        )
+                    }
                 }
 
                 // Only when Android itself reports nothing wrong: when it does, that banner is
