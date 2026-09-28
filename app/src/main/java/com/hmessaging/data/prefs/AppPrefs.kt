@@ -92,6 +92,13 @@ class AppPrefs(context: Context) {
     suspend fun setSystemSmsImported(value: Boolean) = put(Keys.SMS_IMPORTED, value)
     suspend fun setDuplicatesCleaned(value: Boolean) = put(Keys.DUPLICATES_CLEANED, value)
     suspend fun setOnboardingDone(value: Boolean) = put(Keys.ONBOARDING, value)
+    suspend fun setAutoBackupEnabled(value: Boolean) = put(Keys.AUTO_BACKUP, value)
+    suspend fun setLastBackup(at: Long, count: Int) {
+        store.edit {
+            it[Keys.LAST_BACKUP_AT] = at
+            it[Keys.LAST_BACKUP_COUNT] = count
+        }
+    }
 
     private suspend fun put(key: Preferences.Key<Boolean>, value: Boolean) {
         store.edit { it[key] = value }
@@ -144,6 +151,9 @@ class AppPrefs(context: Context) {
             systemSmsImported = this[Keys.SMS_IMPORTED] ?: defaults.systemSmsImported,
             duplicatesCleaned = this[Keys.DUPLICATES_CLEANED] ?: defaults.duplicatesCleaned,
             onboardingDone = this[Keys.ONBOARDING] ?: defaults.onboardingDone,
+            autoBackupEnabled = this[Keys.AUTO_BACKUP] ?: defaults.autoBackupEnabled,
+            lastBackupAt = this[Keys.LAST_BACKUP_AT] ?: defaults.lastBackupAt,
+            lastBackupCount = this[Keys.LAST_BACKUP_COUNT] ?: defaults.lastBackupCount,
         )
     }
 
@@ -180,6 +190,9 @@ class AppPrefs(context: Context) {
         // sent messages, and devices that ran it still hold duplicated incoming ones.
         val DUPLICATES_CLEANED = booleanPreferencesKey("duplicate_messages_cleaned")
         val ONBOARDING = booleanPreferencesKey("onboarding_done")
+        val AUTO_BACKUP = booleanPreferencesKey("auto_backup")
+        val LAST_BACKUP_AT = longPreferencesKey("last_backup_at")
+        val LAST_BACKUP_COUNT = intPreferencesKey("last_backup_count")
         val DELIVERED_BY_BROADCAST = longPreferencesKey("delivered_by_broadcast")
         val MISSED_BY_BROADCAST = longPreferencesKey("missed_by_broadcast")
         val BANK_SCAN_CURSOR = longPreferencesKey("bank_scan_cursor")

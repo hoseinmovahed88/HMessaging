@@ -189,6 +189,14 @@
     <string name="settings_permissions">مجوزها و نقش‌ها</string>
     <string name="settings_exact_alarms">هشدار دقیق (ارسال سر وقت پیام‌های زمان‌بندی‌شده)</string>
     <string name="settings_backup_include_messages">درج تاریخچه پیام‌ها در پشتیبان</string>
+    <string name="settings_auto_backup">پشتیبان خودکار روزانه</string>
+    <string name="settings_auto_backup_desc">روزی یک بار همهٔ پیام‌ها را در Download/HMessaging می‌نویسد. آن پوشه مال شماست نه مال اپ، پس پاک کردن اپ نسخهٔ پشتیبان را پاک نمی‌کند.</string>
+    <string name="settings_backup_now">همین حالا پشتیبان بگیر</string>
+    <string name="settings_backup_last">آخرین پشتیبان: %1$d پیام، %2$s</string>
+    <string name="settings_backup_never">هنوز پشتیبانی نوشته نشده</string>
+    <string name="settings_restore_folder">بازیابی از پوشهٔ پشتیبان</string>
+    <string name="settings_restore_folder_desc">پوشهٔ HMessaging داخل Download را انتخاب کنید. پیام‌هایی که همین‌جا هست رد می‌شود، و پیام‌های بازگردانده‌شده دوباره در حافظهٔ پیامک گوشی هم نوشته می‌شوند.</string>
+    <string name="settings_restore_none">در آن پوشه پشتیبانی از HMessaging پیدا نشد</string>
     <string name="about_body">اچ‌مسنجر یک پیام‌رسان مبتنی بر پیامک است. دریافت، مسدودسازی، پاسخ خودکار، بازارسال و دریافت کد یک‌بارمصرف همگی نیازمند پیش‌فرض بودن برنامه هستند، چون اندروید پیام‌های دریافتی را فقط به برنامه پیش‌فرض تحویل می‌دهد.</string>
     <string name="app_locked">قفل اچ‌مسنجر را باز کنید</string>
     <string name="unlock">باز کردن قفل</string>

@@ -1,6 +1,7 @@
 package com.hmessaging.di
 
 import android.content.Context
+import com.hmessaging.backup.AutoBackup
 import com.hmessaging.backup.BackupManager
 import com.hmessaging.data.db.HmDatabase
 import com.hmessaging.data.prefs.AppPrefs
@@ -123,6 +124,10 @@ class AppGraph private constructor(val appContext: Context) {
 
     val backupManager: BackupManager by lazy {
         BackupManager(appContext, database, prefs, messageRepository, scheduleManager)
+    }
+
+    val autoBackup: AutoBackup by lazy {
+        AutoBackup(appContext, database, prefs, messageRepository, backupManager, diagnostics)
     }
 
     /**

@@ -243,6 +243,10 @@ interface MessageDao {
     @Query("SELECT * FROM messages")
     suspend fun all(): List<MessageEntity>
 
+    /** One page of the history in insertion order, for writing it out without holding all of it. */
+    @Query("SELECT * FROM messages ORDER BY id ASC LIMIT :limit OFFSET :offset")
+    suspend fun page(limit: Int, offset: Int): List<MessageEntity>
+
     @Query("SELECT COUNT(*) FROM messages")
     suspend fun count(): Int
 

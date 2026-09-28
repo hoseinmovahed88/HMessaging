@@ -33,6 +33,11 @@
     <!-- App lock -->
     <uses-permission android:name="android.permission.USE_BIOMETRIC" />
 
+    <!-- Daily backup into the public Download folder; only pre-10 phones gate that on a permission -->
+    <uses-permission
+        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="28" />
+
     <!--
       Keeps a live process so message delivery survives ROMs that refuse to cold-start an app
       from a manifest-declared broadcast receiver.

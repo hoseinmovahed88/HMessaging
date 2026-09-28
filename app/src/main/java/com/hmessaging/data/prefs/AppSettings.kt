@@ -53,6 +53,11 @@ data class AppSettings(
     /** One-shot: whether the sweep for duplicated messages has already run. */
     val duplicatesCleaned: Boolean = false,
     val onboardingDone: Boolean = false,
+    // Backup
+    /** A daily copy of every message in the public Download folder, which outlives the app. */
+    val autoBackupEnabled: Boolean = true,
+    val lastBackupAt: Long = 0L,
+    val lastBackupCount: Int = 0,
 ) {
     val awayModeActive: Boolean get() = awayUntil > System.currentTimeMillis()
 

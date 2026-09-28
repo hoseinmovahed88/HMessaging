@@ -24,6 +24,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
+import java.io.InputStream
+import java.io.OutputStream
 
 /** Exports and restores everything the user configured, as a single human-readable JSON file. */
 class BackupManager(
@@ -51,25 +53,34 @@ class BackupManager(
 
     suspend fun export(target: Uri, includeMessages: Boolean): Result<Int> = withContext(Dispatchers.IO) {
         runCatching {
-            val payload = buildBackup(includeMessages)
-            val text = json.encodeToString(BackupFile.serializer(), payload)
             context.contentResolver.openOutputStream(target, "wt")?.use { stream ->
-                stream.write(text.toByteArray(Charsets.UTF_8))
+                exportTo(stream, includeMessages)
             } ?: error("Could not open the selected file for writing")
-            text.length
         }
+    }
+
+    /** Writes the backup document to an already-open stream; returns its length in characters. */
+    suspend fun exportTo(stream: OutputStream, includeMessages: Boolean): Int {
+        val payload = buildBackup(includeMessages)
+        val text = json.encodeToString(BackupFile.serializer(), payload)
+        stream.write(text.toByteArray(Charsets.UTF_8))
+        return text.length
     }
 
     suspend fun import(source: Uri, replaceExisting: Boolean): Result<ImportResult> =
         withContext(Dispatchers.IO) {
             runCatching {
-                val text = context.contentResolver.openInputStream(source)?.use { stream ->
-                    stream.readBytes().toString(Charsets.UTF_8)
+                context.contentResolver.openInputStream(source)?.use { stream ->
+                    importFrom(stream, replaceExisting)
                 } ?: error("Could not open the selected file for reading")
-                val payload = json.decodeFromString(BackupFile.serializer(), text)
-                applyBackup(payload, replaceExisting)
             }
         }
+
+    suspend fun importFrom(stream: InputStream, replaceExisting: Boolean): ImportResult {
+        val text = stream.readBytes().toString(Charsets.UTF_8)
+        val payload = json.decodeFromString(BackupFile.serializer(), text)
+        return applyBackup(payload, replaceExisting)
+    }
 
     private suspend fun buildBackup(includeMessages: Boolean): BackupFile {
         val settings = prefs.settings.first()
@@ -145,7 +156,7 @@ class BackupManager(
             },
             messages = if (includeMessages) {
                 database.messageDao().all().map {
-                    BackupMessage(it.address, it.body, it.date, it.type.name, it.read, it.isOtp)
+                    BackupMessage(it.address, it.body, it.date, it.type.name, it.read, it.isOtp, it.subscriptionId)
                 }
             } else {
                 emptyList()
@@ -245,6 +256,7 @@ class BackupManager(
                         type = type,
                         read = message.read,
                         status = if (type == MessageType.SENT) DeliveryStatus.SENT else DeliveryStatus.NONE,
+                        subscriptionId = message.subscriptionId,
                         isOtp = message.isOtp,
                     ),
                 )

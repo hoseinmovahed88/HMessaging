@@ -201,6 +201,14 @@
     <string name="settings_permissions">Permissions and roles</string>
     <string name="settings_exact_alarms">Exact alarms (on-time scheduled messages)</string>
     <string name="settings_backup_include_messages">Include message history in the backup</string>
+    <string name="settings_auto_backup">Automatic daily backup</string>
+    <string name="settings_auto_backup_desc">Writes every message to Download/HMessaging once a day. That folder belongs to you, not to the app, so removing the app does not remove the copy.</string>
+    <string name="settings_backup_now">Back up now</string>
+    <string name="settings_backup_last">Last backup: %1$d messages, %2$s</string>
+    <string name="settings_backup_never">No backup written yet</string>
+    <string name="settings_restore_folder">Restore from the backup folder</string>
+    <string name="settings_restore_folder_desc">Pick the HMessaging folder inside Download. Messages already here are skipped, and the restored ones are written back into the phone\'s SMS store too.</string>
+    <string name="settings_restore_none">No HMessaging backup found in that folder</string>
     <string name="about_body">HMessaging is an SMS-only messenger. Receiving, blocking, auto-reply, forwarding and OTP capture all require it to be the default SMS app, because Android delivers incoming messages only to that app.</string>
     <string name="app_locked">Unlock HMessaging</string>
     <string name="unlock">Unlock</string>

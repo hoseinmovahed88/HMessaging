@@ -9,6 +9,7 @@ import android.os.Build
 import android.os.PowerManager
 import android.provider.Telephony
 import android.telephony.TelephonyManager
+import com.hmessaging.backup.AutoBackup
 import com.hmessaging.data.db.dao.DiagDao
 import com.hmessaging.data.db.dao.MessageDao
 import com.hmessaging.data.db.dao.ThreadDao
@@ -313,6 +314,30 @@ class Diagnostics(
             ),
         )
 
+        // The copy that survives the app being removed. Not a symptom of anything until it is
+        // missing on a phone that has been asked to keep one.
+        val backup = prefs.settings.first()
+        val backupAge = System.currentTimeMillis() - backup.lastBackupAt
+        add(
+            Check(
+                label = "Backup",
+                severity = when {
+                    !backup.autoBackupEnabled -> Severity.WARNING
+                    backup.lastBackupAt == 0L -> Severity.WARNING
+                    backupAge > BACKUP_STALE_MS -> Severity.WARNING
+                    else -> Severity.OK
+                },
+                detail = when {
+                    !backup.autoBackupEnabled -> "automatic backup is off — removing the app loses its messages"
+                    backup.lastBackupAt == 0L -> "none written yet — the first one runs shortly after install"
+                    else ->
+                        "${backup.lastBackupCount} messages in ${AutoBackup.RELATIVE_PATH} at " +
+                            TimeFormat.full(backup.lastBackupAt) +
+                            if (backupAge > BACKUP_STALE_MS) " — older than expected" else ""
+                },
+            ),
+        )
+
         val alreadyImported = prefs.settings.first().systemSmsImported
         add(
             Check(
@@ -387,11 +412,15 @@ class Diagnostics(
     suspend fun clear() = diagDao.clear()
 
     companion object {
+        /** Two missed daily runs before the diagnostics screen calls a backup old. */
+        private const val BACKUP_STALE_MS = 2L * 24 * 60 * 60 * 1000
+
         const val KIND_SMS_DELIVER = "SMS_DELIVER"
         const val KIND_SMS_RECEIVED = "SMS_RECEIVED"
         const val KIND_WAP_PUSH = "WAP_PUSH"
         const val KIND_STORED = "STORED"
         const val KIND_NOTIFY = "NOTIFY"
+        const val KIND_BACKUP = "BACKUP"
         const val KIND_BLOCKED = "BLOCKED"
         const val KIND_DUPLICATE = "DUPLICATE"
         const val KIND_SYNC = "SYNC"
