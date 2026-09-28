@@ -1,8 +1,8 @@
 {
-  "versionCode": 49,
-  "versionName": "1.0.48",
-  "url": "https://github.com/hoseinmovahed88/HMessaging/raw/claude/android-messenger-app-izbr89/dist/HMessaging-1.0.48.apk",
-  "sha256": "55c7c266bcd273e0c9465e283f234d04104dc6eef56e99d07eb54e6b78f28f80",
-  "size": 2633468,
-  "notes": "رفع حفرهٔ درون‌ریزی: پیام‌های نوشته‌شدهٔ خود اپ در حافظهٔ گوشی دیگر به‌اشتباه تکراری شمرده نمی‌شوند. اگر گوشی بیشتر از اپ پیام داشته باشد، خودکار کل حافظه یک بار پیمایش می‌شود. پشتیبان خودکار روزانه در Download/HMessaging. راهنمای کلید صدای شیائومی."
+  "versionCode": 50,
+  "versionName": "1.0.49",
+  "url": "https://github.com/hoseinmovahed88/HMessaging/raw/claude/android-messenger-app-izbr89/dist/HMessaging-1.0.49.apk",
+  "sha256": "d4f73a3e47da567677bd9995bb1a65f55b0cd4f44fd8a889a1d8b1ee21d1176e",
+  "size": 2634304,
+  "notes": "انتخاب جمعی در فهرست گفتگوها (نگه داشتن انگشت): انتخاب همه، خوانده، خوانده‌نشده، بایگانی، حذف. وضعیت خوانده‌شدن حالا در حافظهٔ پیامک گوشی هم ثبت می‌شود؛ حذف گفتگو ردیف‌هایش را از گوشی هم پاک می‌کند."
 }
