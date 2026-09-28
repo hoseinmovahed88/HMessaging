@@ -274,7 +274,7 @@ fun DiagnosticsScreen(
                             subtitle = stringResource(
                                 R.string.diag_role_facts_detail,
                                 stringResource(if (provider.roleHeld) R.string.diag_yes else R.string.diag_no),
-                                provider.platformDefault ?: stringResource(R.string.diag_none),
+                                provider.platformDefault ?: stringResource(R.string.diag_no_package),
                                 opLabel(provider.writeOp),
                                 opLabel(provider.readOp),
                             ),

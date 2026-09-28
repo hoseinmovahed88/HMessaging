@@ -297,6 +297,7 @@
     <string name="diag_provider_row">%1$s · گفتگوی %2$d</string>
     <string name="diag_yes">بله</string>
     <string name="diag_no">نه</string>
+    <string name="diag_no_package">هیچ</string>
     <string name="diag_provider_op_off">نه — اپ نقش پیامک را دارد، ولی مجوز اندروید برای نوشتنش در حافظهٔ پیامک خاموش است، پس هر نوشتنی بی‌صدا دور ریخته می‌شود. از پایین نقش را دوباره بگیرید.</string>
     <string name="diag_role_facts">نقش، آن‌طور که گوشی گزارش می‌دهد</string>
     <string name="diag_role_facts_detail">نقش گرفته شده: %1$s · سیستم نام می‌برد: %2$s · نوشتن حافظهٔ پیامک: %3$s · خواندن حافظهٔ پیامک: %4$s</string>
