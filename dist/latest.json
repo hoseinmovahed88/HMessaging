@@ -1,8 +1,8 @@
 {
-  "versionCode": 44,
-  "versionName": "1.0.43",
-  "url": "https://github.com/hoseinmovahed88/HMessaging/raw/claude/android-messenger-app-izbr89/dist/HMessaging-1.0.43.apk",
-  "sha256": "e8086fca4bcb5544ca8a8334ff5b40a8ac782eba76f1f45ea18781c8e185eae8",
-  "size": 2613416,
-  "notes": "تشخیص عیب: وضعیت مجوز نوشتن در حافظهٔ پیامک (app-op) کنار نقش و نام پیش‌فرض سیستم؛ ردیف «گرفتن دوبارهٔ نقش پیامک»؛ شمار ردیف‌ها قبل و بعد از نوشتن در لاگ."
+  "versionCode": 46,
+  "versionName": "1.0.45",
+  "url": "https://github.com/hoseinmovahed88/HMessaging/raw/claude/android-messenger-app-izbr89/dist/HMessaging-1.0.45.apk",
+  "sha256": "3a00297c913936b0cd63bf1fa36caa218312d9750deeec577484e659fc8ad61b",
+  "size": 2615404,
+  "notes": "پشتیبان خودکار روزانه در Download/HMessaging (با پاک شدن اپ نمی‌رود) و بازیابی از همان پوشه؛ درون‌ریزی اول تا آخر تاریخچه می‌رود، نه فقط ۵ هزار پیام آخر."
 }
