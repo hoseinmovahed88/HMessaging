@@ -199,7 +199,10 @@ fun HmApp(
                 SettingsScreen(onOpenDrawer = openDrawer)
             }
             composable(Routes.DIAGNOSTICS) {
-                DiagnosticsScreen(onOpenDrawer = openDrawer)
+                DiagnosticsScreen(
+                    onOpenDrawer = openDrawer,
+                    onRequestDefaultSmsApp = onRequestDefaultSmsApp,
+                )
             }
         }
     }

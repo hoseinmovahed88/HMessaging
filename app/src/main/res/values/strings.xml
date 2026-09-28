@@ -308,4 +308,15 @@
     <string name="diag_provider_complete">Every message is in the system store</string>
     <string name="diag_provider_row">%1$s · thread %2$d</string>
     <string name="diag_yes">Yes</string>
+    <string name="diag_no">No</string>
+    <string name="diag_provider_op_off">No — the app holds the SMS role, but Android\'s permission for it to write the SMS store is off, so every write is silently dropped. Grant the role again below.</string>
+    <string name="diag_role_facts">Role, as the phone reports it</string>
+    <string name="diag_role_facts_detail">Role held: %1$s · platform names: %2$s · write SMS store: %3$s · read SMS store: %4$s</string>
+    <string name="diag_role_regrant">Grant the SMS role again</string>
+    <string name="diag_role_regrant_desc">Android switches on this app\'s permission to write the SMS store only when it grants the role through its own dialog. If the dialog closes at once because the role is already held, set another app as the default messaging app first, then tap this again.</string>
+    <string name="diag_op_allowed">allowed</string>
+    <string name="diag_op_ignored">ignored</string>
+    <string name="diag_op_errored">errored</string>
+    <string name="diag_op_default">default (denied)</string>
+    <string name="diag_op_unknown">unknown</string>
 </resources>

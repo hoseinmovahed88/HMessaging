@@ -63,7 +63,21 @@ class MainActivity : AppCompatActivity() {
 
     private val roleLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult(),
-    ) { importSystemSmsOnce() }
+    ) { result ->
+        // The result code alone says whether the dialog was shown and accepted; the app-op
+        // afterwards says whether the platform did what a grant is supposed to do. Both go in
+        // the log, because a dialog that closes at once (the role was already held) changes
+        // nothing, and the reader needs to be able to see that.
+        val graph = AppGraph.from(this)
+        graph.applicationScope.launch {
+            graph.diagnostics.record(
+                Diagnostics.KIND_SYNC,
+                "SMS role request returned ${result.resultCode}; write permission is now " +
+                    AppRoles.smsWriteOp(this@MainActivity).name.lowercase(),
+            )
+        }
+        importSystemSmsOnce()
+    }
 
     private var unlocked by mutableStateOf(false)
     private var openThreadId by mutableStateOf<Long?>(null)

@@ -9,6 +9,7 @@ import com.hmessaging.notify.AlertProblem
 import com.hmessaging.sms.SmsImporter
 import com.hmessaging.sms.SystemSmsWriter
 import com.hmessaging.system.Diagnostics
+import com.hmessaging.util.AppRoles
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -37,6 +38,10 @@ class DiagnosticsViewModel(private val graph: AppGraph) : ViewModel() {
 
     data class ProviderView(
         val canWrite: Boolean = false,
+        val roleHeld: Boolean = false,
+        val platformDefault: String? = null,
+        val writeOp: AppRoles.OpState = AppRoles.OpState.UNKNOWN,
+        val readOp: AppRoles.OpState = AppRoles.OpState.UNKNOWN,
         val total: Int = 0,
         val threaded: Int = 0,
         val awaitingBackfill: Int = 0,
@@ -75,6 +80,10 @@ class DiagnosticsViewModel(private val graph: AppGraph) : ViewModel() {
         val (total, threaded) = runCatching { graph.systemSmsWriter.rowStats() }.getOrDefault(0 to 0)
         _provider.value = ProviderView(
             canWrite = graph.systemSmsWriter.canWrite(),
+            roleHeld = AppRoles.isSmsRoleHeld(graph.appContext),
+            platformDefault = AppRoles.platformDefaultSmsPackage(graph.appContext),
+            writeOp = AppRoles.smsWriteOp(graph.appContext),
+            readOp = AppRoles.smsReadOp(graph.appContext),
             total = total,
             threaded = threaded,
             awaitingBackfill = runCatching { graph.messageDao.countWithoutSystemId() }.getOrDefault(0),
@@ -93,6 +102,7 @@ class DiagnosticsViewModel(private val graph: AppGraph) : ViewModel() {
      */
     fun backfillProviderNow() = viewModelScope.launch {
         busy.value = true
+        val before = runCatching { graph.systemSmsWriter.rowStats().first }.getOrDefault(0)
         val forgotten = runCatching { graph.messageRepository.reconcileSystemProvider() }.getOrDefault(0)
         var written = 0
         var refused = 0
@@ -108,6 +118,7 @@ class DiagnosticsViewModel(private val graph: AppGraph) : ViewModel() {
             if (pass.written == 0) break
         }
         val rethreaded = runCatching { graph.messageRepository.repairProviderThreadIds() }.getOrDefault(0)
+        val after = runCatching { graph.systemSmsWriter.rowStats().first }.getOrDefault(0)
         graph.diagnostics.record(
             Diagnostics.KIND_SYNC,
             buildString {
@@ -115,13 +126,14 @@ class DiagnosticsViewModel(private val graph: AppGraph) : ViewModel() {
                 when {
                     written > 0 -> append("wrote $written message(s) into the system SMS store")
                     refused > 0 -> append(
-                        "the system SMS store refused the writes — Android accepts them only from " +
-                            "the app it names as the default, and it does not name this one",
+                        "the system SMS store dropped every write — its write permission for " +
+                            "this app is ${AppRoles.smsWriteOp(graph.appContext).name.lowercase()}",
                     )
 
                     else -> append("nothing left to write into the system SMS store")
                 }
                 if (rethreaded > 0) append("; gave $rethreaded row(s) a thread id")
+                append("; rows in content://sms: $before → $after")
             },
         )
         busy.value = false

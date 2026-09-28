@@ -105,11 +105,36 @@ class Diagnostics(
                 detail = when {
                     defaultPackage == context.packageName -> "this app"
                     roleHeld ->
-                        "the SMS role is held, which is what counts; this phone's older " +
+                        "the SMS role is held, so messages are delivered here; this phone's " +
                             "getDefaultSmsPackage reports " + (defaultPackage ?: "none") +
-                            ", which is a known vendor quirk and harmless"
+                            " — see the SMS store write permission below for what that costs"
                     defaultPackage == null -> "the platform reports no default SMS app"
                     else -> "currently $defaultPackage"
+                },
+            ),
+        )
+
+        // The switch the SMS provider actually consults before accepting a write. Set by the
+        // platform when it grants the role through its own dialog, and not by a vendor settings
+        // screen that records the holder some other way — in which case the app holds the role,
+        // receives every message, and has every insert silently thrown away.
+        val writeOp = AppRoles.smsWriteOp(context)
+        add(
+            Check(
+                label = "SMS store write permission",
+                severity = when {
+                    writeOp == AppRoles.OpState.ALLOWED -> Severity.OK
+                    roleHeld || defaultPackage == context.packageName -> Severity.PROBLEM
+                    else -> Severity.WARNING
+                },
+                detail = when (writeOp) {
+                    AppRoles.OpState.ALLOWED -> "allowed — the phone's SMS store accepts this app's writes"
+                    AppRoles.OpState.UNKNOWN -> "could not be read"
+                    else ->
+                        "${writeOp.name.lowercase()} — the SMS store silently drops every write " +
+                            "from this app, so no other app on the phone can see its messages. " +
+                            "Android turns this on only when it grants the SMS role through its " +
+                            "own dialog: use \"grant the SMS role again\" below"
                 },
             ),
         )

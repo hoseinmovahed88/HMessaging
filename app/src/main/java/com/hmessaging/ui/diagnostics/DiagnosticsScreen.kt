@@ -52,6 +52,7 @@ import com.hmessaging.util.TimeFormat
 @Composable
 fun DiagnosticsScreen(
     onOpenDrawer: () -> Unit,
+    onRequestDefaultSmsApp: () -> Unit = {},
     viewModel: DiagnosticsViewModel = viewModel(factory = HmViewModelFactory.Factory),
 ) {
     val report by viewModel.state.collectAsStateWithLifecycle()
@@ -257,8 +258,33 @@ fun DiagnosticsScreen(
                         HyperRow(
                             title = stringResource(R.string.diag_provider_writable),
                             subtitle = stringResource(
-                                if (provider.canWrite) R.string.diag_yes else R.string.diag_provider_not_default,
+                                when {
+                                    provider.writeOp == AppRoles.OpState.ALLOWED -> R.string.diag_yes
+                                    provider.canWrite -> R.string.diag_provider_op_off
+                                    else -> R.string.diag_provider_not_default
+                                },
                             ),
+                        )
+                        HyperRowDivider()
+                        // The three facts that decide it, side by side: what the role manager
+                        // says, what the platform's older question says, and the switch the
+                        // SMS provider actually consults.
+                        HyperRow(
+                            title = stringResource(R.string.diag_role_facts),
+                            subtitle = stringResource(
+                                R.string.diag_role_facts_detail,
+                                stringResource(if (provider.roleHeld) R.string.diag_yes else R.string.diag_no),
+                                provider.platformDefault ?: stringResource(R.string.diag_none),
+                                opLabel(provider.writeOp),
+                                opLabel(provider.readOp),
+                            ),
+                        )
+                        HyperRowDivider()
+                        HyperRow(
+                            title = stringResource(R.string.diag_role_regrant),
+                            subtitle = stringResource(R.string.diag_role_regrant_desc),
+                            showChevron = true,
+                            onClick = onRequestDefaultSmsApp,
                         )
                         HyperRowDivider()
                         HyperRow(
@@ -373,3 +399,14 @@ private fun kindColor(kind: String) = when (kind) {
     Diagnostics.KIND_STORED -> LocalHyperColors.current.success
     else -> MaterialTheme.colorScheme.primary
 }
+
+@Composable
+private fun opLabel(state: AppRoles.OpState): String = stringResource(
+    when (state) {
+        AppRoles.OpState.ALLOWED -> R.string.diag_op_allowed
+        AppRoles.OpState.IGNORED -> R.string.diag_op_ignored
+        AppRoles.OpState.ERRORED -> R.string.diag_op_errored
+        AppRoles.OpState.DEFAULT -> R.string.diag_op_default
+        AppRoles.OpState.UNKNOWN -> R.string.diag_op_unknown
+    },
+)
