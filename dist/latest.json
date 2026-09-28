@@ -1,8 +1,8 @@
 {
-  "versionCode": 46,
-  "versionName": "1.0.45",
-  "url": "https://github.com/hoseinmovahed88/HMessaging/raw/claude/android-messenger-app-izbr89/dist/HMessaging-1.0.45.apk",
-  "sha256": "3a00297c913936b0cd63bf1fa36caa218312d9750deeec577484e659fc8ad61b",
-  "size": 2615404,
-  "notes": "پشتیبان خودکار روزانه در Download/HMessaging (با پاک شدن اپ نمی‌رود) و بازیابی از همان پوشه؛ درون‌ریزی اول تا آخر تاریخچه می‌رود، نه فقط ۵ هزار پیام آخر."
+  "versionCode": 49,
+  "versionName": "1.0.48",
+  "url": "https://github.com/hoseinmovahed88/HMessaging/raw/claude/android-messenger-app-izbr89/dist/HMessaging-1.0.48.apk",
+  "sha256": "55c7c266bcd273e0c9465e283f234d04104dc6eef56e99d07eb54e6b78f28f80",
+  "size": 2633468,
+  "notes": "رفع حفرهٔ درون‌ریزی: پیام‌های نوشته‌شدهٔ خود اپ در حافظهٔ گوشی دیگر به‌اشتباه تکراری شمرده نمی‌شوند. اگر گوشی بیشتر از اپ پیام داشته باشد، خودکار کل حافظه یک بار پیمایش می‌شود. پشتیبان خودکار روزانه در Download/HMessaging. راهنمای کلید صدای شیائومی."
 }
