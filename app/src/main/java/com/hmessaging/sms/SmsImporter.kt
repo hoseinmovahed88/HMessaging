@@ -346,7 +346,8 @@ class SmsImporter(
         /** Take the whole history in one pass, however large it is. */
         const val NO_LIMIT = Int.MAX_VALUE
 
-        private const val DEFAULT_LIMIT = 5000
+        /** Enough for a first screen within seconds; the first open follows it with the rest. */
+        const val DEFAULT_LIMIT = 5000
         private const val PROGRESS_STRIDE = 250
         private const val SYNC_LIMIT = 500
         private const val BATCH_SIZE = 200

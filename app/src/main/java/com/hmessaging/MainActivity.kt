@@ -30,6 +30,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import com.hmessaging.data.prefs.AppSettings
 import com.hmessaging.di.AppGraph
+import com.hmessaging.sms.SmsImporter
 import com.hmessaging.sms.SmsSyncService
 import com.hmessaging.sms.WatcherNeed
 import com.hmessaging.system.Diagnostics
@@ -298,18 +299,39 @@ class MainActivity : AppCompatActivity() {
         val graph = AppGraph.from(this)
         graph.applicationScope.launch {
             if (graph.prefs.settings.first().systemSmsImported) return@launch
-            val progress = graph.smsImporter.importAll()
-            // Only latch the flag on a successful read. Latching it after a failed query is what
-            // left the app with an empty list and no second attempt.
-            if (progress.succeeded) graph.prefs.setSystemSmsImported(true)
+            // Two passes. The first is capped so the list fills within seconds of the first
+            // open; the second takes everything else, however long the history is. It used to
+            // stop after the first and mark the import done — and on a phone holding a hundred
+            // thousand messages that left all but the newest few thousand on the phone and out
+            // of the app, which looked exactly like losing them.
+            val first = graph.smsImporter.importAll()
             graph.diagnostics.record(
                 Diagnostics.KIND_IMPORT,
-                if (progress.succeeded) {
-                    "imported ${progress.imported}, skipped ${progress.skipped}"
+                if (first.succeeded) {
+                    "imported ${first.imported}, skipped ${first.skipped}"
                 } else {
-                    "FAILED — ${progress.error}; will retry"
+                    "FAILED — ${first.error}; will retry"
                 },
             )
+            if (!first.succeeded) return@launch
+            val rest = if (first.imported >= SmsImporter.DEFAULT_LIMIT) {
+                graph.smsImporter.importAll(SmsImporter.NO_LIMIT).also {
+                    graph.diagnostics.record(
+                        Diagnostics.KIND_IMPORT,
+                        if (it.succeeded) {
+                            "rest of the history: imported ${it.imported}, skipped ${it.skipped}"
+                        } else {
+                            "rest of the history FAILED — ${it.error}; will retry"
+                        },
+                    )
+                }
+            } else {
+                null
+            }
+            // Only latch the flag once the whole store has been read. Latching it after a failed
+            // query is what left the app with an empty list and no second attempt; latching it
+            // after a capped pass is what left it with a short one.
+            if (rest == null || rest.succeeded) graph.prefs.setSystemSmsImported(true)
         }
     }
 
