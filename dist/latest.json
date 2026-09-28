@@ -1,8 +1,8 @@
 {
-  "versionCode": 43,
-  "versionName": "1.0.42",
-  "url": "https://github.com/hoseinmovahed88/HMessaging/raw/claude/android-messenger-app-izbr89/dist/HMessaging-1.0.42.apk",
-  "sha256": "f5920055b083a1e457daafc74760150c81f476dba1b041accf0e90e2e084c605",
-  "size": 2610788,
-  "notes": "اعلان دائمی برداشته شد: ناظر پس‌زمینه تا وقتی این اپ پیام‌رسان پیش‌فرض است خاموش می‌ماند. کد تأیید دیگر بی‌صدا نمی‌رسد؛ کانال اعلان از نو ساخته شد. در تشخیص عیب: «صدا و صفحه‌قفل» و «ارسال اعلان آزمایشی». اعلام دید بسته‌ها برای نقش پیامک در مانیفست."
+  "versionCode": 44,
+  "versionName": "1.0.43",
+  "url": "https://github.com/hoseinmovahed88/HMessaging/raw/claude/android-messenger-app-izbr89/dist/HMessaging-1.0.43.apk",
+  "sha256": "e8086fca4bcb5544ca8a8334ff5b40a8ac782eba76f1f45ea18781c8e185eae8",
+  "size": 2613416,
+  "notes": "تشخیص عیب: وضعیت مجوز نوشتن در حافظهٔ پیامک (app-op) کنار نقش و نام پیش‌فرض سیستم؛ ردیف «گرفتن دوبارهٔ نقش پیامک»؛ شمار ردیف‌ها قبل و بعد از نوشتن در لاگ."
 }
