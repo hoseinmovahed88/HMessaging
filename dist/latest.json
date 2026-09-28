@@ -1,8 +1,8 @@
 {
-  "versionCode": 42,
-  "versionName": "1.0.41",
-  "url": "https://github.com/hoseinmovahed88/HMessaging/raw/claude/android-messenger-app-izbr89/dist/HMessaging-1.0.41.apk",
-  "sha256": "fcc07a5a4cc7f92cb317fc147b2f8df594586d020e4f7f1bea99139990c647fc",
-  "size": 2610668,
-  "notes": "اعلان دائمی برداشته شد: ناظر پس‌زمینه تا وقتی این اپ پیام‌رسان پیش‌فرض است خاموش می‌ماند. کد تأیید دیگر بی‌صدا نمی‌رسد؛ کانال اعلان از نو ساخته شد. در تشخیص عیب: ردیف «صدا و صفحه‌قفل» و «ارسال اعلان آزمایشی»."
+  "versionCode": 43,
+  "versionName": "1.0.42",
+  "url": "https://github.com/hoseinmovahed88/HMessaging/raw/claude/android-messenger-app-izbr89/dist/HMessaging-1.0.42.apk",
+  "sha256": "f5920055b083a1e457daafc74760150c81f476dba1b041accf0e90e2e084c605",
+  "size": 2610788,
+  "notes": "اعلان دائمی برداشته شد: ناظر پس‌زمینه تا وقتی این اپ پیام‌رسان پیش‌فرض است خاموش می‌ماند. کد تأیید دیگر بی‌صدا نمی‌رسد؛ کانال اعلان از نو ساخته شد. در تشخیص عیب: «صدا و صفحه‌قفل» و «ارسال اعلان آزمایشی». اعلام دید بسته‌ها برای نقش پیامک در مانیفست."
 }
