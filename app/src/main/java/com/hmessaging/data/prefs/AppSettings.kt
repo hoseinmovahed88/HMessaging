@@ -58,6 +58,8 @@ data class AppSettings(
     val autoBackupEnabled: Boolean = true,
     val lastBackupAt: Long = 0L,
     val lastBackupCount: Int = 0,
+    /** The SMS-store row count at which the last full walk for missing messages ran. */
+    val gapCheckedAtRows: Long = -1L,
 ) {
     val awayModeActive: Boolean get() = awayUntil > System.currentTimeMillis()
 

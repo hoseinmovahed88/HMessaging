@@ -228,6 +228,10 @@ interface MessageDao {
     @Query("SELECT COUNT(*) FROM messages WHERE systemId IS NULL")
     suspend fun countWithoutSystemId(): Int
 
+    /** How many of the phone's SMS-store rows this app knows it holds. */
+    @Query("SELECT COUNT(*) FROM messages WHERE systemId IS NOT NULL")
+    suspend fun countWithSystemId(): Int
+
     @Query("UPDATE messages SET isOtp = 0 WHERE id = :id")
     suspend fun clearOtpFlag(id: Long)
 

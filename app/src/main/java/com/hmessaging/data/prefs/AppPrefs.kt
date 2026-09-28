@@ -93,6 +93,7 @@ class AppPrefs(context: Context) {
     suspend fun setDuplicatesCleaned(value: Boolean) = put(Keys.DUPLICATES_CLEANED, value)
     suspend fun setOnboardingDone(value: Boolean) = put(Keys.ONBOARDING, value)
     suspend fun setAutoBackupEnabled(value: Boolean) = put(Keys.AUTO_BACKUP, value)
+    suspend fun setGapCheckedAtRows(value: Long) = put(Keys.GAP_CHECKED_ROWS, value)
     suspend fun setLastBackup(at: Long, count: Int) {
         store.edit {
             it[Keys.LAST_BACKUP_AT] = at
@@ -154,6 +155,7 @@ class AppPrefs(context: Context) {
             autoBackupEnabled = this[Keys.AUTO_BACKUP] ?: defaults.autoBackupEnabled,
             lastBackupAt = this[Keys.LAST_BACKUP_AT] ?: defaults.lastBackupAt,
             lastBackupCount = this[Keys.LAST_BACKUP_COUNT] ?: defaults.lastBackupCount,
+            gapCheckedAtRows = this[Keys.GAP_CHECKED_ROWS] ?: defaults.gapCheckedAtRows,
         )
     }
 
@@ -193,6 +195,7 @@ class AppPrefs(context: Context) {
         val AUTO_BACKUP = booleanPreferencesKey("auto_backup")
         val LAST_BACKUP_AT = longPreferencesKey("last_backup_at")
         val LAST_BACKUP_COUNT = intPreferencesKey("last_backup_count")
+        val GAP_CHECKED_ROWS = longPreferencesKey("gap_checked_at_rows")
         val DELIVERED_BY_BROADCAST = longPreferencesKey("delivered_by_broadcast")
         val MISSED_BY_BROADCAST = longPreferencesKey("missed_by_broadcast")
         val BANK_SCAN_CURSOR = longPreferencesKey("bank_scan_cursor")

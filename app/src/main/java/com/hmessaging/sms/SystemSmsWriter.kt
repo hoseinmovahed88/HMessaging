@@ -287,6 +287,19 @@ class SystemSmsWriter(private val context: Context) {
         }.getOrNull().orEmpty()
     }
 
+    /** How many rows the platform store holds, or null when it could not be asked. */
+    suspend fun rowCount(): Int? = withContext(Dispatchers.IO) {
+        runCatching {
+            context.contentResolver.query(
+                Telephony.Sms.CONTENT_URI,
+                arrayOf(Telephony.Sms._ID),
+                null,
+                null,
+                null,
+            )?.use { it.count }
+        }.getOrNull()
+    }
+
     /** How many rows the platform store holds, and how many of those carry a thread id. */
     suspend fun rowStats(): Pair<Int, Int> = withContext(Dispatchers.IO) {
         runCatching {

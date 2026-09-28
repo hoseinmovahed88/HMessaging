@@ -188,6 +188,7 @@ class MainActivity : AppCompatActivity() {
             if (progress.imported > 0) {
                 graph.diagnostics.record(Diagnostics.KIND_SYNC, "on open — picked up ${progress.imported}")
             }
+            healGaps(graph)
             graph.messageRepository.refreshContactNames(onlyMissing = true)
             // Once only, and never again: the import guard stops new duplicates, so a sweep that
             // ran on every open would eventually start eating messages deliberately sent twice.
@@ -251,6 +252,39 @@ class MainActivity : AppCompatActivity() {
             // Quiet unless it finds something; see UpdateCoordinator.
             graph.updates.checkIfDue()
         }
+    }
+
+    /**
+     * Finds messages the phone holds and this app does not, wherever in the history they are.
+     *
+     * The sync above only reads rows newer than the newest one held, which is the right cheap
+     * question every open — and the wrong one once, when the app's own history has a hole in the
+     * middle: a database restored from an older copy, an import that stopped short, anything that
+     * left the phone knowing more than the app while the app's newest message stayed newer than
+     * the hole. Nothing this app did then would ever look back. So when the phone's store holds
+     * noticeably more rows than this app has recorded from it, the whole store is walked once,
+     * and that walk is not repeated until the row count changes.
+     */
+    private suspend fun healGaps(graph: AppGraph) {
+        val providerRows = graph.systemSmsWriter.rowCount() ?: return
+        val held = graph.messageDao.countWithSystemId()
+        val settings = graph.prefs.settings.first()
+        if (providerRows.toLong() == settings.gapCheckedAtRows) return
+        if (providerRows - held <= GAP_TOLERANCE) {
+            graph.prefs.setGapCheckedAtRows(providerRows.toLong())
+            return
+        }
+        val walk = graph.smsImporter.importAll(SmsImporter.NO_LIMIT)
+        graph.diagnostics.record(
+            Diagnostics.KIND_IMPORT,
+            "the phone holds $providerRows rows and this app had $held of them — " +
+                if (walk.succeeded) {
+                    "walked the whole store, picked up ${walk.imported}, skipped ${walk.skipped}"
+                } else {
+                    "walk FAILED: ${walk.error}"
+                },
+        )
+        if (walk.succeeded) graph.prefs.setGapCheckedAtRows(providerRows.toLong())
     }
 
     /** App lock is only meaningful when the device can actually authenticate. */
@@ -344,6 +378,13 @@ class MainActivity : AppCompatActivity() {
             BiometricManager.Authenticators.DEVICE_CREDENTIAL
 
         private const val RESUME_WORK_DELAY_MS = 700L
+
+        /**
+         * Rows the phone may hold beyond what this app recorded without that meaning a hole:
+         * duplicates the store itself carries, and rows other apps wrote before this one was
+         * default. Anything past this is worth a full walk.
+         */
+        private const val GAP_TOLERANCE = 20
     }
 }
 
