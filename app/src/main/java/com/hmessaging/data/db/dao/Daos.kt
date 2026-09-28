@@ -325,6 +325,11 @@ interface MessageDao {
      * replace the timestamp on insert.
      *
      * Direction is compared, so a message quoted back to the person who sent it stays a message.
+     *
+     * And only messages not yet tied to a row of the phone's store can match. A held message that
+     * already has its own row is that row's message, not a copy of a different one; letting it
+     * match turned every genuine repeat — the same text from the same sender twice within the
+     * window — into a "duplicate" that was never stored.
      */
     @Query(
         """
@@ -333,6 +338,7 @@ interface MessageDao {
              WHERE address = :address
                AND body = :body
                AND date BETWEEN :from AND :to
+               AND systemId IS NULL
                AND (
                    (:incoming = 1 AND type = 'INBOX')
                 OR (:incoming = 0 AND type IN ('SENT', 'OUTBOX', 'FAILED'))
