@@ -140,7 +140,12 @@ class SmsImporter(
                 // received it. Checking only one of them imports every such message a second time.
                 val dateSent = if (sentColumn >= 0) cursor.getLong(sentColumn) else 0L
                 val known1 = !known.add("$address|$date")
-                val known2 = dateSent > 0 && !known.add("$address|$dateSent")
+                // Only when the two clocks differ. A row this app wrote itself carries the same
+                // time in both, and asking the set about the second one right after adding the
+                // first made every such row look like a copy of itself — which skipped every
+                // message received since the day this app became the default, however many
+                // times the import was run.
+                val known2 = dateSent > 0 && dateSent != date && !known.add("$address|$dateSent")
                 if (known1 || known2) {
                     skipped++
                     continue
