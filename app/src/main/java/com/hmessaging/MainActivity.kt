@@ -190,18 +190,10 @@ class MainActivity : AppCompatActivity() {
             }
             healGaps(graph)
             graph.messageRepository.refreshContactNames(onlyMissing = true)
-            // Once only, and never again: the import guard stops new duplicates, so a sweep that
-            // ran on every open would eventually start eating messages deliberately sent twice.
-            if (!settings.duplicatesCleaned) {
-                val removed = graph.messageRepository.removeDuplicateMessages()
-                graph.prefs.setDuplicatesCleaned(true)
-                if (removed > 0) {
-                    graph.diagnostics.record(
-                        Diagnostics.KIND_SYNC,
-                        "removed $removed duplicated message(s)",
-                    )
-                }
-            }
+            // The one-time sweep for duplicated messages that used to run here is gone. It cleaned up
+            // after a bug fixed long ago, and on a fresh install — where its flag starts unset — it
+            // deleted genuine repeats instead: the same text from the same sender twice within ten
+            // minutes. Phones that needed it ran it already.
             // Keeps going until nothing is left without a provider row: the platform store is the
             // only copy every other app on the phone can see, and this app is the only one allowed
             // to write it. Capped per pass, so a long history fills over several opens rather than

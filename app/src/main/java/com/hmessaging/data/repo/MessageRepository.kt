@@ -192,6 +192,10 @@ class MessageRepository(
         return updated
     }
 
+    /** True only for this exact message: same sender, same words, same timestamp. */
+    suspend fun isStoredExactly(rawAddress: String, body: String, date: Long): Boolean =
+        messageDao.exists(PhoneNumbers.normalize(rawAddress), date, body)
+
     /**
      * True when this message is already stored, whichever route delivered it.
      *

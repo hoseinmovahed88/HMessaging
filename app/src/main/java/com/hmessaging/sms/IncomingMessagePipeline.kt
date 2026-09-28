@@ -77,7 +77,20 @@ class IncomingMessagePipeline(
                 false
             }
         }
-        if (seenInProcess || repository.isAlreadyStored(address, body, receivedAt)) {
+        // How close counts as "the same message" depends on where this one came from. Two
+        // broadcasts of one message — SMS_DELIVER and SMS_RECEIVED, or either and the watcher's
+        // runtime receiver — are read from the same PDU and carry the same timestamp to the
+        // millisecond, so a broadcast is a copy only of an exact match. The ten-minute window is
+        // for a row read back out of the phone's store, which carries the phone's clock rather
+        // than the network's. Applied to broadcasts it discarded every genuine repeat: the same
+        // text from the same sender twice in ten minutes — a second "hello", a resent code, a
+        // bank's identical alert — was thrown away before it was stored anywhere.
+        val alreadyStored = if (source == Source.BROADCAST) {
+            repository.isStoredExactly(address, body, receivedAt)
+        } else {
+            repository.isAlreadyStored(address, body, receivedAt)
+        }
+        if (seenInProcess || alreadyStored) {
             diagnostics.record(Diagnostics.KIND_DUPLICATE, "second copy from $address discarded")
             return
         }
