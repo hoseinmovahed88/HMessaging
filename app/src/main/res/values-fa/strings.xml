@@ -81,6 +81,11 @@
     <string name="mute">بی‌صدا</string>
     <string name="unmute">باصدا</string>
     <string name="mark_read">علامت‌گذاری به عنوان خوانده‌شده</string>
+    <string name="mark_unread">علامت به‌عنوان خوانده‌نشده</string>
+    <string name="select_all">انتخاب همه</string>
+    <string name="clear_selection">لغو انتخاب</string>
+    <string name="delete_threads_title">گفتگوها حذف شوند؟</string>
+    <string name="delete_threads_text">%1$d گفتگو با همهٔ پیام‌هایشان حذف می‌شود، هم از این اپ و هم از حافظهٔ پیامک گوشی.</string>
     <string name="block_number">مسدود کردن شماره</string>
     <string name="export_conversation">خروجی گرفتن از گفت‌وگو</string>
     <string name="delete_conversation">حذف گفت‌وگو</string>

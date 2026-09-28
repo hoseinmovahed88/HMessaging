@@ -89,6 +89,45 @@ class SystemSmsWriter(private val context: Context) {
     }
 
     /**
+     * Marks these rows read (or unread) in the phone's store.
+     *
+     * Read state lives in the store as much as the message does: another app showing the thread
+     * takes it from there, and so does this app when it reads its own history back after a
+     * reinstall — which is how every message the reader had already seen came back as unread.
+     */
+    suspend fun setRead(systemIds: Collection<Long>, read: Boolean): Int = withContext(Dispatchers.IO) {
+        val values = ContentValues().apply {
+            put(Telephony.Sms.READ, if (read) 1 else 0)
+            put(Telephony.Sms.SEEN, if (read) 1 else 0)
+        }
+        systemIds.chunked(ID_CHUNK).sumOf { chunk ->
+            runCatching {
+                context.contentResolver.update(
+                    Telephony.Sms.CONTENT_URI,
+                    values,
+                    "${Telephony.Sms._ID} IN (${placeholders(chunk.size)})",
+                    chunk.map(Long::toString).toTypedArray(),
+                )
+            }.getOrDefault(0)
+        }
+    }
+
+    /** Deletes these rows from the phone's store; a conversation deleted here must not come back on the next import. */
+    suspend fun deleteAll(systemIds: Collection<Long>): Int = withContext(Dispatchers.IO) {
+        systemIds.chunked(ID_CHUNK).sumOf { chunk ->
+            runCatching {
+                context.contentResolver.delete(
+                    Telephony.Sms.CONTENT_URI,
+                    "${Telephony.Sms._ID} IN (${placeholders(chunk.size)})",
+                    chunk.map(Long::toString).toTypedArray(),
+                )
+            }.getOrDefault(0)
+        }
+    }
+
+    private fun placeholders(count: Int): String = List(count) { "?" }.joinToString(",")
+
+    /**
      * Whether it is worth attempting a write at all.
      *
      * Deliberately the loose question — either the platform names this package or the role manager
@@ -324,5 +363,8 @@ class SystemSmsWriter(private val context: Context) {
     private companion object {
         /** Enough to repair a long history in one pass without holding an app open for minutes. */
         const val THREAD_REPAIR_LIMIT = 5_000
+
+        /** Comfortably under SQLite's limit on bound parameters in one statement. */
+        const val ID_CHUNK = 400
     }
 }

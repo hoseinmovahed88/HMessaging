@@ -1,9 +1,22 @@
+@file:OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+
 package com.hmessaging.ui.conversations
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import android.content.Intent
 import androidx.compose.foundation.clickable
+import androidx.compose.ui.graphics.Color
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material.icons.filled.SelectAll
+import androidx.compose.material.icons.filled.MarkEmailUnread
+import androidx.compose.material.icons.filled.MarkEmailRead
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
@@ -119,32 +132,93 @@ fun ConversationsScreen(
     // Back closes the search rather than the screen, the same way it closes a selection in a
     // conversation: the search is the thing on top, so it is the thing back should undo.
     BackHandler(enabled = state.searchOpen) { viewModel.toggleSearch() }
+    // A selection sits above the list the way the search does: back clears it, not the screen.
+    BackHandler(enabled = state.selecting) { viewModel.clearSelection() }
+
+    var confirmDelete by rememberSaveable { mutableStateOf(false) }
+    if (confirmDelete) {
+        val count = state.selected.size
+        AlertDialog(
+            onDismissRequest = { confirmDelete = false },
+            title = { Text(stringResource(R.string.delete_threads_title)) },
+            text = { Text(stringResource(R.string.delete_threads_text, count)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        confirmDelete = false
+                        viewModel.deleteSelected()
+                    },
+                ) { Text(stringResource(R.string.delete)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmDelete = false }) { Text(stringResource(R.string.cancel)) }
+            },
+        )
+    }
 
     HyperScreen(
-        title = stringResource(R.string.nav_conversations),
+        title = if (state.selecting) {
+            stringResource(R.string.selected_count, state.selected.size)
+        } else {
+            stringResource(R.string.nav_conversations)
+        },
         navigationIcon = {
-            HyperIconButton(Icons.Filled.Menu, null, onOpenDrawer)
+            if (state.selecting) {
+                HyperIconButton(Icons.Filled.Close, stringResource(R.string.clear_selection), viewModel::clearSelection)
+            } else {
+                HyperIconButton(Icons.Filled.Menu, null, onOpenDrawer)
+            }
         },
         actions = {
-            HyperIconButton(
-                icon = Icons.Filled.Search,
-                contentDescription = stringResource(R.string.search),
-                onClick = viewModel::toggleSearch,
-            )
-            HyperIconButton(
-                icon = Icons.Filled.Archive,
-                contentDescription = stringResource(R.string.nav_archived),
-                onClick = viewModel::toggleArchivedVisible,
-            )
+            if (state.selecting) {
+                HyperIconButton(
+                    icon = Icons.Filled.SelectAll,
+                    contentDescription = stringResource(R.string.select_all),
+                    onClick = viewModel::selectAllVisible,
+                )
+                HyperIconButton(
+                    icon = Icons.Filled.MarkEmailRead,
+                    contentDescription = stringResource(R.string.mark_read),
+                    onClick = viewModel::markSelectedRead,
+                )
+                HyperIconButton(
+                    icon = Icons.Filled.MarkEmailUnread,
+                    contentDescription = stringResource(R.string.mark_unread),
+                    onClick = viewModel::markSelectedUnread,
+                )
+                HyperIconButton(
+                    icon = Icons.Filled.Archive,
+                    contentDescription = stringResource(R.string.archive),
+                    onClick = viewModel::archiveSelected,
+                )
+                HyperIconButton(
+                    icon = Icons.Filled.Delete,
+                    contentDescription = stringResource(R.string.delete),
+                    onClick = { confirmDelete = true },
+                )
+            } else {
+                HyperIconButton(
+                    icon = Icons.Filled.Search,
+                    contentDescription = stringResource(R.string.search),
+                    onClick = viewModel::toggleSearch,
+                )
+                HyperIconButton(
+                    icon = Icons.Filled.Archive,
+                    contentDescription = stringResource(R.string.nav_archived),
+                    onClick = viewModel::toggleArchivedVisible,
+                )
+            }
         },
         floatingActionButton = {
-            FloatingActionButton(
-                onClick = onNewMessage,
-                shape = RoundedCornerShape(20.dp),
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary,
-            ) {
-                Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.new_message))
+            if (!state.selecting) {
+                FloatingActionButton(
+                    onClick = onNewMessage,
+                    shape = RoundedCornerShape(20.dp),
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                ) {
+                    Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.new_message))
+                }
             }
         },
     ) { padding ->
@@ -442,16 +516,34 @@ private fun ThreadRow(
     var menuOpen by remember { mutableStateOf(false) }
     val title = thread.contactName ?: PhoneNumbers.format(thread.address)
     val unread = thread.unreadCount > 0
+    val selected = thread.id in state.selected
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onOpenThread(thread.id) }
+            .background(
+                if (selected) MaterialTheme.colorScheme.primary.copy(alpha = SelectedRowTint) else Color.Transparent,
+            )
+            // A long press starts a selection; while one is open, a tap extends it rather than
+            // opening the conversation, the way every list with a selection mode behaves.
+            .combinedClickable(
+                onClick = { if (state.selecting) viewModel.toggleSelected(thread.id) else onOpenThread(thread.id) },
+                onLongClick = { viewModel.toggleSelected(thread.id) },
+            )
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        ContactAvatar(name = title, address = thread.address, size = 48)
+        if (selected) {
+            Icon(
+                Icons.Filled.CheckCircle,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(48.dp),
+            )
+        } else {
+            ContactAvatar(name = title, address = thread.address, size = 48)
+        }
 
         Column(modifier = Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -522,7 +614,7 @@ private fun ThreadRow(
             }
         }
 
-        Box {
+        if (!state.selecting) Box {
             HyperIconButton(
                 icon = Icons.Filled.MoreVert,
                 contentDescription = null,
@@ -552,9 +644,9 @@ private fun ThreadRow(
                     },
                 )
                 DropdownMenuItem(
-                    text = { Text(stringResource(R.string.mark_read)) },
+                    text = { Text(stringResource(if (unread) R.string.mark_read else R.string.mark_unread)) },
                     onClick = {
-                        viewModel.markRead(thread.id)
+                        if (unread) viewModel.markRead(thread.id) else viewModel.markUnread(thread.id)
                         menuOpen = false
                     },
                 )
@@ -576,3 +668,6 @@ private fun ThreadRow(
         }
     }
 }
+
+/** How strongly a selected conversation is tinted: visible, not shouting. */
+private const val SelectedRowTint = 0.12f

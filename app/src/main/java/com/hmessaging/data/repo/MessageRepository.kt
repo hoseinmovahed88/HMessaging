@@ -394,8 +394,20 @@ class MessageRepository(
     }
 
     suspend fun markThreadRead(threadId: Long) {
+        // The phone's store first, while the unread rows can still be named: it is where other
+        // apps read the state from, and where this app reads it back from after a reinstall.
+        val rows = messageDao.unreadSystemIdsForThread(threadId)
+        if (rows.isNotEmpty()) systemWriter.setRead(rows, read = true)
         messageDao.markThreadRead(threadId)
         threadDao.clearUnread(threadId)
+    }
+
+    /** Puts one conversation back in the unread pile: its newest incoming message becomes unread. */
+    suspend fun markThreadUnread(threadId: Long) {
+        val newest = messageDao.newestIncoming(threadId) ?: return
+        messageDao.markUnread(newest.id)
+        newest.systemId?.let { systemWriter.setRead(listOf(it), read = false) }
+        threadDao.setUnread(threadId, 1)
     }
 
     suspend fun setPinned(threadId: Long, pinned: Boolean) = threadDao.setPinned(threadId, pinned)
@@ -410,6 +422,10 @@ class MessageRepository(
     }
 
     suspend fun deleteThread(threadId: Long) {
+        // From the phone's store as well; otherwise the next walk of the store would find the
+        // messages missing from this app and put the conversation straight back.
+        val rows = messageDao.systemIdsForThread(threadId)
+        if (rows.isNotEmpty()) systemWriter.deleteAll(rows)
         messageDao.deleteForThread(threadId)
         threadDao.deleteById(threadId)
     }

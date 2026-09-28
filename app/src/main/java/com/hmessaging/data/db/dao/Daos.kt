@@ -90,6 +90,9 @@ interface ThreadDao {
     @Query("UPDATE threads SET unreadCount = 0 WHERE id = :threadId")
     suspend fun clearUnread(threadId: Long)
 
+    @Query("UPDATE threads SET unreadCount = :count WHERE id = :threadId")
+    suspend fun setUnread(threadId: Long, count: Int)
+
     @Query("UPDATE threads SET contactName = :name WHERE id = :threadId")
     suspend fun setContactName(threadId: Long, name: String?)
 
@@ -190,6 +193,19 @@ interface MessageDao {
 
     @Query("UPDATE messages SET read = 1 WHERE threadId = :threadId AND read = 0")
     suspend fun markThreadRead(threadId: Long)
+
+    @Query("UPDATE messages SET read = 0 WHERE id = :id")
+    suspend fun markUnread(id: Long)
+
+    /** The phone-store rows of this thread's unread messages, so the store can be told too. */
+    @Query("SELECT systemId FROM messages WHERE threadId = :threadId AND read = 0 AND systemId IS NOT NULL")
+    suspend fun unreadSystemIdsForThread(threadId: Long): List<Long>
+
+    @Query("SELECT systemId FROM messages WHERE threadId = :threadId AND systemId IS NOT NULL")
+    suspend fun systemIdsForThread(threadId: Long): List<Long>
+
+    @Query("SELECT * FROM messages WHERE threadId = :threadId AND type = 'INBOX' ORDER BY date DESC, id DESC LIMIT 1")
+    suspend fun newestIncoming(threadId: Long): MessageEntity?
 
     @Query("UPDATE messages SET status = :status, errorMessage = :error WHERE id = :id")
     suspend fun setStatus(id: Long, status: DeliveryStatus, error: String?)
