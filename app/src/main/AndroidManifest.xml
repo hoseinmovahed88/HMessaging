@@ -47,6 +47,31 @@
         android:name="android.hardware.telephony"
         android:required="true" />
 
+    <!--
+      Package visibility for the SMS role. From Android 11 the platform answers "who is the default
+      SMS app?" by resolving these intents from inside the asking app's process, and only packages
+      the app has declared it can see are returned. Without this block that answer can come back
+      null even for the app asking about itself, and every decision built on it — whether to write
+      the SMS store, whether the role is held — is built on nothing.
+    -->
+    <queries>
+        <intent>
+            <action android:name="android.provider.Telephony.SMS_DELIVER" />
+        </intent>
+        <intent>
+            <action android:name="android.provider.Telephony.WAP_PUSH_DELIVER" />
+            <data android:mimeType="application/vnd.wap.mms-message" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.RESPOND_VIA_MESSAGE" />
+            <data android:scheme="smsto" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.SENDTO" />
+            <data android:scheme="smsto" />
+        </intent>
+    </queries>
+
     <application
         android:name=".HMessagingApp"
         android:allowBackup="false"
