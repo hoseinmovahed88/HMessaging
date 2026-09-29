@@ -113,5 +113,4 @@ data class BackupMessage(
     val type: String,
     val read: Boolean,
     val isOtp: Boolean,
-    val subscriptionId: Int = -1,
 )

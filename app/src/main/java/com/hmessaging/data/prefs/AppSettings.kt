@@ -53,20 +53,6 @@ data class AppSettings(
     /** One-shot: whether the sweep for duplicated messages has already run. */
     val duplicatesCleaned: Boolean = false,
     val onboardingDone: Boolean = false,
-    // Backup
-    /** A daily copy of every message in the public Download folder, which outlives the app. */
-    val autoBackupEnabled: Boolean = true,
-    val lastBackupAt: Long = 0L,
-    val lastBackupCount: Int = 0,
-    /** The SMS-store row count at which the last full walk for missing messages ran. */
-    val gapCheckedAtRows: Long = -1L,
-    /** Whether the reader has been shown where HyperOS hides the message-sound switch. */
-    val xiaomiSoundHintDone: Boolean = false,
-    /**
-     * Whether the reader has been shown where HyperOS keeps autostart. Stored with the app's data,
-     * so a reinstall — which also resets autostart — brings the pointer back with it.
-     */
-    val xiaomiAutostartHintDone: Boolean = false,
 ) {
     val awayModeActive: Boolean get() = awayUntil > System.currentTimeMillis()
 

@@ -31,62 +31,6 @@ import com.hmessaging.notify.AlertProblem
  * one that is actually set and goes straight there — a phone that has muted the message channel
  * is not helped by being shown the app's notification list.
  */
-/**
- * A one-time pointer to a switch the app cannot read: the same card as [AlertProblemBanner],
- * with the wording and the action supplied by the caller.
- */
-@Composable
-fun HintBanner(
-    title: String,
-    text: String,
-    actionLabel: String,
-    onAction: () -> Unit,
-    onDismiss: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    HyperCard(modifier = modifier) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(18.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                Icon(
-                    Icons.Filled.NotificationsOff,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(22.dp),
-                )
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-            }
-            Text(
-                text = text,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(
-                    onClick = onAction,
-                    shape = RoundedCornerShape(50),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary,
-                    ),
-                ) { Text(actionLabel) }
-                TextButton(onClick = onDismiss) { Text(stringResource(R.string.dismiss)) }
-            }
-        }
-    }
-}
-
 @Composable
 fun AlertProblemBanner(
     problem: AlertProblem,

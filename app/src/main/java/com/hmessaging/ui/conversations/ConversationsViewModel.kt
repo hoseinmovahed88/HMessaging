@@ -50,11 +50,7 @@ data class ConversationsUiState(
     val filterCounts: Map<ConversationFilter, Int> = emptyMap(),
     /** Empty on a single-SIM phone, which is what keeps the badge off every row there. */
     val simSlots: List<SimSlot> = emptyList(),
-    /** Conversations picked by long press, for one action on all of them at once. */
-    val selected: Set<Long> = emptySet(),
 ) {
-    val selecting: Boolean get() = selected.isNotEmpty()
-
     /**
      * Results replace the conversation list only while the box that produced them is on screen.
      *
@@ -72,7 +68,6 @@ class ConversationsViewModel(private val graph: AppGraph) : ViewModel() {
     private val searchOpen = MutableStateFlow(false)
     private val showArchived = MutableStateFlow(false)
     private val filter = MutableStateFlow(ConversationFilter.ALL)
-    private val selected = MutableStateFlow<Set<Long>>(emptySet())
 
     @OptIn(ExperimentalCoroutinesApi::class)
     private val searchResults = query.flatMapLatest { text ->
@@ -88,8 +83,8 @@ class ConversationsViewModel(private val graph: AppGraph) : ViewModel() {
     /** Query and box visibility travel together, so neither can outlive the other. */
     private val search = combine(query, searchOpen) { text, open -> text to open }
 
-    private val view = combine(showArchived, filter, selected) { archivedVisible, chosen, picked ->
-        Triple(archivedVisible, chosen, picked)
+    private val view = combine(showArchived, filter) { archivedVisible, chosen ->
+        archivedVisible to chosen
     }
 
     val uiState: StateFlow<ConversationsUiState> = combine(
@@ -98,7 +93,7 @@ class ConversationsViewModel(private val graph: AppGraph) : ViewModel() {
         searchResults,
         search,
         view,
-    ) { threads, archived, results, (text, open), (archivedVisible, chosen, picked) ->
+    ) { threads, archived, results, (text, open), (archivedVisible, chosen) ->
         ConversationsUiState(
             loaded = true,
             threads = threads.filter { matches(chosen, it) },
@@ -119,15 +114,8 @@ class ConversationsViewModel(private val graph: AppGraph) : ViewModel() {
             filterCounts = ConversationFilter.entries.associateWith { candidate ->
                 threads.count { matches(candidate, it) }
             },
-            // Conversations deleted while selected must not leave a selection nothing can act on.
-            selected = picked.intersect((threads + archived).mapTo(mutableSetOf()) { it.id }),
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), ConversationsUiState())
-
-    /** The pointer to HyperOS's sound switch is shown once; opening it or waving it away ends it. */
-    fun dismissXiaomiSoundHint() = viewModelScope.launch { graph.prefs.setXiaomiSoundHintDone(true) }
-
-    fun dismissXiaomiAutostartHint() = viewModelScope.launch { graph.prefs.setXiaomiAutostartHintDone(true) }
 
     val queryState: StateFlow<String> = query.asStateFlow()
 
@@ -179,46 +167,6 @@ class ConversationsViewModel(private val graph: AppGraph) : ViewModel() {
     fun markRead(threadId: Long) = viewModelScope.launch {
         graph.messageRepository.markThreadRead(threadId)
         graph.notifications.cancelThread(threadId)
-    }
-
-    fun markUnread(threadId: Long) = viewModelScope.launch {
-        graph.messageRepository.markThreadUnread(threadId)
-    }
-
-    // ---- selection ----
-
-    fun toggleSelected(threadId: Long) {
-        val current = selected.value
-        selected.value = if (threadId in current) current - threadId else current + threadId
-    }
-
-    fun clearSelection() {
-        selected.value = emptySet()
-    }
-
-    /** Everything the current cut shows — so "select all" in Unread is every unread conversation. */
-    fun selectAllVisible() {
-        selected.value = uiState.value.threads.mapTo(mutableSetOf()) { it.id }
-    }
-
-    fun markSelectedRead() = onSelected { id ->
-        graph.messageRepository.markThreadRead(id)
-        graph.notifications.cancelThread(id)
-    }
-
-    fun markSelectedUnread() = onSelected { graph.messageRepository.markThreadUnread(it) }
-
-    fun archiveSelected() = onSelected { graph.messageRepository.setArchived(it, true) }
-
-    fun deleteSelected() = onSelected { id ->
-        graph.messageRepository.deleteThread(id)
-        graph.notifications.cancelThread(id)
-    }
-
-    private fun onSelected(action: suspend (Long) -> Unit) = viewModelScope.launch {
-        val picked = selected.value.toList()
-        selected.value = emptySet()
-        picked.forEach { action(it) }
     }
 
     fun deleteThread(threadId: Long) = viewModelScope.launch {

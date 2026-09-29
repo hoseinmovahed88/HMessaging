@@ -82,10 +82,6 @@ fun SettingsScreen(
         ActivityResultContracts.StartActivityForResult(),
     ) { }
 
-    val restoreLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.OpenDocumentTree(),
-    ) { uri -> uri?.let { viewModel.restoreFromFolder(it) } }
-
     LaunchedEffect(status) {
         status?.let {
             snackbarHost.showSnackbar(it)
@@ -397,35 +393,6 @@ fun SettingsScreen(
                         showChevron = running == null,
                         enabled = running == null,
                         onClick = viewModel::importSystemSms,
-                    )
-                    HyperRowDivider()
-                    HyperSwitchRow(
-                        title = stringResource(R.string.settings_auto_backup),
-                        subtitle = stringResource(R.string.settings_auto_backup_desc),
-                        checked = settings.autoBackupEnabled,
-                        onCheckedChange = viewModel::setAutoBackupEnabled,
-                    )
-                    HyperRowDivider()
-                    HyperRow(
-                        title = stringResource(R.string.settings_backup_now),
-                        subtitle = if (settings.lastBackupAt > 0) {
-                            stringResource(
-                                R.string.settings_backup_last,
-                                settings.lastBackupCount,
-                                TimeFormat.full(settings.lastBackupAt),
-                            )
-                        } else {
-                            stringResource(R.string.settings_backup_never)
-                        },
-                        showChevron = true,
-                        onClick = viewModel::backupNow,
-                    )
-                    HyperRowDivider()
-                    HyperRow(
-                        title = stringResource(R.string.settings_restore_folder),
-                        subtitle = stringResource(R.string.settings_restore_folder_desc),
-                        showChevron = true,
-                        onClick = { restoreLauncher.launch(null) },
                     )
                     HyperRowDivider()
                     HyperSwitchRow(

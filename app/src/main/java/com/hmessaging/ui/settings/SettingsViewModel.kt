@@ -5,7 +5,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.hmessaging.data.model.ThemeMode
 import com.hmessaging.data.prefs.AppSettings
-import com.hmessaging.backup.BackupWorker
 import com.hmessaging.di.AppGraph
 import com.hmessaging.sms.SimSlot
 import com.hmessaging.sms.SmsImporter
@@ -77,28 +76,6 @@ class SettingsViewModel(private val graph: AppGraph) : ViewModel() {
         } else {
             "Import failed: ${progress.error}"
         }
-    }
-
-    fun setAutoBackupEnabled(value: Boolean) = viewModelScope.launch {
-        graph.prefs.setAutoBackupEnabled(value)
-        if (value) BackupWorker.enqueue(context)
-    }
-
-    fun backupNow() = viewModelScope.launch {
-        status.value = null
-        status.value = graph.autoBackup.writeNow().fold(
-            onSuccess = { "Backed up ${it.messages} messages to ${it.where}" },
-            onFailure = { it.message ?: "Backup failed" },
-        )
-    }
-
-    fun restoreFromFolder(folder: Uri) = viewModelScope.launch {
-        status.value = null
-        status.value = graph.autoBackup.restoreFromFolder(folder).fold(
-            onSuccess = { "Restored ${it.messages} messages" + if (it.settingsFile) " and settings" else "" },
-            onFailure = { it.message ?: "Restore failed" },
-        )
-        graph.invalidateCaches()
     }
 
     fun exportBackup(target: Uri, includeMessages: Boolean) = viewModelScope.launch {

@@ -18,11 +18,6 @@ object Permissions {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             add(Manifest.permission.POST_NOTIFICATIONS)
         }
-        // Only older phones need a permission to write the public Download folder, where the
-        // daily backup goes; from Android 10 the media store takes the app's own files without one.
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
-            add(Manifest.permission.WRITE_EXTERNAL_STORAGE)
-        }
     }
 
     fun has(context: Context, permission: String): Boolean =

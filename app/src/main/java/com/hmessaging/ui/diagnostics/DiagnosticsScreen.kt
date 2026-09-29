@@ -42,7 +42,6 @@ import com.hmessaging.ui.components.HyperRowDivider
 import com.hmessaging.ui.components.HyperScreen
 import com.hmessaging.ui.theme.LocalHyperColors
 import com.hmessaging.util.AppRoles
-import com.hmessaging.util.Vendor
 import com.hmessaging.util.Clipboards
 import com.hmessaging.util.TimeFormat
 
@@ -185,7 +184,7 @@ fun DiagnosticsScreen(
                         title = stringResource(R.string.diag_alerts),
                         subtitle = stringResource(
                             when (problem) {
-                                null -> if (Vendor.isXiaomi) R.string.diag_alerts_ok_xiaomi else R.string.diag_alerts_ok
+                                null -> R.string.diag_alerts_ok
                                 AlertProblem.PERMISSION -> R.string.alerts_off_permission
                                 AlertProblem.APP_BLOCKED -> R.string.alerts_off_app
                                 AlertProblem.CHANNEL_BLOCKED -> R.string.alerts_off_channel

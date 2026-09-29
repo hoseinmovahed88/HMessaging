@@ -182,10 +182,6 @@ class SmsImporter(
         } finally {
             _progress.value = null
         }
-        // Unconditionally: a conversation whose summary was left stale by an interrupted earlier
-        // run shows an old last message however many rows this run added, and a walk of the
-        // whole store is the natural moment to put every summary right.
-        threadDao.rebuildSummaries()
 
         if (imported > 0) threadDao.rebuildSummaries()
         return Progress(imported, skipped)
@@ -245,15 +241,9 @@ class SmsImporter(
      * capture, auto-reply and forwarding. It is deliberately off for bulk catch-up: replaying a
      * backlog through the answering machine would send a burst of real, billable messages.
      */
-    suspend fun syncNew(deliverThroughPipeline: Boolean): Progress = importLock.withLock {
-        withContext(Dispatchers.IO) { runSync(deliverThroughPipeline) }
-    }
-
-    // Behind the same lock as the full import: the two used to run side by side on the first
-    // open, each deciding what was "new" from a database the other was still filling.
-    private suspend fun runSync(deliverThroughPipeline: Boolean): Progress {
+    suspend fun syncNew(deliverThroughPipeline: Boolean): Progress = withContext(Dispatchers.IO) {
         if (!Permissions.has(context, Manifest.permission.READ_SMS)) {
-            return Progress(0, 0, succeeded = false, error = "READ_SMS is not granted")
+            return@withContext Progress(0, 0, succeeded = false, error = "READ_SMS is not granted")
         }
         val since = messageDao.newestDate() ?: 0L
         val cutoff = System.currentTimeMillis() - LIVE_WINDOW_MS
@@ -279,7 +269,7 @@ class SmsImporter(
             )
         }
         val cursor = cursorResult.getOrNull()
-            ?: return Progress(
+            ?: return@withContext Progress(
                 0,
                 0,
                 succeeded = false,
@@ -354,7 +344,7 @@ class SmsImporter(
         }
 
         if (imported > 0) threadDao.rebuildSummaries()
-        return Progress(imported, skipped)
+        Progress(imported, skipped)
     }
 
     companion object {

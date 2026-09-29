@@ -3,7 +3,6 @@ package com.hmessaging
 import android.app.Application
 import androidx.work.Configuration
 import com.hmessaging.di.AppGraph
-import com.hmessaging.backup.BackupWorker
 import com.hmessaging.feature.schedule.ScheduleSweepWorker
 import com.hmessaging.util.TimeFormat
 import kotlinx.coroutines.launch
@@ -35,7 +34,6 @@ class HMessagingApp : Application(), Configuration.Provider {
             graph.scheduleManager.rescheduleAll()
         }
         ScheduleSweepWorker.enqueue(this)
-        BackupWorker.enqueue(this)
     }
 
     private companion object {

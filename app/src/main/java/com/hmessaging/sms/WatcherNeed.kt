@@ -31,21 +31,20 @@ object WatcherNeed {
         stats.missedByBroadcast > 0 || stats.viaBroadcast < EVIDENCE_REQUIRED
 
     /**
-     * Whether the watcher should be running at all.
+     * Whether the watcher should be running at all, which is a stricter question than [isNeeded].
      *
-     * Never unless the reader turned it on: it costs a permanent notification. Once on, it runs
-     * whenever this app is the default SMS app, whatever the delivery record says — because then
-     * its job is not watching the store but keeping a process alive. A ROM that refuses to
-     * cold-start an app for a broadcast (HyperOS with autostart off, which is how every fresh
-     * install starts) delivers SMS_DELIVER to nobody, and the default app is the only app that
-     * would have written the message anywhere. A live process receives it.
+     * It is off unless the reader turned it on, and off regardless while this app is the default
+     * SMS app — because then it is the only app allowed to write the SMS store, and a watcher that
+     * waits for the store to change is waiting for itself. The store cannot reveal a message this
+     * app never received; only a message some other app wrote, which is what the watcher was built
+     * to catch and only exists when that other app is the default.
      *
-     * When another app is default, the store does change without this app, and the delivery
-     * record decides as before. That record no longer proves itself right forever: the watcher's
-     * own runtime receiver now hands a message straight to the pipeline as a broadcast would.
+     * The old rule kept the watcher up on any phone that had ever found a message by reading the
+     * store — and the watcher's own runtime receiver counts that way, so once running it proved
+     * its own necessity forever, and its notification never left.
      */
     fun shouldRun(context: Context, settings: AppSettings, stats: DeliveryStats): Boolean =
-        settings.liveSyncEnabled && (AppRoles.isDefaultSmsApp(context) || isNeeded(stats))
+        settings.liveSyncEnabled && !AppRoles.isDefaultSmsApp(context) && isNeeded(stats)
 
     /** Why it is running, for the diagnostics screen to say something better than "on". */
     fun reason(stats: DeliveryStats): String = when {
