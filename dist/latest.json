@@ -1,8 +1,8 @@
 {
-  "versionCode": 53,
-  "versionName": "1.0.52",
-  "url": "https://github.com/hoseinmovahed88/HMessaging/raw/claude/android-messenger-app-izbr89/dist/HMessaging-1.0.52.apk",
-  "sha256": "33d57f505602b13bab907d936d6db69d1a76db17500116264edcac7e0522e990",
-  "size": 2635360,
-  "notes": "پیام‌های تکراریِ واقعی (همان متن از همان فرستنده در کمتر از ۱۰ دقیقه) دیگر دور ریخته نمی‌شوند. یادآوری «اجرای خودکار» برای گوشی‌های شیائومی؛ «دریافت مطمئن» حالا وقتی اپ پیش‌فرض است هم اپ را زنده نگه می‌دارد."
+  "versionCode": 54,
+  "versionName": "1.0.53",
+  "url": "https://github.com/hoseinmovahed88/HMessaging/raw/claude/android-messenger-app-izbr89/dist/HMessaging-1.0.53.apk",
+  "sha256": "66226630e8a5a1ce761279ba8da70c8ce868e224b78471a8ad4c9950bb758f22",
+  "size": 2613416,
+  "notes": "بازگشت به کد ۱.۰.۴۳ (دیروز صبح) با فقط چهار اصلاح برای جلوگیری از گم شدن پیام: درون‌ریزی کامل و درست بعد از نصب، و دور نریختن پیام‌های تکراریِ واقعی."
 }
